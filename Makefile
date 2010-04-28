@@ -10,20 +10,20 @@ all: peg
 peg: bootstrap.go peg_main.go
 	$(GC) peg.go bootstrap.go
 	$(GC) -I ./ peg_main.go
-	$(LD) -L ./ -o peg peg_main.6
+	$(LD) -L ./ -o peg peg_main.$(O)
 
 bootstrap.go: bootstrap
 	./bootstrap
 
-bootstrap: main.6
-	$(LD) -L ./ -o bootstrap main.6
+bootstrap: main.$(O)
+	$(LD) -L ./ -o bootstrap main.$(O)
 
-main.6: peg.6 main.go
+main.$(O): peg.$(O) main.go
 	$(GC) -I ./ main.go
 
-peg.6: peg.go
+peg.$(O): peg.go
 	$(GC) peg.go
 
 .PHONY: clean
 clean:
-	rm -f *.6 bootstrap.go bootstrap peg
+	rm -f *.6 *.8 bootstrap.go bootstrap peg
