@@ -2,28 +2,24 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-include $(GOROOT)/src/Make.$(GOARCH)
+include Make.common
 
 .PHONY: all
 all: peg
 
-peg: bootstrap.go peg_main.go
+peg: main.$(O)
+	$(LD) -o peg main.$(O)
+
+main.$(O): peg.$(O)
+
+peg.$(O): bootstrap.go
 	$(GC) peg.go bootstrap.go
-	$(GC) -I ./ peg_main.go
-	$(LD) -L ./ -o peg peg_main.$(O)
 
-bootstrap.go: bootstrap
-	./bootstrap
-
-bootstrap: main.$(O)
-	$(LD) -L ./ -o bootstrap main.$(O)
-
-main.$(O): peg.$(O) main.go
-	$(GC) -I ./ main.go
-
-peg.$(O): peg.go
-	$(GC) peg.go
+bootstrap.go: peg.go bootstrap/main.go
+	$(MAKE) -C bootstrap/ bootstrap
+	./bootstrap/bootstrap
 
 .PHONY: clean
 clean:
-	rm -f *.6 *.8 bootstrap.go bootstrap peg
+	$(MAKE) -C bootstrap/ clean
+	rm -f *.6 *.8 bootstrap.go peg

@@ -707,8 +707,7 @@ func (p *%v) PrintError() {
  }
 }
 func (p *%v) Init() {
- var position int
-`, _package, name, state, len(t.rules), name, name, name)
+ var position int`, _package, name, state, len(t.rules), name, name, name)
 
  hasActions := t.actions.Len() != 0
  if hasActions {
@@ -720,7 +719,7 @@ func (p *%v) Init() {
   case bits < 32: bits = 32
   case bits < 64: bits = 64
   }
-  print(" actions := [...]func(buffer string, begin, end int) {\n")
+  print("\n actions := [...]func(buffer string, begin, end int) {\n")
   for i := range t.actions.Iter() {
    a := i.( Action )
    print("  /* %v %v */\n", a.GetId(), a.GetRule())
@@ -742,10 +741,10 @@ func (p *%v) Init() {
   thunks[thunkPosition].begin = begin
   thunks[thunkPosition].end = end
   thunkPosition++
- }
-`, bits, bits, bits)
+ }`, bits, bits, bits)
   if counts[TypeCommit] > 0 {print(
-` commit := func(thunkPosition0 int) bool {
+`
+ commit := func(thunkPosition0 int) bool {
   if thunkPosition0 == 0 {
    for thunk := 0; thunk < thunkPosition; thunk++ {
     actions[thunks[thunk].action](p.Buffer, thunks[thunk].begin, thunks[thunk].end)
@@ -755,14 +754,14 @@ func (p *%v) Init() {
    return true
   }
   return false
- }
-`)}
+ }`)}
   printSave = func(n uint) {print("\n   position%d,  thunkPosition%d := position, thunkPosition", n, n)}
   printRestore = func(n uint) {print("   position, thunkPosition = position%d, thunkPosition%d", n, n)}
  }
 
  if counts[TypeDot] > 0 {print(
-` matchDot := func() bool {
+`
+ matchDot := func() bool {
   if position < len(p.Buffer) {
    position++
    return true
@@ -770,10 +769,10 @@ func (p *%v) Init() {
    p.Max = position
   }
   return false
- }
-`)}
+ }`)}
  if counts[TypeCharacter] > 0 {print(
-` matchChar := func(c byte) bool {
+`
+ matchChar := func(c byte) bool {
   if (position < len(p.Buffer)) && (p.Buffer[position] == c) {
    position++
    return true
@@ -781,10 +780,10 @@ func (p *%v) Init() {
    p.Max = position
   }
   return false
- }
-`)}
+ }`)}
  if counts[TypeString] > 0 {print(
-` matchString := func(s string) bool {
+`
+ matchString := func(s string) bool {
   length := len(s)
   next := position + length
   if (next <= len(p.Buffer)) && (p.Buffer[position:next] == s) {
@@ -794,12 +793,11 @@ func (p *%v) Init() {
    p.Max = position
   }
   return false
- }
-`)}
+ }`)}
 
  classes := make(map[string] uint)
  if len(t.classes) != 0 {
-  print(" classes := [...][32]uint8 {\n")
+  print("\n classes := [...][32]uint8 {\n")
   var index uint
   for className, classBitmap := range t.classes {
    classes[className] = index
@@ -821,8 +819,7 @@ func (p *%v) Init() {
    p.Max = position
   }
   return false
- }
-`)
+ }`)
  }
 
  var printRule func(node Node)
@@ -1051,7 +1048,7 @@ func (p *%v) Init() {
   }
  }
 
- print(" p.rules = [...]func() bool {")
+ print("\n p.rules = [...]func() bool {")
  for element := t.Front(); element != nil; element = element.Next() {
   node := element.Value.( Node )
   if node.GetType() != TypeRule {continue}
