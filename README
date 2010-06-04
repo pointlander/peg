@@ -13,9 +13,9 @@ This Go implementation is based on:
 
 Files
 
-main.go: bootstrap syntax tree of peg
+bootstrap/main.go: bootstrap syntax tree of peg
 peg.go: syntax tree and code generator
-peg_main.go: bootstrap main
+main.go: bootstrap main
 peg.peg: peg in its own language
 
 
