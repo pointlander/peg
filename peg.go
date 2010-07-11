@@ -202,7 +202,7 @@ func (f *fix) SetNode(node Node) {
 
 /* Used to represent character classes. */
 type characterClass [32]uint8
-func (c *characterClass) copy() (class *characterClass) {class = new(characterClass); copy(class, c); return}
+func (c *characterClass) copy() (class *characterClass) {class = new(characterClass); copy(class[0:], c[0:]); return}
 func (c *characterClass) add(character uint8) {c[character >> 3] |= (1 << (character & 7))}
 func (c *characterClass) has(character uint8) bool {return c[character >> 3] & (1 << (character & 7)) != 0}
 func (c *characterClass) complement() {for i := range *c {c[i] = ^c[i]}}
