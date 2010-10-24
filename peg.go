@@ -166,11 +166,10 @@ func (l *nodeList) GetLastIsEmpty() bool {
 }
 
 func (l *nodeList) String() string {
- iterator := l.List.Iter()
- i := <-iterator
- s := "(" + i.( fmt.Stringer ).String()
- for i := range iterator {
-  s += " / " + i.( fmt.Stringer ).String()
+ i := l.List.Front()
+ s := "(" + i.Value.( fmt.Stringer ).String()
+ for i = i.Next(); i != nil; i = i.Next() {
+  s += " / " + i.Value.( fmt.Stringer ).String()
  }
  return s + ")"
 }
@@ -665,7 +664,7 @@ func (t *Tree) Compile(file string) {
   return
  }
  defer out.Close()
- print := func(format string, a ... interface{}) {fmt.Fprintf(out, format, a)}
+ print := func(format string, a ...interface{}) {fmt.Fprintf(out, format, a...)}
  printSave := func(n uint) {print("\n   position%d := position", n)}
  printRestore := func(n uint) {print("   position = position%d", n)}
 
@@ -720,8 +719,8 @@ func (p *%v) Init() {
   case bits < 64: bits = 64
   }
   print("\n actions := [...]func(buffer string, begin, end int) {\n")
-  for i := range t.actions.Iter() {
-   a := i.( Action )
+  for i := t.actions.Front(); i != nil; i = i.Next() {
+   a := i.Value.( Action )
    print("  /* %v %v */\n", a.GetId(), a.GetRule())
    print("  func(buffer string, begin, end int) {\n")
    print("   %v\n", a)
