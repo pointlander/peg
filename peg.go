@@ -36,6 +36,7 @@ const (
  TypeStar
  TypePlus
  TypePeg
+ TypeNil
  TypeLast
 )
 
@@ -75,6 +76,7 @@ func (r *rule) GetId() int {
 }
 
 func (r *rule) GetExpression() Node {
+ if r.expression == nil {return nilNode}
  return r.expression
 }
 
@@ -86,7 +88,7 @@ func (r *rule) String() string {
  return r.name
 }
 
-/* Used to represent TypeName, TypeDot, TypeCharacter, TypeString, TypeClass, and TypePredicate. */
+/* Used to represent TypeName, TypeDot, TypeCharacter, TypeString, TypeClass, TypePredicate, and TypeNil. */
 type Token interface {
  Node
  GetClass() *characterClass
@@ -105,6 +107,8 @@ func (t *token) GetClass() *characterClass {
 func (t *token) String() string {
  return t.string
 }
+
+var nilNode = &token{Type: TypeNil, string: "<nil>"}
 
 /* Used to represent TypeAction. */
 type Action interface {
@@ -298,7 +302,10 @@ func (t *Tree) AddExpression() {
  t.PushBack(rule)
 }
 
-func (t *Tree) AddName(text string) {t.push(&token{Type: TypeName, string: text})}
+func (t *Tree) AddName(text string) {
+ t.rules[text] = &rule{}
+ t.push(&token{Type: TypeName, string: text})
+}
 var dot *token = &token{Type: TypeDot, string: "."}
 func (t *Tree) AddDot() {t.push(dot)}
 func (t *Tree) AddString(text string) {
@@ -426,6 +433,14 @@ func (t *Tree) Compile(file string) {
   case TypeRule:
    rule := node.( *rule ) 
    t.rules[rule.String()] = rule
+  }
+ }
+ for name, r := range t.rules {
+  if r.name == "" {
+   r := &rule{name: name, id: t.ruleId}
+   t.ruleId++
+   t.rules[name] = r
+   t.PushBack(r)
   }
  }
 
@@ -833,7 +848,7 @@ func (p *%v) Init() {
   case TypeRule:
    print("%v <- ", node)
    expression := node.( Rule ).GetExpression()
-   if expression != nil {printRule(expression)}
+   if expression != nilNode {printRule(expression)}
   case TypeDot:       print(".")
   case TypeName:      print("%v", node)
   case TypeCharacter,
@@ -1042,6 +1057,7 @@ func (p *%v) Init() {
    printLabel(out)
    printRestore(out)
    printEnd()
+  case TypeNil:
   default:
    fmt.Fprintf(os.Stderr, "illegal node type: %v\n", node.GetType())
   }
@@ -1053,7 +1069,7 @@ func (p *%v) Init() {
   if node.GetType() != TypeRule {continue}
   rule := node.( *rule )
   expression := rule.GetExpression()
-  if expression == nil {
+  if expression == nilNode {
    fmt.Fprintf(os.Stderr, "rule '%v' used but not defined\n", rule)
    print("\n  nil,")
    continue
