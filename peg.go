@@ -673,7 +673,7 @@ func (t *Tree) Compile(file string) {
   }
  }
 
- out, error := os.Open(file, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
+ out, error := os.OpenFile(file, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
  if error != nil {
   fmt.Printf("%v: %v\n", file, error)
   return
@@ -839,10 +839,17 @@ func (p *%v) Init() {
  var printRule func(node Node)
  var compile func(expression Node, ko uint)
  var label uint
+ labels := make(map[uint] bool)
  printBegin := func() {print("\n   {")}
  printEnd := func() {print("\n   }")}
- printLabel := func(n uint) {print("\n   l%d:\t", n)}
- printJump := func(n uint) {print("\n   goto l%d", n)}
+ printLabel := func(n uint, loop bool) {
+  print("\n")
+  if loop || labels[n] {print("   l%d:\t", n)}
+ }
+ printJump := func(n uint) {
+  print("\n   goto l%d", n)
+  labels[n] = true
+ }
  printRule = func(node Node) {
   switch node.GetType() {
   case TypeRule:
@@ -910,7 +917,10 @@ func (p *%v) Init() {
  compile = func(node Node, ko uint) {
   switch node.GetType() {
   case TypeRule:      fmt.Fprintf(os.Stderr, "internal error #1 (%v)\n", node)
-  case TypeDot:       print("\n   if !matchDot() {goto l%d}", ko);
+  case TypeDot:
+   print("\n   if !matchDot() {")
+   printJump(ko)
+   print("}")
   case TypeName:
    name := node.String()
    rule := t.rules[name]
@@ -918,13 +928,30 @@ func (p *%v) Init() {
     compile(rule.GetExpression(), ko)
     return
    }
-   print("\n   if !p.rules[%d]() {goto l%d}", rule.GetId(), ko)
-  case TypeCharacter: print("\n   if !matchChar('%v') {goto l%d}", node, ko)
-  case TypeString:    print("\n   if !matchString(\"%v\") {goto l%d}", node, ko)
-  case TypeClass:     print("\n   if !matchClass(%d) {goto l%d}", classes[node.String()], ko)
-  case TypePredicate: print("\n   if !(%v) {goto l%d}", node, ko)
-  case TypeAction:    print("\n   do(%d)", node.( Action ).GetId())
-  case TypeCommit:    print("\n   if !(commit(thunkPosition0)) {goto l%d}", ko)
+   print("\n   if !p.rules[%d]() {", rule.GetId())
+   printJump(ko)
+   print("}")
+  case TypeCharacter:
+   print("\n   if !matchChar('%v') {", node)
+   printJump(ko)
+   print("}")
+  case TypeString:
+   print("\n   if !matchString(\"%v\") {", node)
+   printJump(ko)
+   print("}")
+  case TypeClass:
+   print("\n   if !matchClass(%d) {", classes[node.String()])
+   printJump(ko)
+   print("}")
+  case TypePredicate:
+   print("\n   if !(%v) {", node)
+   printJump(ko)
+   print("}")
+  case TypeAction: print("\n   do(%d)", node.( Action ).GetId())
+  case TypeCommit:
+   print("\n   if !(commit(thunkPosition0)) {")
+   printJump(ko)
+   print("}")
   case TypeBegin:     if hasActions {print("\n   begin = position")}
   case TypeEnd:       if hasActions {print("\n   end = position")}
   case TypeAlternate:
@@ -939,7 +966,7 @@ func (p *%v) Init() {
     next := label; label++
     compile(element.Value.( Node ), next)
     printJump(ok)
-    printLabel(next)
+    printLabel(next, false)
     printRestore(ok)
     element = element.Next()
    }
@@ -947,13 +974,13 @@ func (p *%v) Init() {
     done := label; label++
     compile(element.Value.( Node ), done)
     printJump(ok)
-    printLabel(done)
+    printLabel(done, false)
     printRestore(ok)
    } else {
     compile(element.Value.( Node ), ko)
    }
    printEnd()
-   printLabel(ok)
+   printLabel(ok, false)
   case TypeUnorderedAlternate:
    list := node.( List )
    done, ok := ko, label; label++
@@ -962,7 +989,9 @@ func (p *%v) Init() {
     done = label; label++
     printSave(ok)
    }
-   print("\n   if position == len(p.Buffer) {goto l%d}", done)
+   print("\n   if position == len(p.Buffer) {")
+   printJump(done)
+   print("}")
    print("\n   switch p.Buffer[position] {")
    element := list.Front()
    for ; element.Next() != nil; element = element.Next() {
@@ -998,11 +1027,11 @@ func (p *%v) Init() {
    print("\n   }")
    if list.GetLastIsEmpty() {
     printJump(ok)
-    printLabel(done)
+    printLabel(done, false)
     printRestore(ok)
    }
    printEnd()
-   printLabel(ok)
+   printLabel(ok, false)
   case TypeSequence:
    for element := node.( List ).Front(); element != nil; element = element.Next() {
     compile(element.Value.( Node ), ko)
@@ -1020,7 +1049,7 @@ func (p *%v) Init() {
    printSave(ok)
    compile(node.( Fix ).GetNode(), ok)
    printJump(ko)
-   printLabel(ok)
+   printLabel(ok, false)
    printRestore(ok)
    printEnd()
   case TypeQuery:
@@ -1030,31 +1059,31 @@ func (p *%v) Init() {
    printSave(qko)
    compile(node.( Fix ).GetNode(), qko)
    printJump(qok)
-   printLabel(qko)
+   printLabel(qko, false)
    printRestore(qko)
    printEnd()
-   printLabel(qok)
+   printLabel(qok, false)
   case TypeStar:
    again := label; label++
    out := label; label++
-   printLabel(again)
+   printLabel(again, true)
    printBegin()
    printSave(out)
    compile(node.( Fix ).GetNode(), out)
    printJump(again)
-   printLabel(out)
+   printLabel(out, false)
    printRestore(out)
    printEnd()
   case TypePlus:
    again := label; label++
    out := label; label++
    compile(node.( Fix ).GetNode(), ko)
-   printLabel(again)
+   printLabel(again, true)
    printBegin()
    printSave(out)
    compile(node.( Fix ).GetNode(), out)
    printJump(again)
-   printLabel(out)
+   printLabel(out, false)
    printRestore(out)
    printEnd()
   case TypeNil:
@@ -1093,7 +1122,7 @@ func (p *%v) Init() {
   compile(expression, ko)
   print("\n   return true")
   if !expression.GetType().IsSafe() {
-   printLabel(ko)
+   printLabel(ko, false)
    printRestore(0)
    print("\n   return false")
   }
