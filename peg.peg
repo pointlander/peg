@@ -43,8 +43,8 @@ Suffix          <- Primary (QUESTION            { p.AddQuery() }
 Primary	        <- 'commit' Spacing             { p.AddCommit() }
                  / Identifier !LEFTARROW        { p.AddName(buffer[begin:end]) }
                  / OPEN Expression CLOSE
-                 / Literal                      { p.AddString(buffer[begin:end]) }
-                 / Class                        { p.AddClass(buffer[begin:end]) }
+                 / Literal
+                 / Class
                  / DOT                          { p.AddDot() }
                  / Action                       { p.AddAction(buffer[begin:end]) }
                  / BEGIN                        { p.AddBegin() }
@@ -55,15 +55,35 @@ Primary	        <- 'commit' Spacing             { p.AddCommit() }
 Identifier	<- < IdentStart IdentCont* > Spacing
 IdentStart	<- [a-zA-Z_]
 IdentCont	<- IdentStart / [0-9]
-Literal		<- ['] < (!['] Char )* > ['] Spacing
-		 / ["] < (!["] Char )* > ["] Spacing
-Class		<- '[' < (!']' Range)* > ']' Spacing
-Range		<- Char '-' Char / Char
-Char		<- '\\' [abefnrtv'"\[\]\\]
-		 / '\\' [0-3][0-7][0-7]
-		 / '\\' [0-7][0-7]?
-		 / '\\' '-'
-		 / !'\\' .
+Literal		<- ['] (!['] Char)? (!['] Char		{ p.AddSequence() }
+                                    )* ['] Spacing
+		 / ["] (!["] Char)? (!["] Char		{ p.AddSequence() }
+                                    )* ["] Spacing
+Class		<- '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
+                       / Ranges )?
+                   ']' Spacing
+Ranges		<- !']' Range (!']' Range  { p.AddAlternate() }
+                              )*
+Range		<- Char '-' Char              { p.AddRange() }
+                 / Char
+Char            <- '\\a'                      { p.AddCharacter("\a") }   # bell
+                 / '\\b'                      { p.AddCharacter("\b") }   # bs
+                 / '\\e'                      { p.AddCharacter("\x1B") } # esc
+                 / '\\f'                      { p.AddCharacter("\f") }   # ff
+                 / '\\n'                      { p.AddCharacter("\n") }   # nl
+                 / '\\r'                      { p.AddCharacter("\r") }   # cr
+                 / '\\t'                      { p.AddCharacter("\t") }   # ht
+                 / '\\v'                      { p.AddCharacter("\v") }   # vt
+                 / "\\'"		      { p.AddCharacter("'") }
+                 / '\\"'		      { p.AddCharacter("\"") }
+                 / '\\['                      { p.AddCharacter("[") }
+                 / '\\]'                      { p.AddCharacter("]") }
+                 / '\\-'                      { p.AddCharacter("-") }
+                 / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
+                 / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
+                 / '\\\\'                     { p.AddCharacter("\\") }
+                 / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
+
 LEFTARROW	<- '<-' Spacing
 SLASH		<- '/' Spacing
 AND		<- '&' Spacing
