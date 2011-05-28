@@ -7,6 +7,7 @@ package main
 import (
 	"stl"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 )
@@ -18,12 +19,15 @@ func main() {
 		fmt.Printf("Example: %v \"( 1 - -3 ) / 3 + 2 * ( 3 + -4 ) + 3 %% 2^2\"\n         =2\n", name)
 		os.Exit(1)
 	}
-	expression := os.Args[1]
-	calc := &calculator.Calculator{Buffer: expression}
-	calc.Init()
-	calc.Expression.Init(expression)
-	if err := calc.Parse(); err != nil {
+	filename := os.Args[1]
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("= %v\n", calc.Evaluate())
+	stl := &stl.Stl{Buffer: string(data)}
+	stl.Init()
+	if err := stl.Parse(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("= %v\n", stl)
 }

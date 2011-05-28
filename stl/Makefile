@@ -13,6 +13,7 @@ stl.$(O): stl.go stl.peg.go
 	$(GC) -o stl.$(O) stl.go stl.peg.go
 
 stl.peg.go: stl.peg
+#	echo "WARNING: not generating stl.peg.go"
 	../peg -switch=true -inline=true stl.peg
 
 .PHONY: clean
