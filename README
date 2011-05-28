@@ -29,7 +29,7 @@ Testing
 There should be no differences between the bootstrap and self compiled:
 
 ./peg -inline -switch peg.peg
-diff bootstrap.go peg.peg.go
+diff bootstrap.peg.go peg.peg.go
 
 "-inline" tells the parser generator to inline parser rules. "-switch"
 reduces the number of rules that have to be tried for some pegs.

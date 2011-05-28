@@ -12,14 +12,14 @@ peg: main.$(O)
 
 main.$(O): peg.$(O)
 
-peg.$(O): bootstrap.go
-	$(GC) peg.go bootstrap.go
+peg.$(O): bootstrap.peg.go
+	$(GC) peg.go bootstrap.peg.go
 
-bootstrap.go: peg.go bootstrap/main.go
+bootstrap.peg.go: peg.go bootstrap/main.go
 	$(MAKE) -C bootstrap/ bootstrap
 	./bootstrap/bootstrap
 
 .PHONY: clean
 clean:
 	$(MAKE) -C bootstrap/ clean
-	rm -f *.6 *.8 bootstrap.go peg
+	rm -f *.6 *.8 bootstrap.peg.go peg
