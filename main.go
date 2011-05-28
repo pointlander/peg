@@ -5,23 +5,23 @@
 package main
 
 import (
-	"peg"
-	"fmt"
-	"io/ioutil"
-	"runtime"
 	"flag"
+	"io/ioutil"
+	"log"
 	"os"
 	"path"
+	"peg"
+	"runtime"
 )
 
 var inline = flag.Bool("inline", false, "parse rule inlining")
 var _switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
 
 func gofmt(filename string) {
-     gobin := os.Getenv("GOBIN")
-     if gobin == "" {
-     return
-}
+	gobin := os.Getenv("GOBIN")
+	if gobin == "" {
+		return
+	}
 	p, err := os.StartProcess(path.Join(gobin, "gofmt"), []string{"gofmt", "-w", filename},
 		&os.ProcAttr{Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}})
 	if err != nil {
@@ -36,27 +36,21 @@ func main() {
 
 	if flag.NArg() != 1 {
 		flag.Usage()
-		fmt.Fprintf(os.Stderr, "  FILE: the peg file to compile\n")
-		os.Exit(1)
+		log.Fatalf("  FILE: the peg file to compile")
 	}
 	file := flag.Arg(0)
 
-	buffer, error := ioutil.ReadFile(file)
-	if error != nil {
-		fmt.Printf("%v\n", error)
-		return
+	buffer, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatal(err)
 	}
 	p := &peg.Peg{Tree: peg.New(*inline, *_switch), Buffer: string(buffer)}
 	p.Init()
-	if p.Parse() {
-		filename := file + ".go"
-		fmt.Printf("Compiling...\n")
-		p.Compile(filename)
-		fmt.Printf("Formatting...\n")
-		gofmt(filename)
-		fmt.Printf("OK\n")
-
-	} else {
-		p.PrintError()
+	if err := p.Parse(); err != nil {
+		log.Fatal(err)
 	}
+
+	filename := file + ".go"
+	p.Compile(filename)
+	gofmt(filename)
 }

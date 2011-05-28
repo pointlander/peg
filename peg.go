@@ -789,40 +789,52 @@ func (t *Tree) Compile(file string) {
 
 	print(
 		`package %v
-import "fmt"
+import (
+  "bytes"
+  "fmt"
+  "os"
+)
 type %v struct {%v
  Buffer string
  Min, Max int
  rules [%d]func() bool
 }
-func (p *%v) Parse() bool {
- if p.rules[0]() {
-  return true
- }
- return false
+
+type parseError struct {
+     p *%v
 }
-func (p *%v) PrintError() {
+
+func (p *%v) Parse() os.Error {
+ if p.rules[0]() {
+  return nil
+ }
+ return &parseError{ p }
+}
+
+func (e *parseError) String() string {
+ buf := new(bytes.Buffer)
  line := 1
  character := 0
- for i, c := range p.Buffer[0:] {
+ for i, c := range e.p.Buffer[0:] {
   if c == '\n' {
    line++
    character = 0
   } else {
    character++
   }
-  if i == p.Min {
-   if p.Min != p.Max {
-    fmt.Printf("parse error after line %%v character %%v\n", line, character)
+  if i == e.p.Min {
+   if e.p.Min != e.p.Max {
+    fmt.Fprintf(buf, "parse error after line %%v character %%v\n", line, character)
    } else {break}
-  } else if i == p.Max {break}
+  } else if i == e.p.Max {break}
  }
- fmt.Printf("parse error: unexpected ")
- if p.Max >= len(p.Buffer) {
-  fmt.Printf("end of file found\n")
+ fmt.Fprintf(buf, "parse error: unexpected ")
+ if e.p.Max >= len(e.p.Buffer) {
+  fmt.Fprintf(buf, "end of file found\n")
  } else {
-  fmt.Printf("'%%c' at line %%v character %%v\n", p.Buffer[p.Max], line, character)
+  fmt.Fprintf(buf, "'%%c' at line %%v character %%v\n", e.p.Buffer[e.p.Max], line, character)
  }
+ return buf.String()
 }
 func (p *%v) Init() {
  var position int`, _package, name, state, len(t.rules), name, name, name)
