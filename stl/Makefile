@@ -4,17 +4,17 @@
 
 include ../Make.common
 
-calculator: main.$(O)
-	$(LD) -o calculator main.$(O)
+stl: main.$(O)
+	$(LD) -o stl main.$(O)
 
-main.$(O): calculator.$(O)
+main.$(O): stl.$(O)
 
-calculator.$(O): calculator.go calculator.peg.go
-	$(GC) -o calculator.$(O) calculator.go calculator.peg.go
+stl.$(O): stl.go stl.peg.go
+	$(GC) -o stl.$(O) stl.go stl.peg.go
 
-calculator.peg.go: calculator.peg
-	../peg -switch=true -inline=true calculator.peg
+stl.peg.go: stl.peg
+	../peg -switch=true -inline=true stl.peg
 
 .PHONY: clean
 clean:
-	rm -f *.6 *.8 calculator calculator.peg.go
+	rm -f *.6 *.8 stl stl.peg.go
