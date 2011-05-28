@@ -5,7 +5,7 @@
 package main
 
 import (
-	"calculator"
+	"stl"
 	"fmt"
 	"log"
 	"os"
