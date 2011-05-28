@@ -6,7 +6,6 @@ package stl
 
 
 type StlFile struct {
-	Name string
+	Name    string
 	EndName string
 }
-
