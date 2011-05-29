@@ -29,5 +29,6 @@ func main() {
 	if err := stl.Parse(); err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("%s\n", stl.Name)
 	//	fmt.Printf("= %v\n", &stl.StlFile)
 }

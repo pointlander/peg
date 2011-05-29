@@ -5,7 +5,6 @@
 package stl
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 )
@@ -38,7 +37,6 @@ func (s *StlFile) Add() {
 
 func (s *StlFile) Num(str string) {
 	num, err := strconv.Atof64(str)
-	fmt.Printf("[%v]\n", str)
 	if err != nil {
 		num = math.NaN()
 	}
@@ -46,7 +44,7 @@ func (s *StlFile) Num(str string) {
 	s.ind++
 }
 
-func (s *StlFile) Vertix() {
+func (s *StlFile) Vertex() {
 	s.v = &s.t.Vertices[s.vind]
 	s.ind = 0
 	s.vind++
