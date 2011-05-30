@@ -16,4 +16,4 @@ CLEANFILES+=stl.peg.go
 include $(GOROOT)/src/Make.pkg
 
 stl.peg.go: stl.peg
-	../peg -inline=true -switch=true stl.peg
+	../../peg -inline=true -switch=true stl.peg
