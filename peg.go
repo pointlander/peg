@@ -2,11 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package peg
+package main
 
 import (
-	"fmt"
+	"bytes"
 	"container/list"
+	"fmt"
+	"go/parser"
+        "go/printer"
+        tok "go/token"
 	"os"
 )
 
@@ -783,7 +787,25 @@ func (t *Tree) Compile(file string) {
 		return
 	}
 	defer out.Close()
-	print := func(format string, a ...interface{}) { fmt.Fprintf(out, format, a...) }
+
+	var buffer bytes.Buffer
+	defer func() {
+		fileSet := tok.NewFileSet()
+		code, error := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
+		if error != nil {
+			fmt.Printf("%v: %v\n", file, error)
+			return
+		}
+		formatter := printer.Config{printer.TabIndent | printer.UseSpaces, 8}
+		_, error = formatter.Fprint(out, fileSet, code)
+		if error != nil {
+			fmt.Printf("%v: %v\n", file, error)
+			return
+		}
+
+	}()
+
+	print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { print("\n   position%d := position", n) }
 	printRestore := func(n uint) { print("   position = position%d", n) }
 

@@ -5,20 +5,19 @@
 package main
 
 import (
-	"peg"
 	"runtime"
 )
 
 func main() {
 	runtime.GOMAXPROCS(2)
-	t := peg.New(true, true)
+	t := New(true, true)
 
-	/*package peg
+	/*package main
 
 	  type Peg Peg {
 	   *Tree
 	  }*/
-	t.AddPackage("peg")
+	t.AddPackage("main")
 	t.AddPeg("Peg")
 	t.AddState(`
  *Tree
