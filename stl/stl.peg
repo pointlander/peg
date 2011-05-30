@@ -1,0 +1,33 @@
+# Copyright 2010 The Go Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+package stl
+
+type Stl Peg {
+ StlFile
+}
+
+e <- Header Facet* EndSolid !. commit
+Header <- 'solid' Space ( Identifier { p.Name = buffer[begin:end] }
+       	  / ) NewLine
+
+Facet <- FacetHeader OuterLoop Vertex Vertex Vertex EndLoop EndFacet
+FacetHeader <- Space? 'facet' Space { p.Add() } 'normal' Space Vector NewLine
+Vector <- Number Space Number Space Number
+OuterLoop <- Space? 'outer' Space 'loop' NewLine
+Vertex <- Space? 'vertex' { p.Vertex() } Space Number Space Number Space Number NewLine
+EndLoop <- Space? 'endloop' NewLine
+EndFacet <- Space? 'endfacet' NewLine
+
+EndSolid <- Space? 'endsolid' Space ( Identifier { p.EndName = buffer[begin:end] }
+	 / ) NewLine
+
+# Lexical syntax
+
+NewLine <- space* ( '\n' / '\r' / '\r\n' )
+Number <- < [0-9.+-Ee]+ > { p.Num(buffer[begin:end]) }
+Identifier <- < [a-zA-Z]+ >
+space <- ' '
+Space <- space+
+

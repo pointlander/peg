@@ -3,3 +3,5 @@
 peg
 calculator/calculator
 bootstrap/bootstrap
+stl/stl
+*.go~
