@@ -2,20 +2,18 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-include ../Make.common
+include $(GOROOT)/src/Make.inc
 
-stl: main.$(O)
-	$(LD) -o stl main.$(O)
+TARG=stl
 
-main.$(O): stl.$(O)
+GOFILES=\
+	stl.go\
+	stl.peg.go\
 
-stl.$(O): stl.go stl.peg.go
-	$(GC) -o stl.$(O) stl.go stl.peg.go
+PREREQ+=stl.peg.go
+CLEANFILES+=stl.peg.go
+
+include $(GOROOT)/src/Make.pkg
 
 stl.peg.go: stl.peg
-#	echo "WARNING: not generating stl.peg.go"
-	../peg -switch=true -inline=true stl.peg
-
-.PHONY: clean
-clean:
-	rm -f *.6 *.8 stl stl.peg.go
+	../peg -inline=true -switch=true stl.peg
