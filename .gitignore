@@ -1,5 +1,9 @@
 *.peg.go
 *.6
+6.out
+_obj
+_test
+_testmain.go
 peg
 calculator/calculator
 bootstrap/bootstrap
