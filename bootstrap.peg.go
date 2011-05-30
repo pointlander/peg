@@ -150,13 +150,13 @@ func (p *Peg) Init() {
 	thunks := make([]struct {
 		action     uint8
 		begin, end int
-	}, 32)
+	},32)
 	do := func(action uint8) {
 		if thunkPosition == len(thunks) {
 			newThunks := make([]struct {
 				action     uint8
 				begin, end int
-			}, 2*len(thunks))
+			},2*len(thunks))
 			copy(newThunks, thunks)
 			thunks = newThunks
 		}

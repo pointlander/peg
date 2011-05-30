@@ -9,8 +9,8 @@ import (
 	"container/list"
 	"fmt"
 	"go/parser"
-        "go/printer"
-        tok "go/token"
+	"go/printer"
+	tok "go/token"
 	"os"
 )
 
@@ -620,7 +620,7 @@ func (t *Tree) Compile(file string) {
 		cache := make([]struct {
 			reached, consumes, eof, peek bool
 			class                        *characterClass
-		}, len(t.rules))
+		},len(t.rules))
 		optimizeAlternates = func(node Node) (consumes, eof, peek bool, class *characterClass) {
 			switch node.GetType() {
 			case TypeRule:
@@ -672,7 +672,7 @@ func (t *Tree) Compile(file string) {
 					consumes, eof, peek, make([]struct {
 						intersects bool
 						class      *characterClass
-					}, alternate.Len()), 0
+					},alternate.Len()),0
 				for element := alternate.Front(); element != nil; element = element.Next() {
 					mconsumes, meof, mpeek, properties[c].class = optimizeAlternates(element.Value.(Node))
 					consumes, eof, peek = consumes && mconsumes, eof || meof, peek && mpeek
@@ -738,7 +738,7 @@ func (t *Tree) Compile(file string) {
 					eof, make([]struct {
 						peek  bool
 						class *characterClass
-					}, sequence.Len()), 0, sequence.Front()
+					},sequence.Len()),0, sequence.Front()
 				for ; !consumes && element != nil; element, c = element.Next(), c+1 {
 					consumes, meof, classes[c].peek, classes[c].class = optimizeAlternates(element.Value.(Node))
 					eof, peek = eof || meof, peek || classes[c].peek
@@ -859,7 +859,7 @@ func (e *parseError) String() string {
  return buf.String()
 }
 func (p *%v) Init() {
- var position int`, _package, name, state, len(t.rules), name, name, name)
+ var position int`,_package, name, state, len(t.rules), name, name, name)
 
 	hasActions := t.actions.Len() != 0
 	if hasActions {
@@ -899,7 +899,7 @@ func (p *%v) Init() {
   thunks[thunkPosition].begin = begin
   thunks[thunkPosition].end = end
   thunkPosition++
- }`, bits, bits, bits)
+ }`,bits, bits, bits)
 		if counts[TypeCommit] > 0 {
 			print(
 				`
