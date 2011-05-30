@@ -5,20 +5,18 @@
 package main
 
 import (
-	"peg"
 	"runtime"
 )
 
 func main() {
 	runtime.GOMAXPROCS(2)
-	t := peg.New(false, false)
+	t := New(false, false)
 
-	/*package peg
-
+	/*package main
 	  type Peg Peg {
 	   *Tree
 	  }*/
-	t.AddPackage("peg")
+	t.AddPackage("main")
 	t.AddPeg("Peg")
 	t.AddState(`
  *Tree
@@ -786,5 +784,5 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	t.Compile("bootstrap.go")
+	t.Compile("bootstrap.peg.go")
 }

@@ -5,12 +5,10 @@
 package main
 
 import (
-	"peg"
-	"fmt"
-	"io/ioutil"
-	"runtime"
 	"flag"
-	"os"
+	"io/ioutil"
+	"log"
+	"runtime"
 )
 
 var inline = flag.Bool("inline", false, "parse rule inlining")
@@ -22,21 +20,20 @@ func main() {
 
 	if flag.NArg() != 1 {
 		flag.Usage()
-		fmt.Fprintf(os.Stderr, "  FILE: the peg file to compile\n")
-		os.Exit(1)
+		log.Fatalf("  FILE: the peg file to compile")
 	}
 	file := flag.Arg(0)
 
-	buffer, error := ioutil.ReadFile(file)
-	if error != nil {
-		fmt.Printf("%v\n", error)
-		return
+	buffer, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatal(err)
 	}
-	p := &peg.Peg{Tree: peg.New(*inline, *_switch), Buffer: string(buffer)}
+	p := &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
 	p.Init()
-	if p.Parse() {
-		p.Compile(file + ".go")
-	} else {
-		p.PrintError()
+	if err := p.Parse(); err != nil {
+		log.Fatal(err)
 	}
+
+	filename := file + ".go"
+	p.Compile(filename)
 }
