@@ -13,7 +13,7 @@ calculator.$(O): calculator.go calculator.peg.go
 	$(GC) -o calculator.$(O) calculator.go calculator.peg.go
 
 calculator.peg.go: calculator.peg
-	../peg -switch=true -inline=true calculator.peg
+	../peg calculator.peg
 
 .PHONY: clean
 clean:
