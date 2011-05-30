@@ -2,16 +2,13 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-include ../Make.common
+include $(GOROOT)/src/Make.inc
 
-bootstrap: main.$(O)
-	$(LD) -o bootstrap main.$(O)
+TARG=bootstrap
 
-main.$(O): peg.$(O)
+GOFILES=\
+	../peg.go\
+        main.go\
 
-peg.$(O):
-	$(GC) ../peg.go
+include $(GOROOT)/src/Make.cmd
 
-.PHONY: clean
-clean:
-	rm -f *.6 *.8 bootstrap

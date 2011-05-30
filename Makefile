@@ -2,24 +2,20 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-include Make.common
+include $(GOROOT)/src/Make.inc
 
-.PHONY: all
-all: peg
+TARG=peg
 
-peg: main.$(O)
-	$(LD) -o peg main.$(O)
+GOFILES=\
+	peg.go\
+	bootstrap.peg.go\
+        main.go\
 
-main.$(O): peg.$(O)
+PREREQ+=bootstrap.peg.go
+CLEANFILES+=bootstrap/bootstrap bootstrap/_go_.6
 
-peg.$(O): bootstrap.peg.go
-	$(GC) peg.go bootstrap.peg.go
+include $(GOROOT)/src/Make.cmd
 
-bootstrap.peg.go: peg.go bootstrap/main.go
-	$(MAKE) -C bootstrap/ bootstrap
-	./bootstrap/bootstrap
-
-.PHONY: clean
-clean:
-	$(MAKE) -C bootstrap/ clean
-	rm -f *.6 *.8 bootstrap.peg.go peg
+bootstrap.peg.go: bootstrap/main.go
+	gomake -C bootstrap/
+	bootstrap/bootstrap

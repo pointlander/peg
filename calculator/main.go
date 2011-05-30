@@ -5,7 +5,6 @@
 package main
 
 import (
-	"calculator"
 	"fmt"
 	"log"
 	"os"
@@ -19,7 +18,7 @@ func main() {
 		os.Exit(1)
 	}
 	expression := os.Args[1]
-	calc := &calculator.Calculator{Buffer: expression}
+	calc := &Calculator{Buffer: expression}
 	calc.Init()
 	calc.Expression.Init(expression)
 	if err := calc.Parse(); err != nil {

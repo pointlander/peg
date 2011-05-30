@@ -8,27 +8,11 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
-	"os"
-	"path"
-	"peg"
 	"runtime"
 )
 
 var inline = flag.Bool("inline", false, "parse rule inlining")
 var _switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
-
-func gofmt(filename string) {
-	gobin := os.Getenv("GOBIN")
-	if gobin == "" {
-		return
-	}
-	p, err := os.StartProcess(path.Join(gobin, "gofmt"), []string{"gofmt", "-w", filename},
-		&os.ProcAttr{Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}})
-	if err != nil {
-		return
-	}
-	p.Wait(0)
-}
 
 func main() {
 	runtime.GOMAXPROCS(2)
@@ -44,7 +28,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	p := &peg.Peg{Tree: peg.New(*inline, *_switch), Buffer: string(buffer)}
+	p := &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
 	p.Init()
 	if err := p.Parse(); err != nil {
 		log.Fatal(err)
@@ -52,5 +36,4 @@ func main() {
 
 	filename := file + ".go"
 	p.Compile(filename)
-	gofmt(filename)
 }
