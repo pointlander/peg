@@ -19,7 +19,7 @@ fi
     for pkg in $TESTS
     do
         name=$(echo $pkg | sed 's/\//_/' | tr -d .)
-        echo "it_passes_pkg_$name() { cd $pkg; gotest $@; }"
+        echo "it_passes_$name() { cd $pkg; gotest $@; }"
     done
 } > all-test.sh
 
