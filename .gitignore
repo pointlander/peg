@@ -4,7 +4,7 @@
 _obj
 _test
 _testmain.go
-peg
+cmd/peg/peg
 cmd/calculator/calculator
 cmd/bootstrap/bootstrap
 stl/stl
