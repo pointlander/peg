@@ -7,14 +7,6 @@ include $(GOROOT)/src/Make.inc
 TARG=calculator
 
 GOFILES=\
-	calculator.go\
-	calculator.peg.go\
         main.go\
 
-PREREQ+=calculator.peg.go
-CLEANFILES+=calculator.peg.go
-
 include $(GOROOT)/src/Make.cmd
-
-calculator.peg.go: calculator.peg
-	../peg -inline=true -switch=true calculator.peg

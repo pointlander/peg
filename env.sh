@@ -13,8 +13,10 @@ PKG_REQS="
 #"
 
 PKGS="
+    calculator
     stl
 "
 
 CMDS="
+    calculator
 "
