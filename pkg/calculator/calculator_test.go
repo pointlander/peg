@@ -12,6 +12,9 @@ type calcTest struct {
 func TestParseEval(t *testing.T) {
 	tests := []calcTest {
 		calcTest { "2+3", "5" },
+		calcTest { "2*3", "6" },
+		calcTest { "2 + 3 * 4", "14" },
+		calcTest { "(2+3) * 4", "20" },
 	}
 	for _, test := range tests {
 		calc := &Calculator{Buffer: test.Input}
