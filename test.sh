@@ -16,10 +16,10 @@ else
 fi
 
 {
-    for pkg in $PKGS
+    for pkg in $TESTS
     do
         name=$(echo $pkg | sed 's/\//_/' | tr -d .)
-        echo "it_passes_pkg_$name() { cd pkg/$name; gotest $@; }"
+        echo "it_passes_pkg_$name() { cd $pkg; gotest $@; }"
     done
 } > all-test.sh
 

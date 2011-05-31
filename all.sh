@@ -25,11 +25,7 @@ do goinstall $req
 done
 
 for pkg in $PKGS
-do mk pkg/$pkg
-done
-
-for cmd in $CMDS
-do mk cmd/$cmd
+do mk $pkg
 done
 
 echo

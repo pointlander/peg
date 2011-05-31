@@ -20,14 +20,8 @@ mk() {
     cd "$d"
 }
 
-rm -rf $GOROOT/pkg/${GOOS}_${GOARCH}/doozer
-rm -rf $GOROOT/pkg/${GOOS}_${GOARCH}/doozer.a
-rm -rf $GOBIN/doozerd
+rm -rf $GOBIN/peg
 
 for pkg in $PKGS
-do mk pkg/$pkg
-done
-
-for cmd in $CMDS
-do mk cmd/$cmd
+do mk $pkg
 done

@@ -4,16 +4,10 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=stl
+TARG=bootstrap
 
 GOFILES=\
-	stl.go\
-	stl.peg.go\
+	../peg/peg.go\
+        main.go\
 
-PREREQ+=stl.peg.go
-CLEANFILES+=stl.peg.go
-
-include $(GOROOT)/src/Make.pkg
-
-stl.peg.go: stl.peg
-	../../cmd/peg/peg -inline=true -switch=true stl.peg
+include $(GOROOT)/src/Make.cmd
