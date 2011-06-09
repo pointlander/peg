@@ -26,9 +26,8 @@ func (p *Peg) Parse() os.Error {
 }
 
 func (e *parseError) String() string {
-	buf := new(bytes.Buffer)
-	line := 1
-	character := 0
+	buf, line, character := new(bytes.Buffer), 1, 0
+
 	for i, c := range e.p.Buffer[0:] {
 		if c == '\n' {
 			line++
@@ -36,6 +35,7 @@ func (e *parseError) String() string {
 		} else {
 			character++
 		}
+
 		if i == e.p.Min {
 			if e.p.Min != e.p.Max {
 				fmt.Fprintf(buf, "parse error after line %v character %v\n", line, character)
@@ -46,188 +46,198 @@ func (e *parseError) String() string {
 			break
 		}
 	}
+
 	fmt.Fprintf(buf, "parse error: unexpected ")
 	if e.p.Max >= len(e.p.Buffer) {
 		fmt.Fprintf(buf, "end of file found\n")
 	} else {
 		fmt.Fprintf(buf, "'%c' at line %v character %v\n", e.p.Buffer[e.p.Max], line, character)
 	}
+
 	return buf.String()
 }
+
 func (p *Peg) Init() {
 	var position int
+
 	actions := [...]func(buffer string, begin, end int){
-		/* 0 Grammar */
+		/* 0 */
+		func(buffer string, begin, end int) {
+			p.AddAlternate()
+		},
+		/* 1 */
 		func(buffer string, begin, end int) {
 			p.AddPackage(buffer[begin:end])
 		},
-		/* 1 Grammar */
+		/* 2 */
 		func(buffer string, begin, end int) {
 			p.AddPeg(buffer[begin:end])
 		},
-		/* 2 Grammar */
+		/* 3 */
 		func(buffer string, begin, end int) {
 			p.AddState(buffer[begin:end])
 		},
-		/* 3 Definition */
-		func(buffer string, begin, end int) {
-			p.AddRule(buffer[begin:end])
-		},
-		/* 4 Definition */
-		func(buffer string, begin, end int) {
-			p.AddExpression()
-		},
-		/* 5 Expression */
-		func(buffer string, begin, end int) {
-			p.AddAlternate()
-		},
-		/* 6 Expression */
-		func(buffer string, begin, end int) {
-			p.AddEmptyAlternate()
-		},
-		/* 7 Sequence */
-		func(buffer string, begin, end int) {
-			p.AddSequence()
-		},
-		/* 8 Prefix */
+		/* 4 */
 		func(buffer string, begin, end int) {
 			p.AddPredicate(buffer[begin:end])
 		},
-		/* 9 Prefix */
+		/* 5 */
 		func(buffer string, begin, end int) {
 			p.AddPeekFor()
 		},
-		/* 10 Prefix */
+		/* 6 */
 		func(buffer string, begin, end int) {
 			p.AddPeekNot()
 		},
-		/* 11 Suffix */
-		func(buffer string, begin, end int) {
-			p.AddQuery()
-		},
-		/* 12 Suffix */
-		func(buffer string, begin, end int) {
-			p.AddStar()
-		},
-		/* 13 Suffix */
-		func(buffer string, begin, end int) {
-			p.AddPlus()
-		},
-		/* 14 Primary */
-		func(buffer string, begin, end int) {
-			p.AddCommit()
-		},
-		/* 15 Primary */
-		func(buffer string, begin, end int) {
-			p.AddName(buffer[begin:end])
-		},
-		/* 16 Primary */
-		func(buffer string, begin, end int) {
-			p.AddDot()
-		},
-		/* 17 Primary */
-		func(buffer string, begin, end int) {
-			p.AddAction(buffer[begin:end])
-		},
-		/* 18 Primary */
-		func(buffer string, begin, end int) {
-			p.AddBegin()
-		},
-		/* 19 Primary */
-		func(buffer string, begin, end int) {
-			p.AddEnd()
-		},
-		/* 20 Literal */
-		func(buffer string, begin, end int) {
-			p.AddSequence()
-		},
-		/* 21 Literal */
-		func(buffer string, begin, end int) {
-			p.AddSequence()
-		},
-		/* 22 Class */
-		func(buffer string, begin, end int) {
-			p.AddPeekNot()
-			p.AddDot()
-			p.AddSequence()
-		},
-		/* 23 Ranges */
-		func(buffer string, begin, end int) {
-			p.AddAlternate()
-		},
-		/* 24 Range */
-		func(buffer string, begin, end int) {
-			p.AddRange()
-		},
-		/* 25 Char */
+		/* 7 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\a")
 		},
-		/* 26 Char */
+		/* 8 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\b")
 		},
-		/* 27 Char */
+		/* 9 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\x1B")
 		},
-		/* 28 Char */
+		/* 10 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\f")
 		},
-		/* 29 Char */
+		/* 11 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\n")
 		},
-		/* 30 Char */
+		/* 12 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\r")
 		},
-		/* 31 Char */
+		/* 13 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\t")
 		},
-		/* 32 Char */
+		/* 14 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\v")
 		},
-		/* 33 Char */
+		/* 15 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("'")
 		},
-		/* 34 Char */
+		/* 16 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\"")
 		},
-		/* 35 Char */
+		/* 17 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("[")
 		},
-		/* 36 Char */
+		/* 18 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("]")
 		},
-		/* 37 Char */
+		/* 19 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("-")
 		},
-		/* 38 Char */
+		/* 20 */
 		func(buffer string, begin, end int) {
 			p.AddOctalCharacter(buffer[begin:end])
 		},
-		/* 39 Char */
+		/* 21 */
 		func(buffer string, begin, end int) {
 			p.AddOctalCharacter(buffer[begin:end])
 		},
-		/* 40 Char */
+		/* 22 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter("\\")
 		},
-		/* 41 Char */
+		/* 23 */
 		func(buffer string, begin, end int) {
 			p.AddCharacter(buffer[begin:end])
 		},
+		/* 24 */
+		func(buffer string, begin, end int) {
+			p.AddPeekNot()
+			p.AddDot()
+			p.AddSequence()
+		},
+		/* 25 */
+		func(buffer string, begin, end int) {
+			p.AddSequence()
+		},
+		/* 26 */
+		func(buffer string, begin, end int) {
+			p.AddSequence()
+		},
+		/* 27 */
+		func(buffer string, begin, end int) {
+			p.AddAlternate()
+		},
+		/* 28 */
+		func(buffer string, begin, end int) {
+			p.AddNil()
+			p.AddAlternate()
+		},
+		/* 29 */
+		func(buffer string, begin, end int) {
+			p.AddNil()
+		},
+		/* 30 */
+		func(buffer string, begin, end int) {
+			p.AddQuery()
+		},
+		/* 31 */
+		func(buffer string, begin, end int) {
+			p.AddStar()
+		},
+		/* 32 */
+		func(buffer string, begin, end int) {
+			p.AddPlus()
+		},
+		/* 33 */
+		func(buffer string, begin, end int) {
+			p.AddRule(buffer[begin:end])
+		},
+		/* 34 */
+		func(buffer string, begin, end int) {
+			p.AddExpression()
+		},
+		/* 35 */
+		func(buffer string, begin, end int) {
+			p.AddRange()
+		},
+		/* 36 */
+		func(buffer string, begin, end int) {
+			p.AddCommit()
+		},
+		/* 37 */
+		func(buffer string, begin, end int) {
+			p.AddName(buffer[begin:end])
+		},
+		/* 38 */
+		func(buffer string, begin, end int) {
+			p.AddDot()
+		},
+		/* 39 */
+		func(buffer string, begin, end int) {
+			p.AddAction(buffer[begin:end])
+		},
+		/* 40 */
+		func(buffer string, begin, end int) {
+			p.AddBegin()
+		},
+		/* 41 */
+		func(buffer string, begin, end int) {
+			p.AddEnd()
+		},
+		/* 42 */
+		func(buffer string, begin, end int) {
+			p.AddSequence()
+		},
 	}
+
 	var thunkPosition, begin, end int
 	thunks := make([]struct {
 		action     uint8
@@ -247,6 +257,7 @@ func (p *Peg) Init() {
 		thunks[thunkPosition].end = end
 		thunkPosition++
 	}
+
 	commit := func(thunkPosition0 int) bool {
 		if thunkPosition0 == 0 {
 			for thunk := 0; thunk < thunkPosition; thunk++ {
@@ -258,6 +269,7 @@ func (p *Peg) Init() {
 		}
 		return false
 	}
+
 	matchDot := func() bool {
 		if position < len(p.Buffer) {
 			position++
@@ -267,6 +279,7 @@ func (p *Peg) Init() {
 		}
 		return false
 	}
+
 	matchChar := func(c byte) bool {
 		if (position < len(p.Buffer)) && (p.Buffer[position] == c) {
 			position++
@@ -276,6 +289,7 @@ func (p *Peg) Init() {
 		}
 		return false
 	}
+
 	matchRange := func(lower byte, upper byte) bool {
 		if (position < len(p.Buffer)) && (p.Buffer[position] >= lower) && (p.Buffer[position] <= upper) {
 			position++
@@ -285,6 +299,7 @@ func (p *Peg) Init() {
 		}
 		return false
 	}
+
 	p.rules = [...]func() bool{
 		/* 0 Grammar <- (Spacing ('p' 'a' 'c' 'k' 'a' 'g' 'e') Spacing Identifier { p.AddPackage(buffer[begin:end]) } ('t' 'y' 'p' 'e') Spacing Identifier { p.AddPeg(buffer[begin:end]) } ('P' 'e' 'g') Spacing Action { p.AddState(buffer[begin:end]) } commit Definition+ EndOfFile) */
 		func() bool {
@@ -319,7 +334,7 @@ func (p *Peg) Init() {
 			if !p.rules[7]() {
 				goto l0
 			}
-			do(0)
+			do(1)
 			if !matchChar('t') {
 				goto l0
 			}
@@ -338,7 +353,7 @@ func (p *Peg) Init() {
 			if !p.rules[7]() {
 				goto l0
 			}
-			do(1)
+			do(2)
 			if !matchChar('P') {
 				goto l0
 			}
@@ -354,25 +369,105 @@ func (p *Peg) Init() {
 			if !p.rules[30]() {
 				goto l0
 			}
-			do(2)
+			do(3)
 			if !(commit(thunkPosition0)) {
 				goto l0
 			}
-			if !p.rules[1]() {
+			if !p.rules[7]() {
+				goto l0
+			}
+			do(33)
+			if !p.rules[15]() {
+				goto l0
+			}
+			if !p.rules[2]() {
+				goto l0
+			}
+			do(34)
+			{
+				position3, thunkPosition3 := position, thunkPosition
+				{
+					position4, thunkPosition4 := position, thunkPosition
+					if !p.rules[7]() {
+						goto l5
+					}
+					if !p.rules[15]() {
+						goto l5
+					}
+					goto l4
+				l5:
+					position, thunkPosition = position4, thunkPosition4
+					{
+						position6, thunkPosition6 := position, thunkPosition
+						if !matchDot() {
+							goto l6
+						}
+						goto l0
+					l6:
+						position, thunkPosition = position6, thunkPosition6
+					}
+				}
+			l4:
+				position, thunkPosition = position3, thunkPosition3
+			}
+			if !(commit(thunkPosition0)) {
 				goto l0
 			}
 		l1:
 			{
 				position2, thunkPosition2 := position, thunkPosition
-				if !p.rules[1]() {
+				if !p.rules[7]() {
+					goto l2
+				}
+				do(33)
+				if !p.rules[15]() {
+					goto l2
+				}
+				if !p.rules[2]() {
+					goto l2
+				}
+				do(34)
+				{
+					position7, thunkPosition7 := position, thunkPosition
+					{
+						position8, thunkPosition8 := position, thunkPosition
+						if !p.rules[7]() {
+							goto l9
+						}
+						if !p.rules[15]() {
+							goto l9
+						}
+						goto l8
+					l9:
+						position, thunkPosition = position8, thunkPosition8
+						{
+							position10, thunkPosition10 := position, thunkPosition
+							if !matchDot() {
+								goto l10
+							}
+							goto l2
+						l10:
+							position, thunkPosition = position10, thunkPosition10
+						}
+					}
+				l8:
+					position, thunkPosition = position7, thunkPosition7
+				}
+				if !(commit(thunkPosition0)) {
 					goto l2
 				}
 				goto l1
 			l2:
 				position, thunkPosition = position2, thunkPosition2
 			}
-			if !p.rules[29]() {
+			{
+				position11, thunkPosition11 := position, thunkPosition
+				if !matchDot() {
+					goto l11
+				}
 				goto l0
+			l11:
+				position, thunkPosition = position11, thunkPosition11
 			}
 			return true
 		l0:
@@ -380,564 +475,529 @@ func (p *Peg) Init() {
 			return false
 		},
 		/* 1 Definition <- (Identifier { p.AddRule(buffer[begin:end]) } LEFTARROW Expression { p.AddExpression() } &((Identifier LEFTARROW) / !.) commit) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !p.rules[7]() {
-				goto l3
-			}
-			do(3)
-			if !p.rules[15]() {
-				goto l3
-			}
-			if !p.rules[2]() {
-				goto l3
-			}
-			do(4)
-			{
-				position4, thunkPosition4 := position, thunkPosition
-				{
-					position5, thunkPosition5 := position, thunkPosition
-					if !p.rules[7]() {
-						goto l6
-					}
-					if !p.rules[15]() {
-						goto l6
-					}
-					goto l5
-				l6:
-					position, thunkPosition = position5, thunkPosition5
-					{
-						position7, thunkPosition7 := position, thunkPosition
-						if !matchDot() {
-							goto l7
-						}
-						goto l3
-					l7:
-						position, thunkPosition = position7, thunkPosition7
-					}
-				}
-			l5:
-				position, thunkPosition = position4, thunkPosition4
-			}
-			if !(commit(thunkPosition0)) {
-				goto l3
-			}
-			return true
-		l3:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
-		/* 2 Expression <- ((Sequence (SLASH Sequence { p.AddAlternate() })* (SLASH { p.AddEmptyAlternate() })?) /) */
+		nil,
+		/* 2 Expression <- ((Sequence (SLASH Sequence { p.AddAlternate() })* (SLASH { p.AddNil(); p.AddAlternate() })?) / { p.AddNil() }) */
 		func() bool {
 			{
-				position9, thunkPosition9 := position, thunkPosition
+				position14, thunkPosition14 := position, thunkPosition
 				if !p.rules[3]() {
-					goto l10
+					goto l15
 				}
-			l11:
+			l16:
 				{
-					position12, thunkPosition12 := position, thunkPosition
+					position17, thunkPosition17 := position, thunkPosition
 					if !p.rules[16]() {
-						goto l12
+						goto l17
 					}
 					if !p.rules[3]() {
-						goto l12
+						goto l17
 					}
-					do(5)
-					goto l11
-				l12:
-					position, thunkPosition = position12, thunkPosition12
+					do(27)
+					goto l16
+				l17:
+					position, thunkPosition = position17, thunkPosition17
 				}
 				{
-					position13, thunkPosition13 := position, thunkPosition
+					position18, thunkPosition18 := position, thunkPosition
 					if !p.rules[16]() {
-						goto l13
+						goto l18
 					}
-					do(6)
-					goto l14
-				l13:
-					position, thunkPosition = position13, thunkPosition13
+					do(28)
+					goto l19
+				l18:
+					position, thunkPosition = position18, thunkPosition18
 				}
-			l14:
-				goto l9
-			l10:
-				position, thunkPosition = position9, thunkPosition9
+			l19:
+				goto l14
+			l15:
+				position, thunkPosition = position14, thunkPosition14
+				do(29)
 			}
-		l9:
+		l14:
 			return true
 		},
 		/* 3 Sequence <- (Prefix (Prefix { p.AddSequence() })*) */
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			if !p.rules[4]() {
-				goto l15
+				goto l20
 			}
-		l16:
+		l21:
 			{
-				position17, thunkPosition17 := position, thunkPosition
+				position22, thunkPosition22 := position, thunkPosition
 				if !p.rules[4]() {
-					goto l17
-				}
-				do(7)
-				goto l16
-			l17:
-				position, thunkPosition = position17, thunkPosition17
-			}
-			return true
-		l15:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
-		/* 4 Prefix <- ((AND Action { p.AddPredicate(buffer[begin:end]) }) / (AND Suffix { p.AddPeekFor() }) / (NOT Suffix { p.AddPeekNot() }) / Suffix) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			{
-				position19, thunkPosition19 := position, thunkPosition
-				if !p.rules[17]() {
-					goto l20
-				}
-				if !p.rules[30]() {
-					goto l20
-				}
-				do(8)
-				goto l19
-			l20:
-				position, thunkPosition = position19, thunkPosition19
-				if !p.rules[17]() {
-					goto l21
-				}
-				if !p.rules[5]() {
-					goto l21
-				}
-				do(9)
-				goto l19
-			l21:
-				position, thunkPosition = position19, thunkPosition19
-				if !p.rules[18]() {
 					goto l22
 				}
-				if !p.rules[5]() {
-					goto l22
-				}
-				do(10)
-				goto l19
+				do(42)
+				goto l21
 			l22:
-				position, thunkPosition = position19, thunkPosition19
-				if !p.rules[5]() {
-					goto l18
-				}
+				position, thunkPosition = position22, thunkPosition22
 			}
-		l19:
 			return true
-		l18:
+		l20:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
-		/* 5 Suffix <- (Primary ((QUESTION { p.AddQuery() }) / (STAR { p.AddStar() }) / (PLUS { p.AddPlus() }))?) */
+		/* 4 Prefix <- ((AND Action { p.AddPredicate(buffer[begin:end]) }) / ((&('!') (NOT Suffix { p.AddPeekNot() })) | (&('&') (AND Suffix { p.AddPeekFor() })) | (&('"' | '\'' | '(' | '.' | '<' | '>' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '[' | '_' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' | '{') Suffix))) */
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
-			if !p.rules[6]() {
-				goto l23
-			}
 			{
 				position24, thunkPosition24 := position, thunkPosition
-				{
-					position26, thunkPosition26 := position, thunkPosition
-					if !p.rules[19]() {
-						goto l27
-					}
-					do(11)
-					goto l26
-				l27:
-					position, thunkPosition = position26, thunkPosition26
-					if !p.rules[20]() {
-						goto l28
-					}
-					do(12)
-					goto l26
-				l28:
-					position, thunkPosition = position26, thunkPosition26
-					if !p.rules[21]() {
-						goto l24
-					}
-					do(13)
+				if !p.rules[17]() {
+					goto l25
 				}
-			l26:
-				goto l25
-			l24:
+				if !p.rules[30]() {
+					goto l25
+				}
+				do(4)
+				goto l24
+			l25:
 				position, thunkPosition = position24, thunkPosition24
+				{
+					if position == len(p.Buffer) {
+						goto l23
+					}
+					switch p.Buffer[position] {
+					case '!':
+						if !matchChar('!') {
+							goto l23
+						}
+						if !p.rules[25]() {
+							goto l23
+						}
+						if !p.rules[5]() {
+							goto l23
+						}
+						do(6)
+						break
+					case '&':
+						if !p.rules[17]() {
+							goto l23
+						}
+						if !p.rules[5]() {
+							goto l23
+						}
+						do(5)
+						break
+					default:
+						if !p.rules[5]() {
+							goto l23
+						}
+						break
+					}
+				}
+
 			}
-		l25:
+		l24:
 			return true
 		l23:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
-		/* 6 Primary <- (('c' 'o' 'm' 'm' 'i' 't' Spacing { p.AddCommit() }) / (Identifier !LEFTARROW { p.AddName(buffer[begin:end]) }) / (OPEN Expression CLOSE) / Literal / Class / (DOT { p.AddDot() }) / (Action { p.AddAction(buffer[begin:end]) }) / (BEGIN { p.AddBegin() }) / (END { p.AddEnd() })) */
+		/* 5 Suffix <- (Primary ((&('+') (PLUS { p.AddPlus() })) | (&('*') (STAR { p.AddStar() })) | (&('?') (QUESTION { p.AddQuery() })))?) */
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			{
-				position30, thunkPosition30 := position, thunkPosition
+				position28, thunkPosition28 := position, thunkPosition
 				if !matchChar('c') {
-					goto l31
-				}
-				if !matchChar('o') {
-					goto l31
-				}
-				if !matchChar('m') {
-					goto l31
-				}
-				if !matchChar('m') {
-					goto l31
-				}
-				if !matchChar('i') {
-					goto l31
-				}
-				if !matchChar('t') {
-					goto l31
-				}
-				if !p.rules[25]() {
-					goto l31
-				}
-				do(14)
-				goto l30
-			l31:
-				position, thunkPosition = position30, thunkPosition30
-				if !p.rules[7]() {
-					goto l32
-				}
-				{
-					position33, thunkPosition33 := position, thunkPosition
-					if !p.rules[15]() {
-						goto l33
-					}
-					goto l32
-				l33:
-					position, thunkPosition = position33, thunkPosition33
-				}
-				do(15)
-				goto l30
-			l32:
-				position, thunkPosition = position30, thunkPosition30
-				if !p.rules[22]() {
-					goto l34
-				}
-				if !p.rules[2]() {
-					goto l34
-				}
-				if !p.rules[23]() {
-					goto l34
-				}
-				goto l30
-			l34:
-				position, thunkPosition = position30, thunkPosition30
-				if !p.rules[10]() {
-					goto l35
-				}
-				goto l30
-			l35:
-				position, thunkPosition = position30, thunkPosition30
-				if !p.rules[11]() {
-					goto l36
-				}
-				goto l30
-			l36:
-				position, thunkPosition = position30, thunkPosition30
-				if !p.rules[24]() {
-					goto l37
-				}
-				do(16)
-				goto l30
-			l37:
-				position, thunkPosition = position30, thunkPosition30
-				if !p.rules[30]() {
-					goto l38
-				}
-				do(17)
-				goto l30
-			l38:
-				position, thunkPosition = position30, thunkPosition30
-				if !p.rules[31]() {
-					goto l39
-				}
-				do(18)
-				goto l30
-			l39:
-				position, thunkPosition = position30, thunkPosition30
-				if !p.rules[32]() {
 					goto l29
 				}
-				do(19)
+				if !matchChar('o') {
+					goto l29
+				}
+				if !matchChar('m') {
+					goto l29
+				}
+				if !matchChar('m') {
+					goto l29
+				}
+				if !matchChar('i') {
+					goto l29
+				}
+				if !matchChar('t') {
+					goto l29
+				}
+				if !p.rules[25]() {
+					goto l29
+				}
+				do(36)
+				goto l28
+			l29:
+				position, thunkPosition = position28, thunkPosition28
+				{
+					if position == len(p.Buffer) {
+						goto l27
+					}
+					switch p.Buffer[position] {
+					case '>':
+						if !matchChar('>') {
+							goto l27
+						}
+						if !p.rules[25]() {
+							goto l27
+						}
+						do(41)
+						break
+					case '<':
+						if !matchChar('<') {
+							goto l27
+						}
+						if !p.rules[25]() {
+							goto l27
+						}
+						do(40)
+						break
+					case '{':
+						if !p.rules[30]() {
+							goto l27
+						}
+						do(39)
+						break
+					case '.':
+						if !matchChar('.') {
+							goto l27
+						}
+						if !p.rules[25]() {
+							goto l27
+						}
+						do(38)
+						break
+					case '[':
+						if !matchChar('[') {
+							goto l27
+						}
+						{
+							position31, thunkPosition31 := position, thunkPosition
+							{
+								position33, thunkPosition33 := position, thunkPosition
+								if !matchChar('^') {
+									goto l34
+								}
+								if !p.rules[12]() {
+									goto l34
+								}
+								do(24)
+								goto l33
+							l34:
+								position, thunkPosition = position33, thunkPosition33
+								if !p.rules[12]() {
+									goto l31
+								}
+							}
+						l33:
+							goto l32
+						l31:
+							position, thunkPosition = position31, thunkPosition31
+						}
+					l32:
+						if !matchChar(']') {
+							goto l27
+						}
+						if !p.rules[25]() {
+							goto l27
+						}
+						break
+					case '"', '\'':
+						{
+							position35, thunkPosition35 := position, thunkPosition
+							if !matchChar('\'') {
+								goto l36
+							}
+							{
+								position37, thunkPosition37 := position, thunkPosition
+								{
+									position39, thunkPosition39 := position, thunkPosition
+									if !matchChar('\'') {
+										goto l39
+									}
+									goto l37
+								l39:
+									position, thunkPosition = position39, thunkPosition39
+								}
+								if !p.rules[14]() {
+									goto l37
+								}
+								goto l38
+							l37:
+								position, thunkPosition = position37, thunkPosition37
+							}
+						l38:
+						l40:
+							{
+								position41, thunkPosition41 := position, thunkPosition
+								{
+									position42, thunkPosition42 := position, thunkPosition
+									if !matchChar('\'') {
+										goto l42
+									}
+									goto l41
+								l42:
+									position, thunkPosition = position42, thunkPosition42
+								}
+								if !p.rules[14]() {
+									goto l41
+								}
+								do(25)
+								goto l40
+							l41:
+								position, thunkPosition = position41, thunkPosition41
+							}
+							if !matchChar('\'') {
+								goto l36
+							}
+							if !p.rules[25]() {
+								goto l36
+							}
+							goto l35
+						l36:
+							position, thunkPosition = position35, thunkPosition35
+							if !matchChar('"') {
+								goto l27
+							}
+							{
+								position43, thunkPosition43 := position, thunkPosition
+								{
+									position45, thunkPosition45 := position, thunkPosition
+									if !matchChar('"') {
+										goto l45
+									}
+									goto l43
+								l45:
+									position, thunkPosition = position45, thunkPosition45
+								}
+								if !p.rules[14]() {
+									goto l43
+								}
+								goto l44
+							l43:
+								position, thunkPosition = position43, thunkPosition43
+							}
+						l44:
+						l46:
+							{
+								position47, thunkPosition47 := position, thunkPosition
+								{
+									position48, thunkPosition48 := position, thunkPosition
+									if !matchChar('"') {
+										goto l48
+									}
+									goto l47
+								l48:
+									position, thunkPosition = position48, thunkPosition48
+								}
+								if !p.rules[14]() {
+									goto l47
+								}
+								do(26)
+								goto l46
+							l47:
+								position, thunkPosition = position47, thunkPosition47
+							}
+							if !matchChar('"') {
+								goto l27
+							}
+							if !p.rules[25]() {
+								goto l27
+							}
+						}
+					l35:
+						break
+					case '(':
+						if !matchChar('(') {
+							goto l27
+						}
+						if !p.rules[25]() {
+							goto l27
+						}
+						if !p.rules[2]() {
+							goto l27
+						}
+						if !matchChar(')') {
+							goto l27
+						}
+						if !p.rules[25]() {
+							goto l27
+						}
+						break
+					default:
+						if !p.rules[7]() {
+							goto l27
+						}
+						{
+							position49, thunkPosition49 := position, thunkPosition
+							if !p.rules[15]() {
+								goto l49
+							}
+							goto l27
+						l49:
+							position, thunkPosition = position49, thunkPosition49
+						}
+						do(37)
+						break
+					}
+				}
+
 			}
-		l30:
+		l28:
+			{
+				position50, thunkPosition50 := position, thunkPosition
+				{
+					if position == len(p.Buffer) {
+						goto l50
+					}
+					switch p.Buffer[position] {
+					case '+':
+						if !matchChar('+') {
+							goto l50
+						}
+						if !p.rules[25]() {
+							goto l50
+						}
+						do(32)
+						break
+					case '*':
+						if !matchChar('*') {
+							goto l50
+						}
+						if !p.rules[25]() {
+							goto l50
+						}
+						do(31)
+						break
+					default:
+						if !matchChar('?') {
+							goto l50
+						}
+						if !p.rules[25]() {
+							goto l50
+						}
+						do(30)
+						break
+					}
+				}
+
+				goto l51
+			l50:
+				position, thunkPosition = position50, thunkPosition50
+			}
+		l51:
 			return true
-		l29:
+		l27:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
+		/* 6 Primary <- (('c' 'o' 'm' 'm' 'i' 't' Spacing { p.AddCommit() }) / ((&('>') (END { p.AddEnd() })) | (&('<') (BEGIN { p.AddBegin() })) | (&('{') (Action { p.AddAction(buffer[begin:end]) })) | (&('.') (DOT { p.AddDot() })) | (&('[') Class) | (&('"' | '\'') Literal) | (&('(') (OPEN Expression CLOSE)) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '_' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') (Identifier !LEFTARROW { p.AddName(buffer[begin:end]) })))) */
+		nil,
 		/* 7 Identifier <- (< IdentStart IdentCont* > Spacing) */
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			begin = position
 			if !p.rules[8]() {
-				goto l40
+				goto l54
 			}
-		l41:
+		l55:
 			{
-				position42, thunkPosition42 := position, thunkPosition
-				if !p.rules[9]() {
-					goto l42
+				position56, thunkPosition56 := position, thunkPosition
+				{
+					position57, thunkPosition57 := position, thunkPosition
+					if !p.rules[8]() {
+						goto l58
+					}
+					goto l57
+				l58:
+					position, thunkPosition = position57, thunkPosition57
+					if !matchRange('0', '9') {
+						goto l56
+					}
 				}
-				goto l41
-			l42:
-				position, thunkPosition = position42, thunkPosition42
+			l57:
+				goto l55
+			l56:
+				position, thunkPosition = position56, thunkPosition56
 			}
 			end = position
 			if !p.rules[25]() {
-				goto l40
+				goto l54
 			}
 			return true
-		l40:
+		l54:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
-		/* 8 IdentStart <- ([a-z] / [A-Z] / '_') */
+		/* 8 IdentStart <- ((&('_') '_') | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z])) */
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			{
-				position44, thunkPosition44 := position, thunkPosition
-				if !matchRange('a', 'z') {
-					goto l45
+				if position == len(p.Buffer) {
+					goto l59
 				}
-				goto l44
-			l45:
-				position, thunkPosition = position44, thunkPosition44
-				if !matchRange('A', 'Z') {
-					goto l46
-				}
-				goto l44
-			l46:
-				position, thunkPosition = position44, thunkPosition44
-				if !matchChar('_') {
-					goto l43
+				switch p.Buffer[position] {
+				case '_':
+					if !matchChar('_') {
+						goto l59
+					}
+					break
+				case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
+					if !matchRange('A', 'Z') {
+						goto l59
+					}
+					break
+				default:
+					if !matchRange('a', 'z') {
+						goto l59
+					}
+					break
 				}
 			}
-		l44:
+
 			return true
-		l43:
+		l59:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
 		/* 9 IdentCont <- (IdentStart / [0-9]) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			{
-				position48, thunkPosition48 := position, thunkPosition
-				if !p.rules[8]() {
-					goto l49
-				}
-				goto l48
-			l49:
-				position, thunkPosition = position48, thunkPosition48
-				if !matchRange('0', '9') {
-					goto l47
-				}
-			}
-		l48:
-			return true
-		l47:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 10 Literal <- (('\'' (!'\'' Char)? (!'\'' Char { p.AddSequence() })* '\'' Spacing) / ('"' (!'"' Char)? (!'"' Char { p.AddSequence() })* '"' Spacing)) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			{
-				position51, thunkPosition51 := position, thunkPosition
-				if !matchChar('\'') {
-					goto l52
-				}
-				{
-					position53, thunkPosition53 := position, thunkPosition
-					{
-						position55, thunkPosition55 := position, thunkPosition
-						if !matchChar('\'') {
-							goto l55
-						}
-						goto l53
-					l55:
-						position, thunkPosition = position55, thunkPosition55
-					}
-					if !p.rules[14]() {
-						goto l53
-					}
-					goto l54
-				l53:
-					position, thunkPosition = position53, thunkPosition53
-				}
-			l54:
-			l56:
-				{
-					position57, thunkPosition57 := position, thunkPosition
-					{
-						position58, thunkPosition58 := position, thunkPosition
-						if !matchChar('\'') {
-							goto l58
-						}
-						goto l57
-					l58:
-						position, thunkPosition = position58, thunkPosition58
-					}
-					if !p.rules[14]() {
-						goto l57
-					}
-					do(20)
-					goto l56
-				l57:
-					position, thunkPosition = position57, thunkPosition57
-				}
-				if !matchChar('\'') {
-					goto l52
-				}
-				if !p.rules[25]() {
-					goto l52
-				}
-				goto l51
-			l52:
-				position, thunkPosition = position51, thunkPosition51
-				if !matchChar('"') {
-					goto l50
-				}
-				{
-					position59, thunkPosition59 := position, thunkPosition
-					{
-						position61, thunkPosition61 := position, thunkPosition
-						if !matchChar('"') {
-							goto l61
-						}
-						goto l59
-					l61:
-						position, thunkPosition = position61, thunkPosition61
-					}
-					if !p.rules[14]() {
-						goto l59
-					}
-					goto l60
-				l59:
-					position, thunkPosition = position59, thunkPosition59
-				}
-			l60:
-			l62:
-				{
-					position63, thunkPosition63 := position, thunkPosition
-					{
-						position64, thunkPosition64 := position, thunkPosition
-						if !matchChar('"') {
-							goto l64
-						}
-						goto l63
-					l64:
-						position, thunkPosition = position64, thunkPosition64
-					}
-					if !p.rules[14]() {
-						goto l63
-					}
-					do(21)
-					goto l62
-				l63:
-					position, thunkPosition = position63, thunkPosition63
-				}
-				if !matchChar('"') {
-					goto l50
-				}
-				if !p.rules[25]() {
-					goto l50
-				}
-			}
-		l51:
-			return true
-		l50:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 11 Class <- ('[' (('^' Ranges { p.AddPeekNot(); p.AddDot(); p.AddSequence() }) / Ranges)? ']' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('[') {
-				goto l65
-			}
-			{
-				position66, thunkPosition66 := position, thunkPosition
-				{
-					position68, thunkPosition68 := position, thunkPosition
-					if !matchChar('^') {
-						goto l69
-					}
-					if !p.rules[12]() {
-						goto l69
-					}
-					do(22)
-					goto l68
-				l69:
-					position, thunkPosition = position68, thunkPosition68
-					if !p.rules[12]() {
-						goto l66
-					}
-				}
-			l68:
-				goto l67
-			l66:
-				position, thunkPosition = position66, thunkPosition66
-			}
-		l67:
-			if !matchChar(']') {
-				goto l65
-			}
-			if !p.rules[25]() {
-				goto l65
-			}
-			return true
-		l65:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 12 Ranges <- (!']' Range (!']' Range { p.AddAlternate() })*) */
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			{
-				position71, thunkPosition71 := position, thunkPosition
+				position65, thunkPosition65 := position, thunkPosition
 				if !matchChar(']') {
-					goto l71
+					goto l65
 				}
-				goto l70
-			l71:
-				position, thunkPosition = position71, thunkPosition71
+				goto l64
+			l65:
+				position, thunkPosition = position65, thunkPosition65
 			}
 			if !p.rules[13]() {
-				goto l70
+				goto l64
 			}
-		l72:
+		l66:
 			{
-				position73, thunkPosition73 := position, thunkPosition
+				position67, thunkPosition67 := position, thunkPosition
 				{
-					position74, thunkPosition74 := position, thunkPosition
+					position68, thunkPosition68 := position, thunkPosition
 					if !matchChar(']') {
-						goto l74
+						goto l68
 					}
-					goto l73
-				l74:
-					position, thunkPosition = position74, thunkPosition74
+					goto l67
+				l68:
+					position, thunkPosition = position68, thunkPosition68
 				}
 				if !p.rules[13]() {
-					goto l73
+					goto l67
 				}
-				do(23)
-				goto l72
-			l73:
-				position, thunkPosition = position73, thunkPosition73
+				do(0)
+				goto l66
+			l67:
+				position, thunkPosition = position67, thunkPosition67
 			}
 			return true
-		l70:
+		l64:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
@@ -945,27 +1005,27 @@ func (p *Peg) Init() {
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			{
-				position76, thunkPosition76 := position, thunkPosition
+				position70, thunkPosition70 := position, thunkPosition
 				if !p.rules[14]() {
-					goto l77
+					goto l71
 				}
 				if !matchChar('-') {
-					goto l77
+					goto l71
 				}
 				if !p.rules[14]() {
-					goto l77
+					goto l71
 				}
-				do(24)
-				goto l76
-			l77:
-				position, thunkPosition = position76, thunkPosition76
+				do(35)
+				goto l70
+			l71:
+				position, thunkPosition = position70, thunkPosition70
 				if !p.rules[14]() {
-					goto l75
+					goto l69
 				}
 			}
-		l76:
+		l70:
 			return true
-		l75:
+		l69:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
@@ -973,206 +1033,206 @@ func (p *Peg) Init() {
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			{
-				position79, thunkPosition79 := position, thunkPosition
+				position73, thunkPosition73 := position, thunkPosition
 				if !matchChar('\\') {
-					goto l80
+					goto l74
 				}
 				if !matchChar('a') {
-					goto l80
+					goto l74
 				}
-				do(25)
-				goto l79
-			l80:
-				position, thunkPosition = position79, thunkPosition79
+				do(7)
+				goto l73
+			l74:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l81
+					goto l75
 				}
 				if !matchChar('b') {
-					goto l81
+					goto l75
 				}
-				do(26)
-				goto l79
-			l81:
-				position, thunkPosition = position79, thunkPosition79
+				do(8)
+				goto l73
+			l75:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l82
+					goto l76
 				}
 				if !matchChar('e') {
-					goto l82
+					goto l76
 				}
-				do(27)
-				goto l79
-			l82:
-				position, thunkPosition = position79, thunkPosition79
+				do(9)
+				goto l73
+			l76:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l83
+					goto l77
 				}
 				if !matchChar('f') {
-					goto l83
+					goto l77
 				}
-				do(28)
-				goto l79
-			l83:
-				position, thunkPosition = position79, thunkPosition79
+				do(10)
+				goto l73
+			l77:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l84
+					goto l78
 				}
 				if !matchChar('n') {
-					goto l84
+					goto l78
 				}
-				do(29)
-				goto l79
-			l84:
-				position, thunkPosition = position79, thunkPosition79
+				do(11)
+				goto l73
+			l78:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l85
+					goto l79
 				}
 				if !matchChar('r') {
-					goto l85
+					goto l79
 				}
-				do(30)
-				goto l79
-			l85:
-				position, thunkPosition = position79, thunkPosition79
+				do(12)
+				goto l73
+			l79:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l86
+					goto l80
 				}
 				if !matchChar('t') {
-					goto l86
+					goto l80
 				}
-				do(31)
-				goto l79
-			l86:
-				position, thunkPosition = position79, thunkPosition79
+				do(13)
+				goto l73
+			l80:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l87
+					goto l81
 				}
 				if !matchChar('v') {
-					goto l87
+					goto l81
 				}
-				do(32)
-				goto l79
-			l87:
-				position, thunkPosition = position79, thunkPosition79
+				do(14)
+				goto l73
+			l81:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l88
+					goto l82
 				}
 				if !matchChar('\'') {
-					goto l88
+					goto l82
 				}
-				do(33)
-				goto l79
-			l88:
-				position, thunkPosition = position79, thunkPosition79
+				do(15)
+				goto l73
+			l82:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l89
+					goto l83
 				}
 				if !matchChar('"') {
-					goto l89
+					goto l83
 				}
-				do(34)
-				goto l79
-			l89:
-				position, thunkPosition = position79, thunkPosition79
+				do(16)
+				goto l73
+			l83:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l90
+					goto l84
 				}
 				if !matchChar('[') {
-					goto l90
+					goto l84
 				}
-				do(35)
-				goto l79
-			l90:
-				position, thunkPosition = position79, thunkPosition79
+				do(17)
+				goto l73
+			l84:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l91
+					goto l85
 				}
 				if !matchChar(']') {
-					goto l91
+					goto l85
 				}
-				do(36)
-				goto l79
-			l91:
-				position, thunkPosition = position79, thunkPosition79
+				do(18)
+				goto l73
+			l85:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l92
+					goto l86
 				}
 				if !matchChar('-') {
-					goto l92
+					goto l86
 				}
-				do(37)
-				goto l79
-			l92:
-				position, thunkPosition = position79, thunkPosition79
+				do(19)
+				goto l73
+			l86:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l93
+					goto l87
 				}
 				begin = position
 				if !matchRange('0', '3') {
-					goto l93
+					goto l87
 				}
 				if !matchRange('0', '7') {
-					goto l93
+					goto l87
 				}
 				if !matchRange('0', '7') {
-					goto l93
+					goto l87
 				}
 				end = position
-				do(38)
-				goto l79
-			l93:
-				position, thunkPosition = position79, thunkPosition79
+				do(20)
+				goto l73
+			l87:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l94
+					goto l88
 				}
 				begin = position
 				if !matchRange('0', '7') {
-					goto l94
+					goto l88
 				}
 				{
-					position95, thunkPosition95 := position, thunkPosition
+					position89, thunkPosition89 := position, thunkPosition
 					if !matchRange('0', '7') {
-						goto l95
+						goto l89
 					}
-					goto l96
-				l95:
-					position, thunkPosition = position95, thunkPosition95
+					goto l90
+				l89:
+					position, thunkPosition = position89, thunkPosition89
 				}
-			l96:
+			l90:
 				end = position
-				do(39)
-				goto l79
-			l94:
-				position, thunkPosition = position79, thunkPosition79
+				do(21)
+				goto l73
+			l88:
+				position, thunkPosition = position73, thunkPosition73
 				if !matchChar('\\') {
-					goto l97
+					goto l91
 				}
 				if !matchChar('\\') {
-					goto l97
+					goto l91
 				}
-				do(40)
-				goto l79
-			l97:
-				position, thunkPosition = position79, thunkPosition79
+				do(22)
+				goto l73
+			l91:
+				position, thunkPosition = position73, thunkPosition73
 				{
-					position98, thunkPosition98 := position, thunkPosition
+					position92, thunkPosition92 := position, thunkPosition
 					if !matchChar('\\') {
-						goto l98
+						goto l92
 					}
-					goto l78
-				l98:
-					position, thunkPosition = position98, thunkPosition98
+					goto l72
+				l92:
+					position, thunkPosition = position92, thunkPosition92
 				}
 				begin = position
 				if !matchDot() {
-					goto l78
+					goto l72
 				}
 				end = position
-				do(41)
+				do(23)
 			}
-		l79:
+		l73:
 			return true
-		l78:
+		l72:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
@@ -1180,16 +1240,16 @@ func (p *Peg) Init() {
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			if !matchChar('<') {
-				goto l99
+				goto l93
 			}
 			if !matchChar('-') {
-				goto l99
+				goto l93
 			}
 			if !p.rules[25]() {
-				goto l99
+				goto l93
 			}
 			return true
-		l99:
+		l93:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
@@ -1197,13 +1257,13 @@ func (p *Peg) Init() {
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			if !matchChar('/') {
-				goto l100
+				goto l94
 			}
 			if !p.rules[25]() {
-				goto l100
+				goto l94
 			}
 			return true
-		l100:
+		l94:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
@@ -1211,310 +1271,173 @@ func (p *Peg) Init() {
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			if !matchChar('&') {
-				goto l101
+				goto l95
 			}
 			if !p.rules[25]() {
-				goto l101
+				goto l95
 			}
 			return true
-		l101:
+		l95:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
 		/* 18 NOT <- ('!' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('!') {
-				goto l102
-			}
-			if !p.rules[25]() {
-				goto l102
-			}
-			return true
-		l102:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 19 QUESTION <- ('?' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('?') {
-				goto l103
-			}
-			if !p.rules[25]() {
-				goto l103
-			}
-			return true
-		l103:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 20 STAR <- ('*' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('*') {
-				goto l104
-			}
-			if !p.rules[25]() {
-				goto l104
-			}
-			return true
-		l104:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 21 PLUS <- ('+' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('+') {
-				goto l105
-			}
-			if !p.rules[25]() {
-				goto l105
-			}
-			return true
-		l105:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 22 OPEN <- ('(' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('(') {
-				goto l106
-			}
-			if !p.rules[25]() {
-				goto l106
-			}
-			return true
-		l106:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 23 CLOSE <- (')' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar(')') {
-				goto l107
-			}
-			if !p.rules[25]() {
-				goto l107
-			}
-			return true
-		l107:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 24 DOT <- ('.' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('.') {
-				goto l108
-			}
-			if !p.rules[25]() {
-				goto l108
-			}
-			return true
-		l108:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 25 Spacing <- (Space / Comment)* */
 		func() bool {
-		l110:
+		l104:
 			{
-				position111, thunkPosition111 := position, thunkPosition
+				position105, thunkPosition105 := position, thunkPosition
 				{
-					position112, thunkPosition112 := position, thunkPosition
-					if !p.rules[27]() {
-						goto l113
+					position106, thunkPosition106 := position, thunkPosition
+					{
+						if position == len(p.Buffer) {
+							goto l107
+						}
+						switch p.Buffer[position] {
+						case '\t':
+							if !matchChar('\t') {
+								goto l107
+							}
+							break
+						case ' ':
+							if !matchChar(' ') {
+								goto l107
+							}
+							break
+						default:
+							if !p.rules[28]() {
+								goto l107
+							}
+							break
+						}
 					}
-					goto l112
-				l113:
-					position, thunkPosition = position112, thunkPosition112
-					if !p.rules[26]() {
-						goto l111
+
+					goto l106
+				l107:
+					position, thunkPosition = position106, thunkPosition106
+					if !matchChar('#') {
+						goto l105
+					}
+				l109:
+					{
+						position110, thunkPosition110 := position, thunkPosition
+						{
+							position111, thunkPosition111 := position, thunkPosition
+							if !p.rules[28]() {
+								goto l111
+							}
+							goto l110
+						l111:
+							position, thunkPosition = position111, thunkPosition111
+						}
+						if !matchDot() {
+							goto l110
+						}
+						goto l109
+					l110:
+						position, thunkPosition = position110, thunkPosition110
+					}
+					if !p.rules[28]() {
+						goto l105
 					}
 				}
-			l112:
-				goto l110
-			l111:
-				position, thunkPosition = position111, thunkPosition111
+			l106:
+				goto l104
+			l105:
+				position, thunkPosition = position105, thunkPosition105
 			}
 			return true
 		},
 		/* 26 Comment <- ('#' (!EndOfLine .)* EndOfLine) */
+		nil,
+		/* 27 Space <- ((&('\t') '\t') | (&(' ') ' ') | (&('\n' | '\r') EndOfLine)) */
+		nil,
+		/* 28 EndOfLine <- (('\r' '\n') / '\n' / '\r') */
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('#') {
-				goto l114
-			}
-		l115:
 			{
-				position116, thunkPosition116 := position, thunkPosition
-				{
-					position117, thunkPosition117 := position, thunkPosition
-					if !p.rules[28]() {
-						goto l117
-					}
+				position115, thunkPosition115 := position, thunkPosition
+				if !matchChar('\r') {
 					goto l116
-				l117:
-					position, thunkPosition = position117, thunkPosition117
 				}
-				if !matchDot() {
+				if !matchChar('\n') {
 					goto l116
 				}
 				goto l115
 			l116:
-				position, thunkPosition = position116, thunkPosition116
+				position, thunkPosition = position115, thunkPosition115
+				if !matchChar('\n') {
+					goto l117
+				}
+				goto l115
+			l117:
+				position, thunkPosition = position115, thunkPosition115
+				if !matchChar('\r') {
+					goto l114
+				}
 			}
-			if !p.rules[28]() {
-				goto l114
-			}
+		l115:
 			return true
 		l114:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
-		/* 27 Space <- (' ' / '\t' / EndOfLine) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			{
-				position119, thunkPosition119 := position, thunkPosition
-				if !matchChar(' ') {
-					goto l120
-				}
-				goto l119
-			l120:
-				position, thunkPosition = position119, thunkPosition119
-				if !matchChar('\t') {
-					goto l121
-				}
-				goto l119
-			l121:
-				position, thunkPosition = position119, thunkPosition119
-				if !p.rules[28]() {
-					goto l118
-				}
-			}
-		l119:
-			return true
-		l118:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
-		/* 28 EndOfLine <- (('\r' '\n') / '\n' / '\r') */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			{
-				position123, thunkPosition123 := position, thunkPosition
-				if !matchChar('\r') {
-					goto l124
-				}
-				if !matchChar('\n') {
-					goto l124
-				}
-				goto l123
-			l124:
-				position, thunkPosition = position123, thunkPosition123
-				if !matchChar('\n') {
-					goto l125
-				}
-				goto l123
-			l125:
-				position, thunkPosition = position123, thunkPosition123
-				if !matchChar('\r') {
-					goto l122
-				}
-			}
-		l123:
-			return true
-		l122:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
 		/* 29 EndOfFile <- !. */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			{
-				position127, thunkPosition127 := position, thunkPosition
-				if !matchDot() {
-					goto l127
-				}
-				goto l126
-			l127:
-				position, thunkPosition = position127, thunkPosition127
-			}
-			return true
-		l126:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 30 Action <- ('{' < (!'}' .)* > '}' Spacing) */
 		func() bool {
 			position0, thunkPosition0 := position, thunkPosition
 			if !matchChar('{') {
-				goto l128
+				goto l119
 			}
 			begin = position
-		l129:
+		l120:
 			{
-				position130, thunkPosition130 := position, thunkPosition
+				position121, thunkPosition121 := position, thunkPosition
 				{
-					position131, thunkPosition131 := position, thunkPosition
+					position122, thunkPosition122 := position, thunkPosition
 					if !matchChar('}') {
-						goto l131
+						goto l122
 					}
-					goto l130
-				l131:
-					position, thunkPosition = position131, thunkPosition131
+					goto l121
+				l122:
+					position, thunkPosition = position122, thunkPosition122
 				}
 				if !matchDot() {
-					goto l130
+					goto l121
 				}
-				goto l129
-			l130:
-				position, thunkPosition = position130, thunkPosition130
+				goto l120
+			l121:
+				position, thunkPosition = position121, thunkPosition121
 			}
 			end = position
 			if !matchChar('}') {
-				goto l128
+				goto l119
 			}
 			if !p.rules[25]() {
-				goto l128
+				goto l119
 			}
 			return true
-		l128:
+		l119:
 			position, thunkPosition = position0, thunkPosition0
 			return false
 		},
 		/* 31 BEGIN <- ('<' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('<') {
-				goto l132
-			}
-			if !p.rules[25]() {
-				goto l132
-			}
-			return true
-		l132:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 		/* 32 END <- ('>' Spacing) */
-		func() bool {
-			position0, thunkPosition0 := position, thunkPosition
-			if !matchChar('>') {
-				goto l133
-			}
-			if !p.rules[25]() {
-				goto l133
-			}
-			return true
-		l133:
-			position, thunkPosition = position0, thunkPosition0
-			return false
-		},
+		nil,
 	}
 }

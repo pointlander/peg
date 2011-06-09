@@ -17,19 +17,17 @@ type Peg Peg {
 }
 
 # Hierarchical syntax
-
 Grammar		<- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
                            'type' Spacing Identifier         { p.AddPeg(buffer[begin:end]) }
                            'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
                            commit
                            Definition+ EndOfFile
-
 Definition	<- Identifier 			{ p.AddRule(buffer[begin:end]) }
 		     LEFTARROW Expression	{ p.AddExpression() } &(Identifier LEFTARROW / !.) commit
 Expression	<- Sequence (SLASH Sequence	{ p.AddAlternate() }
-			    )* (SLASH           { p.AddEmptyAlternate() }
+			    )* (SLASH           { p.AddNil(); p.AddAlternate() }
                                )?
-                 /
+                 /				{ p.AddNil() }
 Sequence	<- Prefix (Prefix		{ p.AddSequence() }
 			  )*
 Prefix		<- AND Action			{ p.AddPredicate(buffer[begin:end]) }

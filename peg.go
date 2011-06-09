@@ -7,16 +7,168 @@ package main
 import (
 	"bytes"
 	"container/list"
+	"container/vector"
 	"fmt"
 	"go/parser"
         "go/printer"
         tok "go/token"
 	"os"
 	"strconv"
+	"template"
 )
 
-type Type uint8
+const PEG_HEADER_TEMPLATE =
+`package ${PackageName}
 
+import (
+	"bytes"
+	"fmt"
+ 	"os"
+)
+
+type ${StructName} struct {
+	${StructVariables}
+	Buffer		string
+	Min, Max	int
+	rules		[${RulesCount}]func() bool
+}
+
+type parseError struct {
+	p *${StructName}
+}
+
+func (p *${StructName}) Parse() os.Error {
+	if p.rules[0]() {
+		return nil
+	}
+	return &parseError{ p }
+}
+
+func (e *parseError) String() string {
+	buf, line, character := new(bytes.Buffer), 1, 0
+
+	for i, c := range e.p.Buffer[0:] {
+		if c == '\n' {
+			line++
+			character = 0
+		} else {
+			character++
+		}
+
+		if i == e.p.Min {
+			if e.p.Min != e.p.Max {
+				fmt.Fprintf(buf, "parse error after line %v character %v\n", line, character)
+   			} else {
+				break
+			}
+  		} else if i == e.p.Max {
+			break
+		}
+ 	}
+
+	fmt.Fprintf(buf, "parse error: unexpected ")
+	if e.p.Max >= len(e.p.Buffer) {
+		fmt.Fprintf(buf, "end of file found\n")
+	} else {
+		fmt.Fprintf(buf, "'%c' at line %v character %v\n", e.p.Buffer[e.p.Max], line, character)
+	}
+
+	return buf.String()
+}
+
+func (p *${StructName}) Init() {
+	var position int
+
+	${.section HasActions}
+ 	actions := [...]func(buffer string, begin, end int) {
+		${.repeated section Actions}
+		/* ${GetId} */
+		func(buffer string, begin, end int) {
+			${String}
+		},
+		${.end}
+	}
+
+	var thunkPosition, begin, end int
+	thunks := make([]struct {action uint${Bits}; begin, end int}, 32)
+	do := func(action uint${Bits}) {
+		if thunkPosition == len(thunks) {
+			newThunks := make([]struct {action uint${Bits}; begin, end int}, 2 * len(thunks))
+			copy(newThunks, thunks)
+			thunks = newThunks
+		}
+		thunks[thunkPosition].action = action
+		thunks[thunkPosition].begin = begin
+		thunks[thunkPosition].end = end
+		thunkPosition++
+	}
+
+	${.section HasCommit}
+	commit := func(thunkPosition0 int) bool {
+		if thunkPosition0 == 0 {
+			for thunk := 0; thunk < thunkPosition; thunk++ {
+				actions[thunks[thunk].action](p.Buffer, thunks[thunk].begin, thunks[thunk].end)
+			}
+			p.Min = position
+			thunkPosition = 0
+			return true
+		}
+		return false
+	}
+	${.end}
+	${.end}
+
+	${.section HasDot}
+	matchDot := func() bool {
+		if position < len(p.Buffer) {
+			position++
+			return true
+		} else if position >= p.Max {
+			p.Max = position
+		}
+		return false
+	}
+	${.end}
+
+	${.section HasCharacter}
+	matchChar := func(c byte) bool {
+		if (position < len(p.Buffer)) && (p.Buffer[position] == c) {
+			position++
+			return true
+		} else if position >= p.Max {
+			p.Max = position
+		}
+		return false
+	}
+	${.end}
+
+	${.section HasString}
+	matchString := func(s string) bool {
+		length := len(s)
+		next := position + length
+		if (next <= len(p.Buffer)) && (p.Buffer[position:next] == s) {
+			position = next
+			return true
+		} else if position >= p.Max {
+			p.Max = position
+		}
+		return false
+	}
+	${.end}
+
+	${.section HasRange}
+	matchRange := func(lower byte, upper byte) bool {
+		if (position < len(p.Buffer)) && (p.Buffer[position] >= lower) && (p.Buffer[position] <= upper) {
+			position++
+			return true
+		} else if position >= p.Max {
+			p.Max = position
+		}
+		return false
+	}
+	${.end}`
+
+type Type uint8
 const (
 	TypeUnknown Type = iota
 	TypeRule
@@ -26,7 +178,6 @@ const (
 	TypeCharacter
 	TypeRange
 	TypeString
-	TypeClass
 	TypePredicate
 	TypeCommit
 	TypeBegin
@@ -54,12 +205,13 @@ func (t Type) GetType() Type {
 type Node interface {
 	fmt.Stringer
 	GetType() Type
+	GetId() int
+	SetId(id int)
 }
 
 /* Used to represent TypeRule*/
 type Rule interface {
 	Node
-	GetId() int
 	GetExpression() Node
 	SetExpression(e Node)
 }
@@ -78,10 +230,11 @@ func (r *rule) GetId() int {
 	return r.id
 }
 
+func (r *rule) SetId(id int) {
+	r.id = id
+}
+
 func (r *rule) GetExpression() Node {
-	if r.expression == nil {
-		return nilNode
-	}
 	return r.expression
 }
 
@@ -93,63 +246,34 @@ func (r *rule) String() string {
 	return r.name
 }
 
-/* Used to represent TypeName, TypeDot, TypeCharacter, TypeString, TypeClass, TypePredicate, and TypeNil. */
+/* Used to represent TypeAction, TypeName, TypeDot, TypeCharacter, TypeString, TypePredicate, and TypeNil. */
 type Token interface {
 	Node
-	GetClass() *characterClass
 }
 
 type token struct {
 	Type
 	string
-	class *characterClass
-}
-
-func (t *token) GetClass() *characterClass {
-	return t.class
+	id 	int
 }
 
 func (t *token) String() string {
 	return t.string
 }
 
-var nilNode = &token{Type: TypeNil, string: "<nil>"}
-
-/* Used to represent TypeAction. */
-type Action interface {
-	Node
-	GetId() int
-	GetRule() string
+func (t *token) GetId() int {
+	return t.id
 }
 
-type action struct {
-	text string
-	id   int
-	rule string
+func (t *token) SetId(id int) {
+	t.id = id
 }
 
-func (a *action) GetType() Type {
-	return TypeAction
-}
-
-func (a *action) String() string {
-	return a.text
-}
-
-func (a *action) GetId() int {
-	return a.id
-}
-
-func (a *action) GetRule() string {
-	return a.rule
-}
-
-/* Used to represent a TypeAlternate, TypeSequence, TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypeRange, or TypePlus */
+/* Used to represent a TypeAlternate, TypeSequence, TypeUnorderedAlternate, TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypeRange, or TypePlus */
 type List interface {
 	Node
 	SetType(t Type)
-	SetLastIsEmpty(lastIsEmpty bool)
-	GetLastIsEmpty() bool
+
 	Init() *list.List
 	Front() *list.Element
 	PushBack(value interface{}) *list.Element
@@ -159,24 +283,25 @@ type List interface {
 type nodeList struct {
 	Type
 	string
+	id int
+
 	list.List
-	lastIsEmpty bool
 }
 
 func (l *nodeList) SetType(t Type) {
 	l.Type = t
 }
 
-func (l *nodeList) SetLastIsEmpty(lastIsEmpty bool) {
-	l.lastIsEmpty = lastIsEmpty
-}
-
-func (l *nodeList) GetLastIsEmpty() bool {
-	return l.lastIsEmpty
-}
-
 func (l *nodeList) String() string {
 	return l.string
+}
+
+func (l *nodeList) GetId() int {
+	return l.id
+}
+
+func (l *nodeList) SetId(id int) {
+	l.id = id
 }
 
 /* Used to represent character classes. */
@@ -212,55 +337,6 @@ func (c *characterClass) len() (length int) {
 	}
 	return
 }
-func escape(c uint8) string {
-	s := ""
-	switch uint8(c) {
-	case '\a':
-		s = `\a` /* bel */
-	case '\b':
-		s = `\b` /* bs */
-	case '\f':
-		s = `\f` /* ff */
-	case '\n':
-		s = `\n` /* nl */
-	case '\r':
-		s = `\r` /* cr */
-	case '\t':
-		s = `\t` /* ht */
-	case '\v':
-		s = `\v` /* vt */
-	case '\'':
-		s = `\'` /* ' */
-	case '\\':
-		s = `\\` /* \ */
-	default:
-		s = fmt.Sprintf("%c", c)
-	}
-	return s
-}
-func (c *characterClass) String() (class string) {
-	class = ""
-	l := 0
-	for character := 0; character < 256; character++ {
-		if c.has(uint8(character)) {
-			if l == 0 {
-				class += escape(uint8(character))
-			}
-			l++
-		} else {
-			if l == 2 {
-				class += escape(uint8(character - 1))
-			} else if l > 2 {
-				class += "-" + escape(uint8(character-1))
-			}
-			l = 0
-		}
-	}
-	if l >= 2 {
-		class += "-" + escape(255)
-	}
-	return
-}
 
 /* A tree data structure into which a PEG can be parsed. */
 type Tree struct {
@@ -268,11 +344,23 @@ type Tree struct {
 	rulesCount map[string]uint
 	ruleId     int
 	list.List
-	actions         list.List
 	classes         map[string]*characterClass
 	stack           [1024]Node
 	top             int
 	inline, _switch bool
+
+	PackageName     string
+	StructName      string
+	StructVariables string
+	RulesCount      int
+	Bits            int
+	HasActions	bool
+	Actions         vector.Vector
+	HasCommit       bool
+	HasDot          bool
+	HasCharacter    bool
+	HasString       bool
+	HasRange        bool
 }
 
 func New(inline, _switch bool) *Tree {
@@ -315,7 +403,13 @@ func (t *Tree) AddName(text string) {
 	t.push(&token{Type: TypeName, string: text})
 }
 
-var dot *token = &token{Type: TypeDot, string: "."}
+var (
+	dot = &token{Type: TypeDot, string: "."}
+	commit = &token{Type: TypeCommit, string: "commit"}
+	begin = &token{Type: TypeBegin, string: "<"}
+	end = &token{Type: TypeEnd, string: ">"}
+	nilNode = &token{Type: TypeNil, string: "<nil>"}
+)
 
 func (t *Tree) AddDot() { t.push(dot) }
 func (t *Tree) AddCharacter(text string) {
@@ -326,23 +420,11 @@ func (t *Tree) AddOctalCharacter(text string) {
 	t.push(&token{Type: TypeCharacter, string: string(octal)})
 }
 func (t *Tree) AddPredicate(text string) { t.push(&token{Type: TypePredicate, string: text}) }
-
-var commit *token = &token{Type: TypeCommit, string: "commit"}
-
 func (t *Tree) AddCommit() { t.push(commit) }
-
-var begin *token = &token{Type: TypeBegin, string: "<"}
-
 func (t *Tree) AddBegin() { t.push(begin) }
-
-var end *token = &token{Type: TypeEnd, string: ">"}
-
 func (t *Tree) AddEnd() { t.push(end) }
-func (t *Tree) AddAction(text string) {
-	a := &action{text: text, id: t.actions.Len(), rule: t.currentRule().String()}
-	t.actions.PushBack(a)
-	t.push(a)
-}
+func (t *Tree) AddNil() { t.push(nilNode) }
+func (t *Tree) AddAction(text string) { t.push(&token{Type: TypeAction, string: text}) }
 func (t *Tree) AddPackage(text string) { t.PushBack(&token{Type: TypePackage, string: text}) }
 func (t *Tree) AddState(text string) {
 	peg := t.pop().(List)
@@ -364,18 +446,6 @@ func (t *Tree) addList(listType Type) {
 	t.push(l)
 }
 func (t *Tree) AddAlternate() { t.addList(TypeAlternate) }
-func (t *Tree) AddEmptyAlternate() {
-	a := t.pop()
-	var l List
-	if a.GetType() == TypeAlternate {
-		l = a.(List)
-		l.SetLastIsEmpty(true)
-	} else {
-		l = &nodeList{Type: TypeAlternate, lastIsEmpty: true}
-		l.PushBack(a)
-	}
-	t.push(l)
-}
 func (t *Tree) AddSequence() { t.addList(TypeSequence) }
 func (t *Tree) AddRange()    { t.addList(TypeRange) }
 
@@ -401,23 +471,37 @@ func join(tasks []func()) {
 	}
 }
 
+func escape(c string) string {
+	switch c {
+	case "'":
+		return "\\'"
+	case "\"":
+		return "\""
+	default:
+		c = strconv.Quote(c)
+		return c[1:len(c) - 1]
+	}
+	return ""
+}
+
 func (t *Tree) Compile(file string) {
-	_package, state, name, counts :=
-		"", "", "", [TypeLast]uint{}
+	counts := [TypeLast]uint{}
+
 	for element := t.Front(); element != nil; element = element.Next() {
 		node := element.Value.(Node)
 		switch node.GetType() {
 		case TypePackage:
-			_package = node.(Token).String()
+			t.PackageName = node.(Token).String()
 		case TypePeg:
 			peg := node.(List)
-			name = peg.String()
-			state = peg.Front().Value.(Token).String()
+			t.StructName = peg.String()
+			t.StructVariables = peg.Front().Value.(Token).String()
 		case TypeRule:
 			rule := node.(*rule)
 			t.rules[rule.String()] = rule
 		}
 	}
+
 	for name, r := range t.rules {
 		if r.name == "" {
 			r := &rule{name: name, id: t.ruleId}
@@ -426,23 +510,26 @@ func (t *Tree) Compile(file string) {
 			t.PushBack(r)
 		}
 	}
+	t.RulesCount = len(t.rules)
 
 	join([]func(){
 		func() {
 			var countTypes func(node Node)
 			countTypes = func(node Node) {
-				t := node.GetType()
-				counts[t]++
-				switch t {
+				nodeType := node.GetType()
+				id := counts[nodeType]
+				counts[nodeType]++
+				switch nodeType {
 				case TypeRule:
 					countTypes(node.(Rule).GetExpression())
+				case TypeAction:
+					node.SetId(int(id))
+					t.Actions.Push(node)
 				case TypeAlternate, TypeUnorderedAlternate, TypeSequence,
 					TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
 					for element := node.(List).Front(); element != nil; element = element.Next() {
 						countTypes(element.Value.(Node))
 					}
-					/*case TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
-					  countTypes(node.( List ).Front().Value.( Node ))*/
 				}
 			}
 			for _, rule := range t.rules {
@@ -474,8 +561,6 @@ func (t *Tree) Compile(file string) {
 					for element := node.(List).Front(); element != nil; element = element.Next() {
 						countRules(element.Value.(Node))
 					}
-					/*case TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
-					  countRules(node.( List ).Front().Value.( Node ))*/
 				}
 			}
 			for element := t.Front(); element != nil; element = element.Next() {
@@ -521,7 +606,7 @@ func (t *Tree) Compile(file string) {
 					return checkRecursion(node.(List).Front().Value.(Node))
 				case TypeCharacter, TypeString:
 					return len(node.String()) > 0
-				case TypeDot, TypeClass:
+				case TypeDot:
 					return true
 				}
 				return false
@@ -558,29 +643,17 @@ func (t *Tree) Compile(file string) {
 				}
 			case TypeString, TypeCharacter:
 				consumes, class = true, new(characterClass)
-				b := node.String()[0]
-				if b == '\\' {
-					b = node.String()[1]
-					switch b {
-					case 'a':
-						b = '\a' /* bel */
-					case 'b':
-						b = '\b' /* bs */
-					case 'f':
-						b = '\f' /* ff */
-					case 'n':
-						b = '\n' /* nl */
-					case 'r':
-						b = '\r' /* cr */
-					case 't':
-						b = '\t' /* ht */
-					case 'v':
-						b = '\v' /* vt */
-					}
+				class.add(node.String()[0])
+			case TypeRange:
+				consumes, class = true, new(characterClass)
+				list := node.(List)
+				element := list.Front()
+				lower := element.Value.(Node).String()[0]
+				element = element.Next()
+				upper := element.Value.(Node).String()[0]
+				for c := lower; c <= upper; c++ {
+					class.add(c)
 				}
-				class.add(b)
-			case TypeClass:
-				consumes, class = true, t.classes[node.String()]
 			case TypeAlternate:
 				consumes, peek, class = true, true, new(characterClass)
 				alternate := node.(List)
@@ -620,14 +693,25 @@ func (t *Tree) Compile(file string) {
 						if properties[c].intersects {
 							ordered.PushBack(element.Value)
 						} else {
-							class := &token{Type: TypeClass, string: properties[c].class.String(), class: properties[c].class}
-							sequence, predicate :=
-								&nodeList{Type: TypeSequence}, &nodeList{Type: TypePeekFor}
+							class := &nodeList{Type: TypeUnorderedAlternate}
+							for d := 0; d < 256; d++ {
+								if properties[c].class.has(uint8(d)) {
+									class.PushBack(&token{Type: TypeCharacter, string: string(d)})
+								}
+							}
+
+							sequence, predicate, length :=
+								&nodeList{Type: TypeSequence}, &nodeList{Type: TypePeekFor}, properties[c].class.len()
+							if length == 0 {
+								class.PushBack(nilNode)
+							}
 							predicate.PushBack(class)
 							sequence.PushBack(predicate)
 							sequence.PushBack(element.Value)
-							length := properties[c].class.len()
-							if length > max {
+
+							if element.Value.(Node).GetType() == TypeNil {
+								unordered.PushBack(sequence)
+							} else if length > max {
 								unordered.PushBack(sequence)
 								max = length
 							} else {
@@ -656,7 +740,7 @@ func (t *Tree) Compile(file string) {
 						peek  bool
 						class *characterClass
 					}, sequence.Len()), 0, sequence.Front()
-				for ; !consumes && element != nil; element, c = element.Next(), c+1 {
+				for ; !consumes && element != nil; element, c = element.Next(), c + 1 {
 					consumes, meof, classes[c].peek, classes[c].class = optimizeAlternates(element.Value.(Node))
 					eof, peek = eof || meof, peek || classes[c].peek
 				}
@@ -686,6 +770,8 @@ func (t *Tree) Compile(file string) {
 				_, eof, _, class = optimizeAlternates(node.(List).Front().Value.(Node))
 			case TypePlus:
 				consumes, eof, peek, class = optimizeAlternates(node.(List).Front().Value.(Node))
+			case TypeAction, TypeNil:
+				class = new(characterClass)
 			}
 			return
 		}
@@ -710,12 +796,14 @@ func (t *Tree) Compile(file string) {
 		fileSet := tok.NewFileSet()
 		code, error := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
 		if error != nil {
+			buffer.WriteTo(out)
 			fmt.Printf("%v: %v\n", file, error)
 			return
 		}
 		formatter := printer.Config{printer.TabIndent | printer.UseSpaces, 8}
 		_, error = formatter.Fprint(out, fileSet, code)
 		if error != nil {
+			buffer.WriteTo(out)
 			fmt.Printf("%v: %v\n", file, error)
 			return
 		}
@@ -725,63 +813,16 @@ func (t *Tree) Compile(file string) {
 	print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { print("\n   position%d := position", n) }
 	printRestore := func(n uint) { print("   position = position%d", n) }
+	printTemplate := func(s string) {
+		templateEngine := template.New(nil)
+		templateEngine.SetDelims("${", "}")
+		if error := templateEngine.Parse(s); error != nil { panic(error) }
+		if error := templateEngine.Execute(&buffer, t); error != nil { panic(error) }
+	}
 
-	print(
-		`package %v
-import (
-  "bytes"
-  "fmt"
-  "os"
-)
-type %v struct {%v
- Buffer string
- Min, Max int
- rules [%d]func() bool
-}
-
-type parseError struct {
-     p *%v
-}
-
-func (p *%v) Parse() os.Error {
- if p.rules[0]() {
-  return nil
- }
- return &parseError{ p }
-}
-
-func (e *parseError) String() string {
- buf := new(bytes.Buffer)
- line := 1
- character := 0
- for i, c := range e.p.Buffer[0:] {
-  if c == '\n' {
-   line++
-   character = 0
-  } else {
-   character++
-  }
-  if i == e.p.Min {
-   if e.p.Min != e.p.Max {
-    fmt.Fprintf(buf, "parse error after line %%v character %%v\n", line, character)
-   } else {break}
-  } else if i == e.p.Max {break}
- }
- fmt.Fprintf(buf, "parse error: unexpected ")
- if e.p.Max >= len(e.p.Buffer) {
-  fmt.Fprintf(buf, "end of file found\n")
- } else {
-  fmt.Fprintf(buf, "'%%c' at line %%v character %%v\n", e.p.Buffer[e.p.Max], line, character)
- }
- return buf.String()
-}
-func (p *%v) Init() {
- var position int`,_package, name, state, len(t.rules), name, name, name)
-
-	hasActions := t.actions.Len() != 0
-	if hasActions {
+	if t.HasActions = counts[TypeAction] > 0; t.HasActions {
 		bits := 0
-		for length := t.actions.Len(); length != 0; length >>= 1 {
+		for length := t.Actions.Len(); length != 0; length >>= 1 {
 			bits++
 		}
 		switch {
@@ -794,128 +835,18 @@ func (p *%v) Init() {
 		case bits < 64:
 			bits = 64
 		}
-		print("\n actions := [...]func(buffer string, begin, end int) {\n")
-		for i := t.actions.Front(); i != nil; i = i.Next() {
-			a := i.Value.(Action)
-			print("  /* %v %v */\n", a.GetId(), a.GetRule())
-			print("  func(buffer string, begin, end int) {\n")
-			print("   %v\n", a)
-			print("  },\n")
-		}
-		print(
-			` }
- var thunkPosition, begin, end int
- thunks := make([]struct {action uint%d; begin, end int}, 32)
- do := func(action uint%d) {
-  if thunkPosition == len(thunks) {
-   newThunks := make([]struct {action uint%d; begin, end int}, 2 * len(thunks))
-   copy(newThunks, thunks)
-   thunks = newThunks
-  }
-  thunks[thunkPosition].action = action
-  thunks[thunkPosition].begin = begin
-  thunks[thunkPosition].end = end
-  thunkPosition++
- }`, bits, bits, bits)
-		if counts[TypeCommit] > 0 {
-			print(
-				`
- commit := func(thunkPosition0 int) bool {
-  if thunkPosition0 == 0 {
-   for thunk := 0; thunk < thunkPosition; thunk++ {
-    actions[thunks[thunk].action](p.Buffer, thunks[thunk].begin, thunks[thunk].end)
-   }
-   p.Min = position
-   thunkPosition = 0
-   return true
-  }
-  return false
- }`)
-		}
+		t.Bits = bits
+
 		printSave = func(n uint) { print("\n   position%d,  thunkPosition%d := position, thunkPosition", n, n) }
 		printRestore = func(n uint) { print("   position, thunkPosition = position%d, thunkPosition%d", n, n) }
 	}
 
-	if counts[TypeDot] > 0 {
-		print(
-			`
- matchDot := func() bool {
-  if position < len(p.Buffer) {
-   position++
-   return true
-  } else if position >= p.Max {
-   p.Max = position
-  }
-  return false
- }`)
-	}
-	if counts[TypeCharacter] > 0 {
-		print(
-			`
- matchChar := func(c byte) bool {
-  if (position < len(p.Buffer)) && (p.Buffer[position] == c) {
-   position++
-   return true
-  } else if position >= p.Max {
-   p.Max = position
-  }
-  return false
- }`)
-	}
-	if counts[TypeString] > 0 {
-		print(
-			`
- matchString := func(s string) bool {
-  length := len(s)
-  next := position + length
-  if (next <= len(p.Buffer)) && (p.Buffer[position:next] == s) {
-   position = next
-   return true
-  } else if position >= p.Max {
-   p.Max = position
-  }
-  return false
- }`)
-	}
-	if counts[TypeRange] > 0 {
-		print(
-			`
- matchRange := func(lower byte, upper byte) bool {
-  if (position < len(p.Buffer)) && (p.Buffer[position] >= lower) && (p.Buffer[position] <= upper) {
-   position++
-   return true
-  } else if position >= p.Max {
-   p.Max = position
-  }
-  return false
- }`)
-	}
-	classes := make(map[string]uint)
-	if len(t.classes) != 0 {
-		print("\n classes := [...][32]uint8 {\n")
-		var index uint
-		for className, classBitmap := range t.classes {
-			classes[className] = index
-			print("  [32]uint8{")
-			for _, b := range *classBitmap {
-				print("%d, ", b)
-			}
-			print("},\n")
-			index++
-		}
-		print(
-			` }
- matchClass := func(class uint) bool {
-  if (position < len(p.Buffer)) &&
-     ((classes[class][p.Buffer[position] >> 3] & (1 << (p.Buffer[position] & 7))) != 0) {
-   position++
-   return true
-  } else if position >= p.Max {
-   p.Max = position
-  }
-  return false
- }`)
-	}
+	t.HasCommit = counts[TypeCommit] > 0
+	t.HasDot = counts[TypeDot] > 0
+	t.HasCharacter = counts[TypeCharacter] > 0
+	t.HasString = counts[TypeString] > 0
+	t.HasRange = counts[TypeRange] > 0
+	printTemplate(PEG_HEADER_TEMPLATE)
 
 	var printRule func(node Node)
 	var compile func(expression Node, ko uint)
@@ -937,16 +868,16 @@ func (p *%v) Init() {
 		switch node.GetType() {
 		case TypeRule:
 			print("%v <- ", node)
-			expression := node.(Rule).GetExpression()
-			if expression != nilNode {
-				printRule(expression)
-			}
+			printRule(node.(Rule).GetExpression())
 		case TypeDot:
 			print(".")
 		case TypeName:
 			print("%v", node)
-		case TypeCharacter, TypeString:
-			print("'%v'", escape(node.String()[0]))
+		case TypeCharacter:
+			print("'%v'", escape(node.String()))
+		case TypeString:
+			s := escape(node.String())
+			print("'%v'", s[1:len(s) - 1])
 		case TypeRange:
 			list := node.(List)
 			element := list.Front()
@@ -972,9 +903,6 @@ func (p *%v) Init() {
 			for element = element.Next(); element != nil; element = element.Next() {
 				print(" / ")
 				printRule(element.Value.(Node))
-			}
-			if list.GetLastIsEmpty() {
-				print(" /")
 			}
 			print(")")
 		case TypeUnorderedAlternate:
@@ -1010,6 +938,7 @@ func (p *%v) Init() {
 		case TypePlus:
 			printRule(node.(List).Front().Value.(Node))
 			print("+")
+		case TypeNil:
 		default:
 			fmt.Fprintf(os.Stderr, "illegal node type: %v\n", node.GetType())
 		}
@@ -1038,37 +967,33 @@ func (p *%v) Init() {
 			lower := element.Value.(Node)
 			element = element.Next()
 			upper := element.Value.(Node)
-			print("\n   if !matchRange('%v', '%v') {", escape(lower.String()[0]), escape(upper.String()[0]))
+			print("\n   if !matchRange('%v', '%v') {", escape(lower.String()), escape(upper.String()))
 			printJump(ko)
 			print("}")
 		case TypeCharacter:
-			print("\n   if !matchChar('%v') {", escape(node.String()[0]))
+			print("\n   if !matchChar('%v') {", escape(node.String()))
 			printJump(ko)
 			print("}")
-			/*  case TypeString:
-			print("\n   if !matchString(\"%v\") {", node)
+		case TypeString:
+			print("\n   if !matchString(%v) {", strconv.Quote(node.String()))
 			printJump(ko)
-			print("}")*/
-			/*  case TypeClass:
-			print("\n   if !matchClass(%d) {", classes[node.String()])
-			printJump(ko)
-			print("}")*/
+			print("}")
 		case TypePredicate:
 			print("\n   if !(%v) {", node)
 			printJump(ko)
 			print("}")
 		case TypeAction:
-			print("\n   do(%d)", node.(Action).GetId())
+			print("\n   do(%d)", node.GetId())
 		case TypeCommit:
 			print("\n   if !(commit(thunkPosition0)) {")
 			printJump(ko)
 			print("}")
 		case TypeBegin:
-			if hasActions {
+			if t.HasActions {
 				print("\n   begin = position")
 			}
 		case TypeEnd:
-			if hasActions {
+			if t.HasActions {
 				print("\n   end = position")
 			}
 		case TypeAlternate:
@@ -1077,7 +1002,7 @@ func (p *%v) Init() {
 			label++
 			printBegin()
 			element := list.Front()
-			if element.Next() != nil || list.GetLastIsEmpty() {
+			if element.Next() != nil {
 				printSave(ok)
 			}
 			for element.Next() != nil {
@@ -1089,16 +1014,7 @@ func (p *%v) Init() {
 				printRestore(ok)
 				element = element.Next()
 			}
-			if list.GetLastIsEmpty() {
-				done := label
-				label++
-				compile(element.Value.(Node), done)
-				printJump(ok)
-				printLabel(done)
-				printRestore(ok)
-			} else {
-				compile(element.Value.(Node), ko)
-			}
+			compile(element.Value.(Node), ko)
 			printEnd()
 			printLabel(ok)
 		case TypeUnorderedAlternate:
@@ -1106,11 +1022,6 @@ func (p *%v) Init() {
 			done, ok := ko, label
 			label++
 			printBegin()
-			if list.GetLastIsEmpty() {
-				done = label
-				label++
-				printSave(ok)
-			}
 			print("\n   if position == len(p.Buffer) {")
 			printJump(done)
 			print("}")
@@ -1118,51 +1029,26 @@ func (p *%v) Init() {
 			element := list.Front()
 			for ; element.Next() != nil; element = element.Next() {
 				sequence := element.Value.(List).Front()
-				class := sequence.Value.(List).Front().Value.(Token).GetClass()
+				class := sequence.Value.(List).Front().Value.(List)
 				sequence = sequence.Next()
 				print("\n   case")
 				comma := false
-				for d := 0; d < 256; d++ {
-					if class.has(uint8(d)) {
-						if comma {
-							print(",")
-						}
-						s := ""
-						switch uint8(d) {
-						case '\a':
-							s = `\a` /* bel */
-						case '\b':
-							s = `\b` /* bs */
-						case '\f':
-							s = `\f` /* ff */
-						case '\n':
-							s = `\n` /* nl */
-						case '\r':
-							s = `\r` /* cr */
-						case '\t':
-							s = `\t` /* ht */
-						case '\v':
-							s = `\v` /* vt */
-						case '\'':
-							s = `\'` /* ' */
-						default:
-							s = fmt.Sprintf("%c", d)
-						}
-						print(" '%s'", s)
+				for character := class.Front(); character != nil; character = character.Next() {
+					if comma {
+						print(",")
+					} else {
 						comma = true
 					}
+					print(" '%s'", escape(character.Value.(Token).String()))
 				}
 				print(":")
 				compile(sequence.Value.(Node), done)
+				print("\nbreak")
 			}
 			print("\n   default:")
 			compile(element.Value.(List).Front().Next().Value.(Node), done)
+			print("\nbreak")
 			print("\n   }")
-			if list.GetLastIsEmpty() {
-				printJump(ok)
-				printLabel(done)
-				printRestore(ok)
-			}
 			printEnd()
 			printLabel(ok)
 		case TypeSequence:

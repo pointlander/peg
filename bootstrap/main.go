@@ -10,7 +10,7 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(2)
-	t := New(false, false)
+	t := New(true, true)
 
 	/*package main
 	  type Peg Peg {
@@ -109,9 +109,9 @@ func main() {
 	t.AddExpression()
 
 	/* Expression      <- Sequence (SLASH Sequence     { p.AddAlternate() }
-	           )* (SLASH           { p.AddEmptyAlternate() }
+	           )* (SLASH           { p.AddNil(); p.AddAlternate() }
 	              )?
-	/ */
+	/ { p.AddNil() } */
 	t.AddRule("Expression")
 	t.AddName("Sequence")
 	t.AddName("SLASH")
@@ -122,11 +122,12 @@ func main() {
 	t.AddStar()
 	t.AddSequence()
 	t.AddName("SLASH")
-	t.AddAction(" p.AddEmptyAlternate() ")
+	t.AddAction(" p.AddNil(); p.AddAlternate() ")
 	t.AddSequence()
 	t.AddQuery()
 	t.AddSequence()
-	t.AddEmptyAlternate()
+	t.AddAction(" p.AddNil() ")
+	t.AddAlternate()
 	t.AddExpression()
 
 	/* Sequence        <- Prefix (Prefix               { p.AddSequence() }
