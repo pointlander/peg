@@ -17,4 +17,4 @@ CLEANFILES+=calculator.peg.go
 include $(GOROOT)/src/Make.cmd
 
 calculator.peg.go: calculator.peg
-	../peg calculator.peg
+	../peg -switch -inline calculator.peg
