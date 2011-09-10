@@ -85,19 +85,19 @@ func main() {
 	t.AddExpression()
 
 	/* Definition      <- Identifier                   { p.AddRule(buffer[begin:end]) }
-	   LEFTARROW Expression         { p.AddExpression() } &(Identifier LEFTARROW / !.) commit */
+	   LeftArrow Expression         { p.AddExpression() } &(Identifier LeftArrow / !.) commit */
 	t.AddRule("Definition")
 	t.AddName("Identifier")
 	t.AddAction(" p.AddRule(buffer[begin:end]) ")
 	t.AddSequence()
-	t.AddName("LEFTARROW")
+	t.AddName("LeftArrow")
 	t.AddSequence()
 	t.AddName("Expression")
 	t.AddSequence()
 	t.AddAction(" p.AddExpression() ")
 	t.AddSequence()
 	t.AddName("Identifier")
-	t.AddName("LEFTARROW")
+	t.AddName("LeftArrow")
 	t.AddSequence()
 	t.AddDot()
 	t.AddPeekNot()
@@ -108,20 +108,20 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	/* Expression      <- Sequence (SLASH Sequence     { p.AddAlternate() }
-	           )* (SLASH           { p.AddNil(); p.AddAlternate() }
+	/* Expression      <- Sequence (Slash Sequence     { p.AddAlternate() }
+	           )* (Slash           { p.AddNil(); p.AddAlternate() }
 	              )?
 	/ { p.AddNil() } */
 	t.AddRule("Expression")
 	t.AddName("Sequence")
-	t.AddName("SLASH")
+	t.AddName("Slash")
 	t.AddName("Sequence")
 	t.AddSequence()
 	t.AddAction(" p.AddAlternate() ")
 	t.AddSequence()
 	t.AddStar()
 	t.AddSequence()
-	t.AddName("SLASH")
+	t.AddName("Slash")
 	t.AddAction(" p.AddNil(); p.AddAlternate() ")
 	t.AddSequence()
 	t.AddQuery()
@@ -141,23 +141,23 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	/* Prefix          <- AND Action                   { p.AddPredicate(buffer[begin:end]) }
-	   / AND Suffix                   { p.AddPeekFor() }
-	   / NOT Suffix                   { p.AddPeekNot() }
+	/* Prefix          <- And Action                   { p.AddPredicate(buffer[begin:end]) }
+	   / And Suffix                   { p.AddPeekFor() }
+	   / Not Suffix                   { p.AddPeekNot() }
 	   /     Suffix */
 	t.AddRule("Prefix")
-	t.AddName("AND")
+	t.AddName("And")
 	t.AddName("Action")
 	t.AddSequence()
 	t.AddAction(" p.AddPredicate(buffer[begin:end]) ")
 	t.AddSequence()
-	t.AddName("AND")
+	t.AddName("And")
 	t.AddName("Suffix")
 	t.AddSequence()
 	t.AddAction(" p.AddPeekFor() ")
 	t.AddSequence()
 	t.AddAlternate()
-	t.AddName("NOT")
+	t.AddName("Not")
 	t.AddName("Suffix")
 	t.AddSequence()
 	t.AddAction(" p.AddPeekNot() ")
@@ -167,20 +167,20 @@ func main() {
 	t.AddAlternate()
 	t.AddExpression()
 
-	/* Suffix          <- Primary (QUESTION            { p.AddQuery() }
-	   / STAR             { p.AddStar() }
-	   / PLUS             { p.AddPlus() }
+	/* Suffix          <- Primary (Question            { p.AddQuery() }
+	   / Star             { p.AddStar() }
+	   / Plus             { p.AddPlus() }
 	 )? */
 	t.AddRule("Suffix")
 	t.AddName("Primary")
-	t.AddName("QUESTION")
+	t.AddName("Question")
 	t.AddAction(" p.AddQuery() ")
 	t.AddSequence()
-	t.AddName("STAR")
+	t.AddName("Star")
 	t.AddAction(" p.AddStar() ")
 	t.AddSequence()
 	t.AddAlternate()
-	t.AddName("PLUS")
+	t.AddName("Plus")
 	t.AddAction(" p.AddPlus() ")
 	t.AddSequence()
 	t.AddAlternate()
@@ -189,14 +189,13 @@ func main() {
 	t.AddExpression()
 
 	/* Primary         <- 'commit' Spacing             { p.AddCommit() }
-	   / Identifier !LEFTARROW        { p.AddName(buffer[begin:end]) }
-	   / OPEN Expression CLOSE
+	   / Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
+	   / Open Expression Close
 	   / Literal
 	   / Class
-	   / DOT                          { p.AddDot() }
+	   / Dot                          { p.AddDot() }
 	   / Action                       { p.AddAction(buffer[begin:end]) }
-	   / BEGIN                        { p.AddBegin() }
-	   / END                          { p.AddEnd() } */
+	   / Begin Expression End         { p.AddPush() }*/
 	t.AddRule("Primary")
 	t.AddCharacter(`c`)
 	t.AddCharacter(`o`)
@@ -214,23 +213,23 @@ func main() {
 	t.AddAction(" p.AddCommit() ")
 	t.AddSequence()
 	t.AddName("Identifier")
-	t.AddName("LEFTARROW")
+	t.AddName("LeftArrow")
 	t.AddPeekNot()
 	t.AddSequence()
 	t.AddAction(" p.AddName(buffer[begin:end]) ")
 	t.AddSequence()
 	t.AddAlternate()
-	t.AddName("OPEN")
+	t.AddName("Open")
 	t.AddName("Expression")
 	t.AddSequence()
-	t.AddName("CLOSE")
+	t.AddName("Close")
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddName("Literal")
 	t.AddAlternate()
 	t.AddName("Class")
 	t.AddAlternate()
-	t.AddName("DOT")
+	t.AddName("Dot")
 	t.AddAction(" p.AddDot() ")
 	t.AddSequence()
 	t.AddAlternate()
@@ -238,26 +237,23 @@ func main() {
 	t.AddAction(" p.AddAction(buffer[begin:end]) ")
 	t.AddSequence()
 	t.AddAlternate()
-	t.AddName("BEGIN")
-	t.AddAction(" p.AddBegin() ")
+	t.AddName("Begin")
+	t.AddName("Expression")
 	t.AddSequence()
-	t.AddAlternate()
-	t.AddName("END")
-	t.AddAction(" p.AddEnd() ")
+	t.AddName("End")
+	t.AddSequence()
+	t.AddAction(" p.AddPush() ")
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddExpression()
 
 	/* Identifier      <- < IdentStart IdentCont* > Spacing */
 	t.AddRule("Identifier")
-	t.AddBegin()
 	t.AddName("IdentStart")
-	t.AddSequence()
 	t.AddName("IdentCont")
 	t.AddStar()
 	t.AddSequence()
-	t.AddEnd()
-	t.AddSequence()
+	t.AddPush()
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
@@ -283,42 +279,6 @@ func main() {
 	t.AddRange()
 	t.AddAlternate()
 	t.AddExpression()
-
-	/* Literal         <- ['] < (!['] Char )* > ['] Spacing
-	   / ["] < (!["] Char )* > ["] Spacing */
-	/*t.AddRule("Literal")
-	t.AddClass("'")
-	t.AddBegin()
-	t.AddSequence()
-	t.AddClass("'")
-	t.AddPeekNot()
-	t.AddName("Char")
-	t.AddSequence()
-	t.AddStar()
-	t.AddSequence()
-	t.AddEnd()
-	t.AddSequence()
-	t.AddClass("'")
-	t.AddSequence()
-	t.AddName("Spacing")
-	t.AddSequence()
-	t.AddClass(`"`)
-	t.AddBegin()
-	t.AddSequence()
-	t.AddClass(`"`)
-	t.AddPeekNot()
-	t.AddName("Char")
-	t.AddSequence()
-	t.AddStar()
-	t.AddSequence()
-	t.AddEnd()
-	t.AddSequence()
-	t.AddClass(`"`)
-	t.AddSequence()
-	t.AddName("Spacing")
-	t.AddSequence()
-	t.AddAlternate()
-	t.AddExpression()*/
 
 	/* Literal         <- ['] (!['] Char)? (!['] Char          { p.AddSequence() }
 	                      )* ['] Spacing
@@ -365,25 +325,6 @@ func main() {
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddExpression()
-
-	/* Class           <- '[' < (!']' Range)* > ']' Spacing */
-	/*t.AddRule("Class")
-	t.AddString("[")
-	t.AddBegin()
-	t.AddSequence()
-	t.AddString("]")
-	t.AddPeekNot()
-	t.AddName("Range")
-	t.AddSequence()
-	t.AddStar()
-	t.AddSequence()
-	t.AddEnd()
-	t.AddSequence()
-	t.AddString("]")
-	t.AddSequence()
-	t.AddName("Spacing")
-	t.AddSequence()
-	t.AddExpression()*/
 
 	/* Class           <- '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
 	    / Ranges )?
@@ -446,41 +387,6 @@ func main() {
 	t.AddName("Char")
 	t.AddAlternate()
 	t.AddExpression()
-
-	/* Char            <- '\\' [abefnrtv'"\[\]\\]
-	   / '\\' [0-3][0-7][0-7]
-	   / '\\' [0-7][0-7]?
-	   / '\\' '-'
-	   / !'\\' . */
-	/*t.AddRule("Char")
-	t.AddString(`\\`)
-	t.AddClass(`abefnrtv'"\[\]\\`)
-	t.AddSequence()
-	t.AddString(`\\`)
-	t.AddClass("0-3")
-	t.AddSequence()
-	t.AddClass("0-7")
-	t.AddSequence()
-	t.AddClass("0-7")
-	t.AddSequence()
-	t.AddAlternate()
-	t.AddString(`\\`)
-	t.AddClass("0-7")
-	t.AddSequence()
-	t.AddClass("0-7")
-	t.AddQuery()
-	t.AddSequence()
-	t.AddAlternate()
-	t.AddString(`\\`)
-	t.AddString("-")
-	t.AddSequence()
-	t.AddAlternate()
-	t.AddString(`\\`)
-	t.AddPeekNot()
-	t.AddDot()
-	t.AddSequence()
-	t.AddAlternate()
-	t.AddExpression()*/
 
 	/* Char            <- '\\a'                      { p.AddCharacter("\a") }   # bell
 	   / '\\b'                      { p.AddCharacter("\b") }   # bs
@@ -578,12 +484,9 @@ func main() {
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
-	t.AddBegin()
-	t.AddSequence()
 	t.AddCharacter(`0`)
 	t.AddCharacter(`3`)
 	t.AddRange()
-	t.AddSequence()
 	t.AddCharacter(`0`)
 	t.AddCharacter(`7`)
 	t.AddRange()
@@ -592,24 +495,21 @@ func main() {
 	t.AddCharacter(`7`)
 	t.AddRange()
 	t.AddSequence()
-	t.AddEnd()
+	t.AddPush()
 	t.AddSequence()
 	t.AddAction(` p.AddOctalCharacter(buffer[begin:end]) `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
-	t.AddBegin()
-	t.AddSequence()
 	t.AddCharacter(`0`)
 	t.AddCharacter(`7`)
 	t.AddRange()
-	t.AddSequence()
 	t.AddCharacter(`0`)
 	t.AddCharacter(`7`)
 	t.AddRange()
 	t.AddQuery()
 	t.AddSequence()
-	t.AddEnd()
+	t.AddPush()
 	t.AddSequence()
 	t.AddAction(` p.AddOctalCharacter(buffer[begin:end]) `)
 	t.AddSequence()
@@ -622,19 +522,16 @@ func main() {
 	t.AddAlternate()
 	t.AddCharacter("\\")
 	t.AddPeekNot()
-	t.AddBegin()
-	t.AddSequence()
 	t.AddDot()
-	t.AddSequence()
-	t.AddEnd()
+	t.AddPush()
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter(buffer[begin:end]) `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddExpression()
 
-	/* LEFTARROW       <- '<-' Spacing */
-	t.AddRule("LEFTARROW")
+	/* LeftArrow       <- '<-' Spacing */
+	t.AddRule("LeftArrow")
 	t.AddCharacter(`<`)
 	t.AddCharacter(`-`)
 	t.AddSequence()
@@ -642,64 +539,64 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	/* SLASH           <- '/' Spacing */
-	t.AddRule("SLASH")
+	/* Slash           <- '/' Spacing */
+	t.AddRule("Slash")
 	t.AddCharacter(`/`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* AND             <- '&' Spacing */
-	t.AddRule("AND")
+	/* And             <- '&' Spacing */
+	t.AddRule("And")
 	t.AddCharacter(`&`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* NOT             <- '!' Spacing */
-	t.AddRule("NOT")
+	/* Not             <- '!' Spacing */
+	t.AddRule("Not")
 	t.AddCharacter(`!`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* QUESTION        <- '?' Spacing */
-	t.AddRule("QUESTION")
+	/* Question        <- '?' Spacing */
+	t.AddRule("Question")
 	t.AddCharacter(`?`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* STAR            <- '*' Spacing */
-	t.AddRule("STAR")
+	/* Star            <- '*' Spacing */
+	t.AddRule("Star")
 	t.AddCharacter(`*`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* PLUS            <- '+' Spacing */
-	t.AddRule("PLUS")
+	/* Plus            <- '+' Spacing */
+	t.AddRule("Plus")
 	t.AddCharacter(`+`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* OPEN            <- '(' Spacing */
-	t.AddRule("OPEN")
+	/* Open            <- '(' Spacing */
+	t.AddRule("Open")
 	t.AddCharacter(`(`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* CLOSE           <- ')' Spacing */
-	t.AddRule("CLOSE")
+	/* Close           <- ')' Spacing */
+	t.AddRule("Close")
 	t.AddCharacter(`)`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* DOT             <- '.' Spacing */
-	t.AddRule("DOT")
+	/* Dot             <- '.' Spacing */
+	t.AddRule("Dot")
 	t.AddCharacter(`.`)
 	t.AddName("Spacing")
 	t.AddSequence()
@@ -755,15 +652,12 @@ func main() {
 	/* Action          <- '{' < [^}]* > '}' Spacing */
 	t.AddRule("Action")
 	t.AddCharacter(`{`)
-	t.AddBegin()
-	t.AddSequence()
 	t.AddCharacter(`}`)
 	t.AddPeekNot()
 	t.AddDot()
 	t.AddSequence()
 	t.AddStar()
-	t.AddSequence()
-	t.AddEnd()
+	t.AddPush()
 	t.AddSequence()
 	t.AddCharacter(`}`)
 	t.AddSequence()
@@ -771,15 +665,15 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	/* BEGIN           <- '<' Spacing */
-	t.AddRule("BEGIN")
+	/* Begin           <- '<' Spacing */
+	t.AddRule("Begin")
 	t.AddCharacter(`<`)
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
-	/* END             <- '>' Spacing */
-	t.AddRule("END")
+	/* End             <- '>' Spacing */
+	t.AddRule("End")
 	t.AddCharacter(`>`)
 	t.AddName("Spacing")
 	t.AddSequence()

@@ -23,30 +23,29 @@ Grammar		<- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begi
                            commit
                            Definition+ EndOfFile
 Definition	<- Identifier 			{ p.AddRule(buffer[begin:end]) }
-		     LEFTARROW Expression	{ p.AddExpression() } &(Identifier LEFTARROW / !.) commit
-Expression	<- Sequence (SLASH Sequence	{ p.AddAlternate() }
-			    )* (SLASH           { p.AddNil(); p.AddAlternate() }
+		     LeftArrow Expression	{ p.AddExpression() } &(Identifier LeftArrow / !.) commit
+Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }
+			    )* (Slash           { p.AddNil(); p.AddAlternate() }
                                )?
                  /				{ p.AddNil() }
 Sequence	<- Prefix (Prefix		{ p.AddSequence() }
 			  )*
-Prefix		<- AND Action			{ p.AddPredicate(buffer[begin:end]) }
-		 / AND Suffix			{ p.AddPeekFor() }
-		 / NOT Suffix			{ p.AddPeekNot() }
+Prefix		<- And Action			{ p.AddPredicate(buffer[begin:end]) }
+		 / And Suffix			{ p.AddPeekFor() }
+		 / Not Suffix			{ p.AddPeekNot() }
 		 /     Suffix
-Suffix          <- Primary (QUESTION            { p.AddQuery() }
-                           / STAR               { p.AddStar() }
-                           / PLUS               { p.AddPlus() }
+Suffix          <- Primary (Question            { p.AddQuery() }
+                           / Star               { p.AddStar() }
+                           / Plus               { p.AddPlus() }
                            )?
 Primary	        <- 'commit' Spacing             { p.AddCommit() }
-                 / Identifier !LEFTARROW        { p.AddName(buffer[begin:end]) }
-                 / OPEN Expression CLOSE
+                 / Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
+                 / Open Expression Close
                  / Literal
                  / Class
-                 / DOT                          { p.AddDot() }
+                 / Dot                          { p.AddDot() }
                  / Action                       { p.AddAction(buffer[begin:end]) }
-                 / BEGIN                        { p.AddBegin() }
-                 / END                          { p.AddEnd() }
+                 / Begin Expression End         { p.AddPush() }
 
 # Lexical syntax
 
@@ -82,22 +81,21 @@ Char            <- '\\a'                      { p.AddCharacter("\a") }   # bell
                  / '\\\\'                     { p.AddCharacter("\\") }
                  / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
 
-LEFTARROW	<- '<-' Spacing
-SLASH		<- '/' Spacing
-AND		<- '&' Spacing
-NOT		<- '!' Spacing
-QUESTION	<- '?' Spacing
-STAR		<- '*' Spacing
-PLUS		<- '+' Spacing
-OPEN		<- '(' Spacing
-CLOSE		<- ')' Spacing
-DOT		<- '.' Spacing
+LeftArrow	<- '<-' Spacing
+Slash		<- '/' Spacing
+And		<- '&' Spacing
+Not		<- '!' Spacing
+Question	<- '?' Spacing
+Star		<- '*' Spacing
+Plus		<- '+' Spacing
+Open		<- '(' Spacing
+Close		<- ')' Spacing
+Dot		<- '.' Spacing
 Spacing		<- (Space / Comment)*
 Comment		<- '#' (!EndOfLine .)* EndOfLine
 Space		<- ' ' / '\t' / EndOfLine
 EndOfLine	<- '\r\n' / '\n' / '\r'
 EndOfFile	<- !.
-
 Action		<- '{' < [^}]* > '}' Spacing
-BEGIN		<- '<' Spacing
-END		<- '>' Spacing
+Begin		<- '<' Spacing
+End		<- '>' Spacing

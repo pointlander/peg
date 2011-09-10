@@ -11,8 +11,12 @@ import (
 	"runtime"
 )
 
-var inline = flag.Bool("inline", false, "parse rule inlining")
-var _switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
+var (
+	inline = flag.Bool("inline", false, "parse rule inlining")
+	_switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
+	syntax = flag.Bool("syntax", false, "print out the syntax tree")
+	highlight = flag.Bool("highlight", false, "test the syntax highlighter")
+)
 
 func main() {
 	runtime.GOMAXPROCS(2)
@@ -20,7 +24,7 @@ func main() {
 
 	if flag.NArg() != 1 {
 		flag.Usage()
-		log.Fatalf("  FILE: the peg file to compile")
+		log.Fatalf("FILE: the peg file to compile")
 	}
 	file := flag.Arg(0)
 
@@ -34,6 +38,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if *syntax {
+		p.PrintSyntaxTree()
+	}
+	if *highlight {
+		p.Highlighter()
+	}
 	filename := file + ".go"
 	p.Compile(filename)
 }
