@@ -19,7 +19,7 @@ import (
 )
 
 const PEG_HEADER_TEMPLATE =
-`package ${PackageName}
+`package {{.PackageName}}
 
 import (
 	"bytes"
@@ -34,16 +34,15 @@ type Rule uint8
 
 const (
 	RuleUnknown Rule = iota
-	${.repeated section RuleNames}
-	Rule${String}
-	${.end}
+	{{range .RuleNames}}Rule{{.String}}
+	{{end}}
 )
 
 var Rul3s = [...]string {
 	"Unknown",
-	${.repeated section RuleNames}
-	"${String}",
-	${.end} }
+	{{range .RuleNames}}"{{.String}}",
+	{{end}}
+}
 
 type TokenTree interface {
 	sort.Interface
@@ -54,28 +53,28 @@ type TokenTree interface {
 	Tokens() <-chan token32
 }
 
-${.repeated section Sizes}
+{{range .Sizes}}
 
 /* ${@} bit structure for abstract syntax tree */
-type token${@} struct {
+type token{{.}} struct {
 	Rule
-	begin, end, next int${@}
+	begin, end, next int{{.}}
 }
 
-func (t *token${@}) isZero() bool {
+func (t *token{{.}}) isZero() bool {
 	return t.Rule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
-type tokens${@} struct {
-	tree		[]token${@}
+type tokens{{.}} struct {
+	tree		[]token{{.}}
 	stackSize	int32
 }
 
-func (t *tokens${@}) Len() int {
+func (t *tokens{{.}}) Len() int {
 	return len(t.tree)
 }
 
-func (t *tokens${@}) Less(i, j int) bool {
+func (t *tokens{{.}}) Less(i, j int) bool {
 	ii, jj := t.tree[i], t.tree[j]
 	if ii.Rule != RuleUnknown {
 		if jj.Rule == RuleUnknown {
@@ -99,17 +98,17 @@ func (t *tokens${@}) Less(i, j int) bool {
 	return false
 }
 
-func (t *tokens${@}) Swap(i, j int) {
+func (t *tokens{{.}}) Swap(i, j int) {
 	t.tree[i], t.tree[j] = t.tree[j], t.tree[i]
 }
 
-func (t *tokens${@}) Prepare() {
+func (t *tokens{{.}}) Prepare() {
 	sort.Sort(t)
 	size := int(t.tree[0].next) + 1
 
-	tree, stack, top := t.tree[0:size], make([]token${@}, size), -1
+	tree, stack, top := t.tree[0:size], make([]token{{.}}, size), -1
 	for i, token := range tree {
-		token.next = int${@}(i)
+		token.next = int{{.}}(i)
 		for top >= 0 && token.begin >= stack[top].end {
 			tree[stack[top].next].next, top = token.next, top - 1
 		}
@@ -126,18 +125,18 @@ func (t *tokens${@}) Prepare() {
 	t.tree = tree
 }
 
-func (t *tokens${@}) Add(rule Rule, begin, end, next int) {
-	t.tree[next] = token${@}{Rule: rule, begin: int${@}(begin), end: int${@}(end), next: int${@}(next)}
+func (t *tokens{{.}}) Add(rule Rule, begin, end, next int) {
+	t.tree[next] = token{{.}}{Rule: rule, begin: int{{.}}(begin), end: int{{.}}(end), next: int{{.}}(next)}
 }
 
-func (t *tokens${@}) Stack() []token32 {
+func (t *tokens{{.}}) Stack() []token32 {
 	if t.stackSize == 0 {
 		t.Prepare()
 	}
 	return make([]token32, t.stackSize)
 }
 
-func (t *tokens${@}) Tokens() <-chan token32 {
+func (t *tokens{{.}}) Tokens() <-chan token32 {
 	s := make(chan token32, 16)
 	go func() {
 		for _, v := range t.tree {
@@ -147,7 +146,7 @@ func (t *tokens${@}) Tokens() <-chan token32 {
 	}()
 	return s
 }
-${.end}
+{{end}}
 
 func (t *tokens16) Expand(index int) TokenTree {
 	tree := t.tree
@@ -172,23 +171,23 @@ func (t *tokens32) Expand(index int) TokenTree {
 	return nil
 }
 
-type ${StructName} struct {
-	${StructVariables}
+type {{.StructName}} struct {
+	{{.StructVariables}}
 	Buffer		string
 	Min, Max	int
-	rules		[${RulesCount}]func() bool
+	rules		[{{.RulesCount}}]func() bool
 
 	TokenTree
 }
 
-func (p *${StructName}) Add(rule Rule, begin, end, next int) {
+func (p *{{.StructName}}) Add(rule Rule, begin, end, next int) {
 	if tree := p.TokenTree.Expand(next); tree != nil {
 		p.TokenTree = tree
 	}
 	p.TokenTree.Add(rule, begin, end, next)
 }
 
-func (p *${StructName}) Parse() os.Error {
+func (p *{{.StructName}}) Parse() os.Error {
 	if p.rules[0]() {
 		return nil
 	}
@@ -196,7 +195,7 @@ func (p *${StructName}) Parse() os.Error {
 }
 
 type parseError struct {
-	p *${StructName}
+	p *{{.StructName}}
 }
 
 func (e *parseError) String() string {
@@ -231,7 +230,7 @@ func (e *parseError) String() string {
 	return buf.String()
 }
 
-func (p *${StructName}) PrintSyntaxTree() {
+func (p *{{.StructName}}) PrintSyntaxTree() {
 	tokenTree := p.TokenTree
 	stack, top, i := tokenTree.Stack(), -1, 0
 	for token := range tokenTree.Tokens() {
@@ -249,7 +248,7 @@ func (p *${StructName}) PrintSyntaxTree() {
 	}
 }
 
-func (p *${StructName}) Highlighter() {
+func (p *{{.StructName}}) Highlighter() {
 	tokenTree := p.TokenTree
 	stack, top, i, c := tokenTree.Stack(), -1, 0, 0
 	for token := range tokenTree.Tokens() {
@@ -274,25 +273,24 @@ func (p *${StructName}) Highlighter() {
 	}
 }
 
-func (p *${StructName}) Init() {
+func (p *{{.StructName}}) Init() {
 	position, tokenIndex := 0, 0
 	p.TokenTree = &tokens16{tree: make([]token16, 65536)}
 
-	${.section HasActions}
+	{{if .HasActions}}
  	actions := [...]func(buffer string, begin, end int) {
-		${.repeated section Actions}
-		/* ${GetId} */
+		{{range .Actions}}/* {{.GetId}} */
 		func(buffer string, begin, end int) {
-			${String}
+			{{.String}}
 		},
-		${.end}
+		{{end}}
 	}
 
 	var thunkPosition, begin, end int
-	thunks := make([]struct {action uint${Bits}; begin, end int}, 32)
-	do := func(action uint${Bits}) {
+	thunks := make([]struct {action uint{{.Bits}}; begin, end int}, 32)
+	do := func(action uint{{.Bits}}) {
 		if thunkPosition == len(thunks) {
-			newThunks := make([]struct {action uint${Bits}; begin, end int}, 2 * len(thunks))
+			newThunks := make([]struct {action uint{{.Bits}}; begin, end int}, 2 * len(thunks))
 			copy(newThunks, thunks)
 			thunks = newThunks
 		}
@@ -302,7 +300,7 @@ func (p *${StructName}) Init() {
 		thunkPosition++
 	}
 
-	${.section HasCommit}
+	{{if .HasCommit}}
 	commit := func(thunkPosition0 int) bool {
 		if thunkPosition0 == 0 {
 			for thunk := 0; thunk < thunkPosition; thunk++ {
@@ -314,10 +312,10 @@ func (p *${StructName}) Init() {
 		}
 		return false
 	}
-	${.end}
-	${.end}
+	{{end}}
+	{{end}}
 
-	${.section HasDot}
+	{{if .HasDot}}
 	matchDot := func() bool {
 		if position < len(p.Buffer) {
 			position++
@@ -327,9 +325,9 @@ func (p *${StructName}) Init() {
 		}
 		return false
 	}
-	${.end}
+	{{end}}
 
-	${.section HasCharacter}
+	{{if .HasCharacter}}
 	matchChar := func(c byte) bool {
 		if (position < len(p.Buffer)) && (p.Buffer[position] == c) {
 			position++
@@ -339,9 +337,9 @@ func (p *${StructName}) Init() {
 		}
 		return false
 	}
-	${.end}
+	{{end}}
 
-	${.section HasString}
+	{{if .HasString}}
 	matchString := func(s string) bool {
 		length := len(s)
 		next := position + length
@@ -353,9 +351,9 @@ func (p *${StructName}) Init() {
 		}
 		return false
 	}
-	${.end}
+	{{end}}
 
-	${.section HasRange}
+	{{if .HasRange}}
 	matchRange := func(lower byte, upper byte) bool {
 		if (position < len(p.Buffer)) && (p.Buffer[position] >= lower) && (p.Buffer[position] <= upper) {
 			position++
@@ -365,7 +363,7 @@ func (p *${StructName}) Init() {
 		}
 		return false
 	}
-	${.end}
+	{{end}}
 
 	p.rules = [...]func() bool {`
 
@@ -689,15 +687,16 @@ func (t *Tree) Compile(file string) {
 		}
 	}
 
-	/*for name, r := range t.Rules {
+	/*Needed for undefined rules!*/
+	for name, r := range t.Rules {
 		if r.String() == "" {
-			fmt.Printf("name%s\n", name)
 			r := &node{Type: TypeRule, string: name, id: t.ruleId}
+			r.PushBack(&node{Type:TypeNil, string: "<nil>"})
 			t.ruleId++
 			t.Rules[name] = r
 			t.PushBack(r)
 		}
-	}*/
+	}
 	t.RulesCount = len(t.Rules)
 
 	join([]func(){
@@ -1100,12 +1099,7 @@ func (t *Tree) Compile(file string) {
 	print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { print("\n   position%d, tokenIndex%d := position, tokenIndex", n, n) }
 	printRestore := func(n uint) { print("   position, tokenIndex = position%d, tokenIndex%d", n, n) }
-	printTemplate := func(s string) {
-		templateEngine := template.New(nil)
-		templateEngine.SetDelims("${", "}")
-		if error := templateEngine.Parse(s); error != nil { panic(error) }
-		if error := templateEngine.Execute(&buffer, t); error != nil { panic(error) }
-	}
+	printTemplate := func(s string) { if error := template.Must(template.New("peg").Parse(s)).Execute(&buffer, t); error != nil { panic(error) } }
 
 	if t.HasActions = counts[TypeAction] > 0; t.HasActions {
 		bits := 0
@@ -1285,8 +1279,8 @@ func (t *Tree) Compile(file string) {
 			if t.HasActions {
 				print("\n   end = position")
 			}
-			print("\np.Add(Rule%v, begin%d, position, tokenIndex)", element.Next(), begin)
-			print("\ntokenIndex++")
+			print("\nif begin%d != position {p.Add(Rule%v, begin%d, position, tokenIndex)", begin, element.Next(), begin)
+			print("\ntokenIndex++}")
 			printEnd()
 		case TypeImplicitPush:
 			begin := label
@@ -1295,8 +1289,8 @@ func (t *Tree) Compile(file string) {
 			printBegin()
 			print("\nbegin%d := position", begin)
 			compile(element, ko)
-			print("\np.Add(Rule%v, begin%d, position, tokenIndex)", element.Next(), begin)
-			print("\ntokenIndex++")
+			print("\nif begin%d != position {p.Add(Rule%v, begin%d, position, tokenIndex)", begin, element.Next(), begin)
+			print("\ntokenIndex++}")
 			printEnd()
 		case TypeAlternate:
 			ok := label
