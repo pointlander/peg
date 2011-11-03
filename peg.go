@@ -7,7 +7,6 @@ package main
 import (
 	"bytes"
 	"container/list"
-	"container/vector"
 	"fmt"
 	"go/parser"
         "go/printer"
@@ -533,7 +532,7 @@ type Tree struct {
 	top             int
 	inline, _switch bool
 
-	RuleNames	vector.Vector
+	RuleNames	[]Node
 	Sizes		[2]int
 	PackageName     string
 	StructName      string
@@ -541,7 +540,7 @@ type Tree struct {
 	RulesCount      int
 	Bits            int
 	HasActions	bool
-	Actions         vector.Vector
+	Actions         []Node
 	HasCommit       bool
 	HasDot          bool
 	HasCharacter    bool
@@ -683,7 +682,7 @@ func (t *Tree) Compile(file string) {
 			t.StructVariables = node.Front().String()
 		case TypeRule:
 			t.Rules[node.String()] = node
-			t.RuleNames.Push(node)
+			t.RuleNames = append(t.RuleNames, node)
 		}
 	}
 
@@ -709,7 +708,7 @@ func (t *Tree) Compile(file string) {
 				switch nodeType {
 				case TypeAction:
 					node.SetId(int(id))
-					t.Actions.Push(node)
+					t.Actions = append(t.Actions, node)
 				case TypeRule, TypeAlternate, TypeUnorderedAlternate, TypeSequence,
 					TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus, TypePush:
 					for element := node.Front(); element != nil; element = element.Next() {
@@ -1103,7 +1102,7 @@ func (t *Tree) Compile(file string) {
 
 	if t.HasActions = counts[TypeAction] > 0; t.HasActions {
 		bits := 0
-		for length := t.Actions.Len(); length != 0; length >>= 1 {
+		for length := len(t.Actions); length != 0; length >>= 1 {
 			bits++
 		}
 		switch {
