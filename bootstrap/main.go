@@ -258,15 +258,11 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	/* IdentStart      <- [a-zA-Z_] */
+	/* IdentStart      <- [[a-z_]] */
 	t.AddRule("IdentStart")
 	t.AddCharacter(`a`)
 	t.AddCharacter(`z`)
-	t.AddRange()
-	t.AddCharacter(`A`)
-	t.AddCharacter(`Z`)
-	t.AddRange()
-	t.AddAlternate()
+	t.AddDoubleRange()
 	t.AddCharacter(`_`)
 	t.AddAlternate()
 	t.AddExpression()
@@ -281,9 +277,9 @@ func main() {
 	t.AddExpression()
 
 	/* Literal         <- ['] (!['] Char)? (!['] Char          { p.AddSequence() }
-	                      )* ['] Spacing
-	   / ["] (!["] Char)? (!["] Char          { p.AddSequence() }
-	                      )* ["] Spacing */
+	                                       )* ['] Spacing
+	                     / ["] (!["] DoubleChar)? (!["] DoubleChar          { p.AddSequence() }
+	                                              )* ["] Spacing */
 	t.AddRule("Literal")
 	t.AddCharacter(`'`)
 	t.AddCharacter(`'`)
@@ -307,13 +303,13 @@ func main() {
 	t.AddCharacter(`"`)
 	t.AddCharacter(`"`)
 	t.AddPeekNot()
-	t.AddName("Char")
+	t.AddName("DoubleChar")
 	t.AddSequence()
 	t.AddQuery()
 	t.AddSequence()
 	t.AddCharacter(`"`)
 	t.AddPeekNot()
-	t.AddName("Char")
+	t.AddName("DoubleChar")
 	t.AddSequence()
 	t.AddAction(` p.AddSequence() `)
 	t.AddSequence()
@@ -326,10 +322,30 @@ func main() {
 	t.AddAlternate()
 	t.AddExpression()
 
-	/* Class           <- '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
-	    / Ranges )?
-	']' Spacing */
+	/* Class  <- ( '[[' ( '^' DoubleRanges              { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
+                            / DoubleRanges )?
+                       ']]'
+                     / '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
+                           / Ranges )?
+                       ']' )
+                     Spacing */
 	t.AddRule("Class")
+	t.AddCharacter(`[`)
+	t.AddCharacter(`[`)
+	t.AddSequence()
+	t.AddCharacter(`^`)
+	t.AddName("DoubleRanges")
+	t.AddSequence()
+	t.AddAction(` p.AddPeekNot(); p.AddDot(); p.AddSequence() `)
+	t.AddSequence()
+	t.AddName("DoubleRanges")
+	t.AddAlternate()
+	t.AddQuery()
+	t.AddSequence()
+	t.AddCharacter(`]`)
+	t.AddCharacter(`]`)
+	t.AddSequence()
+	t.AddSequence()
 	t.AddCharacter(`[`)
 	t.AddCharacter(`^`)
 	t.AddName("Ranges")
@@ -342,12 +358,13 @@ func main() {
 	t.AddSequence()
 	t.AddCharacter(`]`)
 	t.AddSequence()
+	t.AddAlternate()
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
 
 	/* Ranges          <- !']' Range (!']' Range  { p.AddAlternate() }
-	   )* */
+	                                 )* */
 	t.AddRule("Ranges")
 	t.AddCharacter(`]`)
 	t.AddPeekNot()
@@ -363,19 +380,29 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	/* Range           <- Char '-' Char / Char */
-	/*t.AddRule("Range")
-	t.AddName("Char")
-	t.AddString("-")
+	/* DoubleRanges          <- !']]' DoubleRange (!']]' DoubleRange  { p.AddAlternate() }
+	                                              )* */
+	t.AddRule("DoubleRanges")
+	t.AddCharacter(`]`)
+	t.AddCharacter(`]`)
 	t.AddSequence()
-	t.AddName("Char")
+	t.AddPeekNot()
+	t.AddName("DoubleRange")
 	t.AddSequence()
-	t.AddName("Char")
-	t.AddAlternate()
-	t.AddExpression()*/
+	t.AddCharacter(`]`)
+	t.AddCharacter(`]`)
+	t.AddSequence()
+	t.AddPeekNot()
+	t.AddName("DoubleRange")
+	t.AddSequence()
+	t.AddAction(" p.AddAlternate() ")
+	t.AddSequence()
+	t.AddStar()
+	t.AddSequence()
+	t.AddExpression()
 
 	/* Range           <- Char '-' Char { p.AddRange() }
-	   / Char */
+                            / Char */
 	t.AddRule("Range")
 	t.AddName("Char")
 	t.AddCharacter(`-`)
@@ -388,67 +415,120 @@ func main() {
 	t.AddAlternate()
 	t.AddExpression()
 
-	/* Char            <- '\\a'                      { p.AddCharacter("\a") }   # bell
-	   / '\\b'                      { p.AddCharacter("\b") }   # bs
-	   / '\\e'                      { p.AddCharacter("\x1B") } # esc
-	   / '\\f'                      { p.AddCharacter("\f") }   # ff
-	   / '\\n'                      { p.AddCharacter("\n") }   # nl
-	   / '\\r'                      { p.AddCharacter("\r") }   # cr
-	   / '\\t'                      { p.AddCharacter("\t") }   # ht
-	   / '\\v'                      { p.AddCharacter("\v") }   # vt
-	   / "\\'"                      { p.AddCharacter("'") }
-	   / '\\"'                      { p.AddCharacter("\"") }
-	   / '\\['                      { p.AddCharacter("[") }
-	   / '\\]'                      { p.AddCharacter("]") }
-	   / '\\-'                      { p.AddCharacter("-") }
-	   / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
-	   / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
-	   / '\\\\'                     { p.AddCharacter("\\") }
-	   / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) } */
+	/* DoubleRange      <- Char '-' Char { p.AddDoubleRange() }
+                             / DoubleChar */
+	t.AddRule("DoubleRange")
+	t.AddName("Char")
+	t.AddCharacter(`-`)
+	t.AddSequence()
+	t.AddName("Char")
+	t.AddSequence()
+	t.AddAction(" p.AddDoubleRange() ")
+	t.AddSequence()
+	t.AddName("DoubleChar")
+	t.AddAlternate()
+	t.AddExpression()
+
+	/* Char            <- Escape
+                            / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) } */
 	t.AddRule("Char")
+	t.AddName("Escape")
 	t.AddCharacter("\\")
+	t.AddPeekNot()
+	t.AddDot()
+	t.AddPush()
+	t.AddSequence()
+	t.AddAction(` p.AddCharacter(buffer[begin:end]) `)
+	t.AddSequence()
+	t.AddAlternate()
+	t.AddExpression()
+
+	/* DoubleChar      <- Escape
+                            / <[a-zA-Z]>                 { p.AddDoubleCharacter(buffer[begin:end]) }
+                            / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) } */
+	t.AddRule("DoubleChar")
+	t.AddName("Escape")
 	t.AddCharacter(`a`)
+	t.AddCharacter(`z`)
+	t.AddRange()
+	t.AddCharacter(`A`)
+	t.AddCharacter(`Z`)
+	t.AddRange()
+	t.AddAlternate()
+	t.AddPush()
+	t.AddAction(` p.AddDoubleCharacter(buffer[begin:end]) `)
+	t.AddSequence()
+	t.AddAlternate()
+	t.AddCharacter("\\")
+	t.AddPeekNot()
+	t.AddDot()
+	t.AddPush()
+	t.AddSequence()
+	t.AddAction(` p.AddCharacter(buffer[begin:end]) `)
+	t.AddSequence()
+	t.AddAlternate()
+	t.AddExpression()
+
+	/* Escape            <- "\\a"                      { p.AddCharacter("\a") }   # bell
+	                      / "\\b"                      { p.AddCharacter("\b") }   # bs
+                              / "\\e"                      { p.AddCharacter("\x1B") } # esc
+                              / "\\f"                      { p.AddCharacter("\f") }   # ff
+                              / "\\n"                      { p.AddCharacter("\n") }   # nl
+                              / "\\r"                      { p.AddCharacter("\r") }   # cr
+                              / "\\t"                      { p.AddCharacter("\t") }   # ht
+                              / "\\v"                      { p.AddCharacter("\v") }   # vt
+                              / "\\'"                      { p.AddCharacter("'") }
+                              / '\\"'                      { p.AddCharacter("\"") }
+                              / '\\['                      { p.AddCharacter("[") }
+                              / '\\]'                      { p.AddCharacter("]") }
+                              / '\\-'                      { p.AddCharacter("-") }
+                              / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
+                              / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
+                              / '\\\\'                     { p.AddCharacter("\\") } */
+	t.AddRule("Escape")
+	t.AddCharacter("\\")
+	t.AddDoubleCharacter(`a`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\a") `)
 	t.AddSequence()
 	t.AddCharacter("\\")
-	t.AddCharacter(`b`)
+	t.AddDoubleCharacter(`b`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\b") `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
-	t.AddCharacter(`e`)
+	t.AddDoubleCharacter(`e`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\x1B") `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
-	t.AddCharacter(`f`)
+	t.AddDoubleCharacter(`f`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\f") `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
-	t.AddCharacter(`n`)
+	t.AddDoubleCharacter(`n`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\n") `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
-	t.AddCharacter(`r`)
+	t.AddDoubleCharacter(`r`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\r") `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
-	t.AddCharacter(`t`)
+	t.AddDoubleCharacter(`t`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\t") `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
-	t.AddCharacter(`v`)
+	t.AddDoubleCharacter(`v`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\v") `)
 	t.AddSequence()
@@ -518,14 +598,6 @@ func main() {
 	t.AddCharacter("\\")
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("\\") `)
-	t.AddSequence()
-	t.AddAlternate()
-	t.AddCharacter("\\")
-	t.AddPeekNot()
-	t.AddDot()
-	t.AddPush()
-	t.AddSequence()
-	t.AddAction(` p.AddCharacter(buffer[begin:end]) `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddExpression()

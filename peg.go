@@ -11,9 +11,9 @@ import (
 	"go/parser"
         "go/printer"
         "go/token"
-//	"math"
 	"os"
 	"strconv"
+	"strings"
 	"template"
 )
 
@@ -170,6 +170,8 @@ func (t *tokens32) Expand(index int) TokenTree {
 	return nil
 }
 
+const END_SYMBOL byte = 0
+
 type {{.StructName}} struct {
 	{{.StructVariables}}
 	Buffer		string
@@ -276,6 +278,8 @@ func (p *{{.StructName}}) Init() {
 	position, tokenIndex := 0, 0
 	p.TokenTree = &tokens16{tree: make([]token16, 65536)}
 
+	if p.Buffer[len(p.Buffer) - 1] != END_SYMBOL {p.Buffer = p.Buffer + string(END_SYMBOL)}
+
 	{{if .HasActions}}
  	actions := [...]func(buffer string, begin, end int) {
 		{{range .Actions}}/* {{.GetId}} */
@@ -316,7 +320,7 @@ func (p *{{.StructName}}) Init() {
 
 	{{if .HasDot}}
 	matchDot := func() bool {
-		if position < len(p.Buffer) {
+		if p.Buffer[position] != END_SYMBOL {
 			position++
 			return true
 		} else if position >= p.Max {
@@ -328,7 +332,7 @@ func (p *{{.StructName}}) Init() {
 
 	{{if .HasCharacter}}
 	matchChar := func(c byte) bool {
-		if (position < len(p.Buffer)) && (p.Buffer[position] == c) {
+		if p.Buffer[position] == c {
 			position++
 			return true
 		} else if position >= p.Max {
@@ -340,21 +344,22 @@ func (p *{{.StructName}}) Init() {
 
 	{{if .HasString}}
 	matchString := func(s string) bool {
-		length := len(s)
-		next := position + length
-		if (next <= len(p.Buffer)) && (p.Buffer[position:next] == s) {
-			position = next
-			return true
-		} else if position >= p.Max {
-			p.Max = position
+		i := position
+		for _, c := range s {
+			if p.Buffer[i] != byte(c) {
+				if i >= p.Max {p.Max = i}
+				return false
+			}
+			i++
 		}
-		return false
+		position = i
+		return true
 	}
 	{{end}}
 
 	{{if .HasRange}}
 	matchRange := func(lower byte, upper byte) bool {
-		if (position < len(p.Buffer)) && (p.Buffer[position] >= lower) && (p.Buffer[position] <= upper) {
+		if (p.Buffer[position] >= lower) && (p.Buffer[position] <= upper) {
 			position++
 			return true
 		} else if position >= p.Max {
@@ -527,7 +532,6 @@ type Tree struct {
 	rulesCount	map[string]uint
 	ruleId     	int
 	list.List
-	classes         map[string]*characterClass
 	stack           [1024]*node
 	top             int
 	inline, _switch bool
@@ -550,11 +554,10 @@ type Tree struct {
 
 func New(inline, _switch bool) *Tree {
 	return &Tree{Rules: make(map[string]Node),
-		Sizes: [2]int{16, 32},
-		rulesCount: make(map[string]uint),
-		classes:    make(map[string]*characterClass),
-		inline:     inline,
-		_switch:    _switch}
+                     Sizes: [2]int{16, 32},
+                     rulesCount: make(map[string]uint),
+                     inline: inline,
+                     _switch: _switch}
 }
 
 func (t *Tree) push(n *node) {
@@ -593,6 +596,11 @@ func (t *Tree) AddDot() { t.push(&node{Type: TypeDot, string: "."}) }
 func (t *Tree) AddCharacter(text string) {
 	t.push(&node{Type: TypeCharacter, string: text})
 }
+func (t *Tree) AddDoubleCharacter(text string) {
+	t.push(&node{Type: TypeCharacter, string: strings.ToLower(text)})
+	t.push(&node{Type: TypeCharacter, string: strings.ToUpper(text)})
+	t.AddAlternate()
+}
 func (t *Tree) AddOctalCharacter(text string) {
 	octal, _ := strconv.Btoui64(text, 8)
 	t.push(&node{Type: TypeCharacter, string: string(octal)})
@@ -624,6 +632,20 @@ func (t *Tree) addList(listType Type) {
 func (t *Tree) AddAlternate() { t.addList(TypeAlternate) }
 func (t *Tree) AddSequence() { t.addList(TypeSequence) }
 func (t *Tree) AddRange()    { t.addList(TypeRange) }
+func (t *Tree) AddDoubleRange()    {
+	a := t.pop()
+	b := t.pop()
+
+	t.AddCharacter(strings.ToLower(b.String()))
+	t.AddCharacter(strings.ToLower(a.String()))
+	t.addList(TypeRange)
+
+	t.AddCharacter(strings.ToUpper(b.String()))
+	t.AddCharacter(strings.ToUpper(a.String()))
+	t.addList(TypeRange)
+
+	t.AddAlternate()
+}
 
 func (t *Tree) addFix(fixType Type) {
 	n := &node{Type: fixType}
@@ -821,94 +843,11 @@ func (t *Tree) Compile(file string) {
 		expression.PushBack(rule.Copy())
 	}
 
-	/*var estimateMemory func(node Node, depth int) (estimates []estimate, consumed int)
-	ruleReached := make([]bool, len(t.Rules))
-	estimateMemory = func(node Node, depth int) (estimates []estimate, consumed int) {
-		switch node.GetType() {
-		case TypeRule:
-			id := node.GetId()
-			if ruleReached[id] {
-				return
-			}
-			ruleReached[id] = true
-			estimates, consumed = estimateMemory(node.Front(), depth)
-			ruleReached[id] = false
-			return
-		case TypeAlternate:
-			consumes := math.MaxInt32
-			//need to account for emtpy alternate!!!
-			for element := node.Front(); element != nil; element = element.Next() {
-				e, c := estimateMemory(element, depth)
-				if c == 0 {
-					consumed = 0
-					for i, _ := range estimates {
-						estimates[i].consumes = false
-					}
-					return
-				} else if c < consumes {
-					consumed, consumes, estimates = c, c, e
-				}
-			}
-			return
-		case TypeSequence:
-			for element := node.Front(); element != nil; element = element.Next() {
-				e, c := estimateMemory(element, depth)
-				if c != 0 {
-					consumed += c
-					for _, est := range e {
-						estimates = append(estimates, est)
-					}
-				}
-			}
-			return
-		case TypePlus:
-			estimates, consumed = estimateMemory(node.Front(), depth)
-			for _, e := range estimates {
-				e.consumes = false
-				estimates = append(estimates, e)
-			}
-			return
-		case TypeName:
-			estimates, consumed = estimateMemory(t.Rules[node.String()], depth)
-			return
-		case TypePush, TypeImplicitPush:
-			depth++
-			token := node.Front()
-			estimates, consumed = estimateMemory(token, depth)
-			e := estimate{consumed: consumed, depth: depth, consumes: true, name: token.Next().String(), estimates: estimates}
-			estimates = make([]estimate, 1)
-			estimates[0] = e
-			return
-		case TypeCharacter, TypeString:
-			consumed = len(node.String())
-			return
-		case TypeDot, TypeRange:
-			consumed = 1
-			return
-		}
-		return
-	}
-	var printEstimates func(estimates []estimate)
-	printEstimates = func(estimates []estimate) {
- 		for _, e := range estimates {
-			for c := 0; c < e.depth; c++ {
-				fmt.Printf(" ")
-			}
-			fmt.Printf("%v %v %v %v\n", e.consumed, e.consumes, e.name, float32(e.depth)/float32(e.consumed))
-			printEstimates(e.estimates)
-		}
-	}
-	for ruleName, rule := range t.Rules {
-		fmt.Printf("%s\n", ruleName)
-		estimates, _ := estimateMemory(rule, 0)
-		printEstimates(estimates)
-	}*/
-
 	if t._switch {
 		var optimizeAlternates func(node Node) (consumes, eof, peek bool, class *characterClass)
 		cache := make([]struct {
 			reached, consumes, eof, peek bool
-			class                        *characterClass
+			class *characterClass
 		}, len(t.Rules))
 		optimizeAlternates = func(n Node) (consumes, eof, peek bool, class *characterClass) {
 			switch n.GetType() {
@@ -1053,7 +992,7 @@ func (t *Tree) Compile(file string) {
 				fallthrough
 			case TypeQuery, TypeStar:
 				_, eof, _, class = optimizeAlternates(n.Front())
-			case TypePlus, TypePush:
+			case TypePlus, TypePush, TypeImplicitPush:
 				consumes, eof, peek, class = optimizeAlternates(n.Front())
 			case TypeAction, TypeNil:
 				class = new(characterClass)

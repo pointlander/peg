@@ -50,27 +50,40 @@ Primary	        <- 'commit' Spacing             { p.AddCommit() }
 # Lexical syntax
 
 Identifier	<- < IdentStart IdentCont* > Spacing
-IdentStart	<- [a-zA-Z_]
+IdentStart	<- [[a-z_]]
 IdentCont	<- IdentStart / [0-9]
-Literal		<- ['] (!['] Char)? (!['] Char		{ p.AddSequence() }
+Literal		<- ['] (!['] Char)? (!['] Char                { p.AddSequence() }
                                     )* ['] Spacing
-		 / ["] (!["] Char)? (!["] Char		{ p.AddSequence() }
-                                    )* ["] Spacing
-Class		<- '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
-                       / Ranges )?
-                   ']' Spacing
+		 / ["] (!["] DoubleChar)? (!["] DoubleChar    { p.AddSequence() }
+                                          )* ["] Spacing
+Class		<- ( '[[' ( '^' DoubleRanges              { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
+                          / DoubleRanges )?
+                     ']]'
+                   / '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
+                         / Ranges )?
+                     ']' )
+                   Spacing
 Ranges		<- !']' Range (!']' Range  { p.AddAlternate() }
                               )*
+DoubleRanges	<- !']]' DoubleRange (!']]' DoubleRange  { p.AddAlternate() }
+                                     )*
 Range		<- Char '-' Char              { p.AddRange() }
                  / Char
-Char            <- '\\a'                      { p.AddCharacter("\a") }   # bell
-                 / '\\b'                      { p.AddCharacter("\b") }   # bs
-                 / '\\e'                      { p.AddCharacter("\x1B") } # esc
-                 / '\\f'                      { p.AddCharacter("\f") }   # ff
-                 / '\\n'                      { p.AddCharacter("\n") }   # nl
-                 / '\\r'                      { p.AddCharacter("\r") }   # cr
-                 / '\\t'                      { p.AddCharacter("\t") }   # ht
-                 / '\\v'                      { p.AddCharacter("\v") }   # vt
+DoubleRange	<- Char '-' Char              { p.AddDoubleRange() }
+                 / DoubleChar
+Char            <- Escape
+                 / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
+DoubleChar	<- Escape
+		 / <[a-zA-Z]>                 { p.AddDoubleCharacter(buffer[begin:end]) }
+                 / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
+Escape          <- "\\a"                      { p.AddCharacter("\a") }   # bell
+                 / "\\b"                      { p.AddCharacter("\b") }   # bs
+                 / "\\e"                      { p.AddCharacter("\x1B") } # esc
+                 / "\\f"                      { p.AddCharacter("\f") }   # ff
+                 / "\\n"                      { p.AddCharacter("\n") }   # nl
+                 / "\\r"                      { p.AddCharacter("\r") }   # cr
+                 / "\\t"                      { p.AddCharacter("\t") }   # ht
+                 / "\\v"                      { p.AddCharacter("\v") }   # vt
                  / "\\'"		      { p.AddCharacter("'") }
                  / '\\"'		      { p.AddCharacter("\"") }
                  / '\\['                      { p.AddCharacter("[") }
@@ -79,8 +92,6 @@ Char            <- '\\a'                      { p.AddCharacter("\a") }   # bell
                  / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
                  / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
                  / '\\\\'                     { p.AddCharacter("\\") }
-                 / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
-
 LeftArrow	<- '<-' Spacing
 Slash		<- '/' Spacing
 And		<- '&' Spacing
