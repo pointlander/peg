@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	/*"bytes"*/
 	"fmt"
 	"os"
 	"sort"
@@ -95,11 +95,13 @@ var Rul3s = [...]string{
 
 type TokenTree interface {
 	sort.Interface
+	Print()
 	Prepare()
 	Add(rule Rule, begin, end, next int)
 	Expand(index int) TokenTree
 	Stack() []token32
 	Tokens() <-chan token32
+	Error() []token32
 }
 
 /* ${@} bit structure for abstract syntax tree */
@@ -112,9 +114,41 @@ func (t *token16) isZero() bool {
 	return t.Rule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
+func (t *token16) GetToken32() token32 {
+	return token32{Rule: t.Rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+}
+
+func (t *token16) String() string {
+	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", Rul3s[t.Rule], t.begin, t.end, t.next)
+}
+
 type tokens16 struct {
 	tree      []token16
 	stackSize int32
+}
+
+type trace16 struct {
+	*tokens16
+}
+
+func (t *trace16) Less(i, j int) bool {
+	ii, jj := t.tree[i], t.tree[j]
+	if ii.Rule != RuleUnknown {
+		if jj.Rule == RuleUnknown {
+			return true
+		} else if ii.end > jj.end {
+			return true
+		} else if ii.end == jj.end {
+			if ii.begin < jj.begin {
+				return true
+			} else if ii.begin == jj.begin {
+				if ii.next > jj.next {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (t *tokens16) Len() int {
@@ -149,6 +183,12 @@ func (t *tokens16) Swap(i, j int) {
 	t.tree[i], t.tree[j] = t.tree[j], t.tree[i]
 }
 
+func (t *tokens16) Print() {
+	for _, token := range t.tree {
+		fmt.Println(token.String())
+	}
+}
+
 func (t *tokens16) Prepare() {
 	sort.Sort(t)
 	size := int(t.tree[0].next) + 1
@@ -160,6 +200,10 @@ func (t *tokens16) Prepare() {
 			tree[stack[top].next].next, top = token.next, top-1
 		}
 		stack[top+1], top = token, top+1
+	}
+
+	for top >= 0 {
+		tree[stack[top].next].next, top = int16(size), top-1
 	}
 
 	for i, token := range stack {
@@ -187,11 +231,30 @@ func (t *tokens16) Tokens() <-chan token32 {
 	s := make(chan token32, 16)
 	go func() {
 		for _, v := range t.tree {
-			s <- token32{Rule: v.Rule, begin: int32(v.begin), end: int32(v.end), next: int32(v.next)}
+			s <- v.GetToken32()
 		}
 		close(s)
 	}()
 	return s
+}
+
+func (t *tokens16) Error() []token32 {
+	sort.Sort(&trace16{t})
+	open, i, tokens := t.tree[0], 0, make([]token32, 3)
+	tokens[i], i = open.GetToken32(), i+1
+
+	for _, token := range t.tree[1:] {
+		if token.Rule == RuleUnknown {
+			break
+		}
+		if token.begin < open.begin {
+			tokens[i], open, i = token.GetToken32(), token, i+1
+			if i >= len(tokens) {
+				break
+			}
+		}
+	}
+	return tokens
 }
 
 /* ${@} bit structure for abstract syntax tree */
@@ -204,9 +267,41 @@ func (t *token32) isZero() bool {
 	return t.Rule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
+func (t *token32) GetToken32() token32 {
+	return token32{Rule: t.Rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+}
+
+func (t *token32) String() string {
+	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", Rul3s[t.Rule], t.begin, t.end, t.next)
+}
+
 type tokens32 struct {
 	tree      []token32
 	stackSize int32
+}
+
+type trace32 struct {
+	*tokens32
+}
+
+func (t *trace32) Less(i, j int) bool {
+	ii, jj := t.tree[i], t.tree[j]
+	if ii.Rule != RuleUnknown {
+		if jj.Rule == RuleUnknown {
+			return true
+		} else if ii.end > jj.end {
+			return true
+		} else if ii.end == jj.end {
+			if ii.begin < jj.begin {
+				return true
+			} else if ii.begin == jj.begin {
+				if ii.next > jj.next {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (t *tokens32) Len() int {
@@ -241,6 +336,12 @@ func (t *tokens32) Swap(i, j int) {
 	t.tree[i], t.tree[j] = t.tree[j], t.tree[i]
 }
 
+func (t *tokens32) Print() {
+	for _, token := range t.tree {
+		fmt.Println(token.String())
+	}
+}
+
 func (t *tokens32) Prepare() {
 	sort.Sort(t)
 	size := int(t.tree[0].next) + 1
@@ -252,6 +353,10 @@ func (t *tokens32) Prepare() {
 			tree[stack[top].next].next, top = token.next, top-1
 		}
 		stack[top+1], top = token, top+1
+	}
+
+	for top >= 0 {
+		tree[stack[top].next].next, top = int32(size), top-1
 	}
 
 	for i, token := range stack {
@@ -279,11 +384,30 @@ func (t *tokens32) Tokens() <-chan token32 {
 	s := make(chan token32, 16)
 	go func() {
 		for _, v := range t.tree {
-			s <- token32{Rule: v.Rule, begin: int32(v.begin), end: int32(v.end), next: int32(v.next)}
+			s <- v.GetToken32()
 		}
 		close(s)
 	}()
 	return s
+}
+
+func (t *tokens32) Error() []token32 {
+	sort.Sort(&trace32{t})
+	open, i, tokens := t.tree[0], 0, make([]token32, 3)
+	tokens[i], i = open.GetToken32(), i+1
+
+	for _, token := range t.tree[1:] {
+		if token.Rule == RuleUnknown {
+			break
+		}
+		if token.begin < open.begin {
+			tokens[i], open, i = token.GetToken32(), token, i+1
+			if i >= len(tokens) {
+				break
+			}
+		}
+	}
+	return tokens
 }
 
 func (t *tokens16) Expand(index int) TokenTree {
@@ -291,8 +415,7 @@ func (t *tokens16) Expand(index int) TokenTree {
 	if index >= len(tree) {
 		expanded := make([]token32, 2*len(tree))
 		for i, v := range tree {
-			e := &expanded[i]
-			e.Rule, e.begin, e.end, e.next = v.Rule, int32(v.begin), int32(v.end), int32(v.next)
+			expanded[i] = v.GetToken32()
 		}
 		return &tokens32{tree: expanded}
 	}
@@ -314,9 +437,8 @@ const END_SYMBOL byte = 0
 type Peg struct {
 	*Tree
 
-	Buffer   string
-	Min, Max int
-	rules    [37]func() bool
+	Buffer string
+	rules  [37]func() bool
 
 	TokenTree
 }
@@ -335,40 +457,59 @@ func (p *Peg) Parse() os.Error {
 	return &parseError{p}
 }
 
+type textPosition struct {
+	line, symbol int
+}
+
+type textPositionMap map[int]textPosition
+
+func translatePositions(buffer string, positions []int) textPositionMap {
+	length, translations, j, line, symbol := len(positions), make(textPositionMap, len(positions)), 0, 1, 0
+	sort.Ints(positions)
+
+search:
+	for i, c := range buffer[0:] {
+		if c == '\n' {
+			line, symbol = line+1, 0
+		} else {
+			symbol++
+		}
+		if i == positions[j] {
+			translations[positions[j]] = textPosition{line, symbol}
+			for j++; j < length; j++ {
+				if i != positions[j] {
+					continue search
+				}
+			}
+			break search
+		}
+	}
+
+	return translations
+}
+
 type parseError struct {
 	p *Peg
 }
 
 func (e *parseError) String() string {
-	buf, line, character := new(bytes.Buffer), 1, 0
-
-	for i, c := range e.p.Buffer[0:] {
-		if c == '\n' {
-			line++
-			character = 0
-		} else {
-			character++
-		}
-
-		if i == e.p.Min {
-			if e.p.Min != e.p.Max {
-				fmt.Fprintf(buf, "parse error after line %v character %v\n", line, character)
-			} else {
-				break
-			}
-		} else if i == e.p.Max {
-			break
-		}
+	tokens, error := e.p.TokenTree.Error(), "\n"
+	positions, p := make([]int, 2*len(tokens)), 0
+	for _, token := range tokens {
+		positions[p], p = int(token.begin), p+1
+		positions[p], p = int(token.end), p+1
+	}
+	translations := translatePositions(e.p.Buffer, positions)
+	for _, token := range tokens {
+		begin, end := int(token.begin), int(token.end)
+		error += fmt.Sprintf("parse error near \x1B[34m%v\x1B[m (line %v symbol %v - line %v symbol %v):\n%v\n",
+			Rul3s[token.Rule],
+			translations[begin].line, translations[begin].symbol,
+			translations[end].line, translations[end].symbol,
+			/*strconv.Quote(*/ e.p.Buffer[begin:end] /*)*/ )
 	}
 
-	fmt.Fprintf(buf, "parse error: unexpected ")
-	if e.p.Max >= len(e.p.Buffer) {
-		fmt.Fprintf(buf, "end of file found\n")
-	} else {
-		fmt.Fprintf(buf, "'%c' at line %v character %v\n", e.p.Buffer[e.p.Max], line, character)
-	}
-
-	return buf.String()
+	return error
 }
 
 func (p *Peg) PrintSyntaxTree() {
@@ -393,8 +534,8 @@ func (p *Peg) Highlighter() {
 	tokenTree := p.TokenTree
 	stack, top, i, c := tokenTree.Stack(), -1, 0, 0
 	for token := range tokenTree.Tokens() {
-		pops := top
 		if top >= 0 && int(stack[top].next) == i {
+			pops := top
 			for top >= 0 && int(stack[top].next) == i {
 				top--
 			}
@@ -402,7 +543,7 @@ func (p *Peg) Highlighter() {
 			for c < int(stack[pops].end) {
 				fmt.Printf("%v", c)
 				for t := 0; t <= pops; t++ {
-					if c >= int(stack[t].begin) && c < int(stack[t].end) {
+					if c >= int(stack[t].begin) {
 						fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[stack[t].Rule])
 					}
 				}
@@ -412,20 +553,33 @@ func (p *Peg) Highlighter() {
 		}
 		stack[top+1], top, i = token, top+1, i+1
 	}
+
+	if top >= 0 && int(stack[top].next) == i {
+		for c < int(stack[top].end) {
+			fmt.Printf("%v", c)
+			for t := 0; t <= top; t++ {
+				if c >= int(stack[t].begin) {
+					fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[stack[t].Rule])
+				}
+			}
+			fmt.Printf("\n")
+			c++
+		}
+	}
 }
 
 func (p *Peg) Init() {
-	position, tokenIndex := 0, 0
-	p.TokenTree = &tokens16{tree: make([]token16, 65536)}
-
 	if p.Buffer[len(p.Buffer)-1] != END_SYMBOL {
 		p.Buffer = p.Buffer + string(END_SYMBOL)
 	}
+	p.TokenTree = &tokens16{tree: make([]token16, 65536)}
+
+	position, tokenIndex, buffer, rules := 0, 0, p.Buffer, p.rules
 
 	actions := [...]func(buffer string, begin, end int){
 		/* 0 */
 		func(buffer string, begin, end int) {
-			p.AddDoubleRange()
+			p.AddRange()
 		},
 		/* 1 */
 		func(buffer string, begin, end int) {
@@ -433,59 +587,59 @@ func (p *Peg) Init() {
 		},
 		/* 2 */
 		func(buffer string, begin, end int) {
-			p.AddAlternate()
+			p.AddRule(buffer[begin:end])
 		},
 		/* 3 */
 		func(buffer string, begin, end int) {
-			p.AddDoubleCharacter(buffer[begin:end])
+			p.AddExpression()
 		},
 		/* 4 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter(buffer[begin:end])
+			p.AddDoubleCharacter(buffer[begin:end])
 		},
 		/* 5 */
 		func(buffer string, begin, end int) {
-			p.AddPackage(buffer[begin:end])
+			p.AddCharacter(buffer[begin:end])
 		},
 		/* 6 */
 		func(buffer string, begin, end int) {
-			p.AddPeg(buffer[begin:end])
+			p.AddPeekNot()
+			p.AddDot()
+			p.AddSequence()
 		},
 		/* 7 */
 		func(buffer string, begin, end int) {
-			p.AddState(buffer[begin:end])
+			p.AddPeekNot()
+			p.AddDot()
+			p.AddSequence()
 		},
 		/* 8 */
 		func(buffer string, begin, end int) {
-			p.AddPredicate(buffer[begin:end])
+			p.AddCharacter(buffer[begin:end])
 		},
 		/* 9 */
 		func(buffer string, begin, end int) {
-			p.AddPeekFor()
+			p.AddPackage(buffer[begin:end])
 		},
 		/* 10 */
 		func(buffer string, begin, end int) {
-			p.AddPeekNot()
+			p.AddPeg(buffer[begin:end])
 		},
 		/* 11 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter(buffer[begin:end])
+			p.AddState(buffer[begin:end])
 		},
 		/* 12 */
 		func(buffer string, begin, end int) {
-			p.AddPeekNot()
-			p.AddDot()
-			p.AddSequence()
+			p.AddPredicate(buffer[begin:end])
 		},
 		/* 13 */
 		func(buffer string, begin, end int) {
-			p.AddPeekNot()
-			p.AddDot()
-			p.AddSequence()
+			p.AddPeekFor()
 		},
 		/* 14 */
 		func(buffer string, begin, end int) {
-			p.AddSequence()
+			p.AddPeekNot()
 		},
 		/* 15 */
 		func(buffer string, begin, end int) {
@@ -493,128 +647,128 @@ func (p *Peg) Init() {
 		},
 		/* 16 */
 		func(buffer string, begin, end int) {
-			p.AddAlternate()
+			p.AddSequence()
 		},
 		/* 17 */
 		func(buffer string, begin, end int) {
-			p.AddNil()
-			p.AddAlternate()
+			p.AddCharacter("\a")
 		},
 		/* 18 */
 		func(buffer string, begin, end int) {
-			p.AddNil()
+			p.AddCharacter("\b")
 		},
 		/* 19 */
 		func(buffer string, begin, end int) {
-			p.AddQuery()
+			p.AddCharacter("\x1B")
 		},
 		/* 20 */
 		func(buffer string, begin, end int) {
-			p.AddStar()
+			p.AddCharacter("\f")
 		},
 		/* 21 */
 		func(buffer string, begin, end int) {
-			p.AddPlus()
+			p.AddCharacter("\n")
 		},
 		/* 22 */
 		func(buffer string, begin, end int) {
-			p.AddRule(buffer[begin:end])
+			p.AddCharacter("\r")
 		},
 		/* 23 */
 		func(buffer string, begin, end int) {
-			p.AddExpression()
+			p.AddCharacter("\t")
 		},
 		/* 24 */
 		func(buffer string, begin, end int) {
-			p.AddRange()
+			p.AddCharacter("\v")
 		},
 		/* 25 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\a")
+			p.AddCharacter("'")
 		},
 		/* 26 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\b")
+			p.AddCharacter("\"")
 		},
 		/* 27 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\x1B")
+			p.AddCharacter("[")
 		},
 		/* 28 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\f")
+			p.AddCharacter("]")
 		},
 		/* 29 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\n")
+			p.AddCharacter("-")
 		},
 		/* 30 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\r")
+			p.AddOctalCharacter(buffer[begin:end])
 		},
 		/* 31 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\t")
+			p.AddOctalCharacter(buffer[begin:end])
 		},
 		/* 32 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\v")
+			p.AddCharacter("\\")
 		},
 		/* 33 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("'")
+			p.AddAlternate()
 		},
 		/* 34 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\"")
+			p.AddQuery()
 		},
 		/* 35 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("[")
+			p.AddStar()
 		},
 		/* 36 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("]")
+			p.AddPlus()
 		},
 		/* 37 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("-")
+			p.AddCommit()
 		},
 		/* 38 */
 		func(buffer string, begin, end int) {
-			p.AddOctalCharacter(buffer[begin:end])
+			p.AddName(buffer[begin:end])
 		},
 		/* 39 */
 		func(buffer string, begin, end int) {
-			p.AddOctalCharacter(buffer[begin:end])
+			p.AddDot()
 		},
 		/* 40 */
 		func(buffer string, begin, end int) {
-			p.AddCharacter("\\")
+			p.AddAction(buffer[begin:end])
 		},
 		/* 41 */
 		func(buffer string, begin, end int) {
-			p.AddCommit()
+			p.AddPush()
 		},
 		/* 42 */
 		func(buffer string, begin, end int) {
-			p.AddName(buffer[begin:end])
+			p.AddDoubleRange()
 		},
 		/* 43 */
 		func(buffer string, begin, end int) {
-			p.AddDot()
+			p.AddSequence()
 		},
 		/* 44 */
 		func(buffer string, begin, end int) {
-			p.AddAction(buffer[begin:end])
+			p.AddAlternate()
 		},
 		/* 45 */
 		func(buffer string, begin, end int) {
-			p.AddPush()
+			p.AddNil()
+			p.AddAlternate()
 		},
 		/* 46 */
 		func(buffer string, begin, end int) {
-			p.AddSequence()
+			p.AddNil()
 		},
 	}
 
@@ -641,9 +795,8 @@ func (p *Peg) Init() {
 	commit := func(thunkPosition0 int) bool {
 		if thunkPosition0 == 0 {
 			for thunk := 0; thunk < thunkPosition; thunk++ {
-				actions[thunks[thunk].action](p.Buffer, thunks[thunk].begin, thunks[thunk].end)
+				actions[thunks[thunk].action](buffer, thunks[thunk].begin, thunks[thunk].end)
 			}
-			p.Min = position
 			thunkPosition = 0
 			return true
 		}
@@ -651,131 +804,139 @@ func (p *Peg) Init() {
 	}
 
 	matchDot := func() bool {
-		if p.Buffer[position] != END_SYMBOL {
+		if buffer[position] != END_SYMBOL {
 			position++
 			return true
-		} else if position >= p.Max {
-			p.Max = position
 		}
 		return false
 	}
 
-	matchChar := func(c byte) bool {
-		if p.Buffer[position] == c {
+	/*matchChar := func(c byte) bool {
+		if buffer[position] == c {
 			position++
 			return true
-		} else if position >= p.Max {
-			p.Max = position
 		}
 		return false
-	}
+	}*/
 
-	matchRange := func(lower byte, upper byte) bool {
-		if (p.Buffer[position] >= lower) && (p.Buffer[position] <= upper) {
+	/*matchRange := func(lower byte, upper byte) bool {
+		if c := buffer[position]; c >= lower && c <= upper {
 			position++
 			return true
-		} else if position >= p.Max {
-			p.Max = position
 		}
 		return false
-	}
+	}*/
 
-	p.rules = [...]func() bool{
+	rules = [...]func() bool{
 		/* 0 Grammar <- <(Spacing ('p' 'a' 'c' 'k' 'a' 'g' 'e') Spacing Identifier { p.AddPackage(buffer[begin:end]) } ('t' 'y' 'p' 'e') Spacing Identifier { p.AddPeg(buffer[begin:end]) } ('P' 'e' 'g') Spacing Action { p.AddState(buffer[begin:end]) } commit Definition+ EndOfFile)> */
 		func() bool {
 			position0, tokenIndex0, thunkPosition0 := position, tokenIndex, thunkPosition
 			{
 				begin1 := position
-				if !p.rules[29]() {
+				if !rules[29]() {
 					goto l0
 				}
-				if !matchChar('p') {
+				if buffer[position] != 'p' {
 					goto l0
 				}
-				if !matchChar('a') {
+				position++
+				if buffer[position] != 'a' {
 					goto l0
 				}
-				if !matchChar('c') {
+				position++
+				if buffer[position] != 'c' {
 					goto l0
 				}
-				if !matchChar('k') {
+				position++
+				if buffer[position] != 'k' {
 					goto l0
 				}
-				if !matchChar('a') {
+				position++
+				if buffer[position] != 'a' {
 					goto l0
 				}
-				if !matchChar('g') {
+				position++
+				if buffer[position] != 'g' {
 					goto l0
 				}
-				if !matchChar('e') {
+				position++
+				if buffer[position] != 'e' {
 					goto l0
 				}
-				if !p.rules[29]() {
+				position++
+				if !rules[29]() {
 					goto l0
 				}
-				if !p.rules[7]() {
+				if !rules[7]() {
 					goto l0
 				}
-				do(5)
-				if !matchChar('t') {
+				do(9)
+				if buffer[position] != 't' {
 					goto l0
 				}
-				if !matchChar('y') {
+				position++
+				if buffer[position] != 'y' {
 					goto l0
 				}
-				if !matchChar('p') {
+				position++
+				if buffer[position] != 'p' {
 					goto l0
 				}
-				if !matchChar('e') {
+				position++
+				if buffer[position] != 'e' {
 					goto l0
 				}
-				if !p.rules[29]() {
+				position++
+				if !rules[29]() {
 					goto l0
 				}
-				if !p.rules[7]() {
+				if !rules[7]() {
 					goto l0
 				}
-				do(6)
-				if !matchChar('P') {
+				do(10)
+				if buffer[position] != 'P' {
 					goto l0
 				}
-				if !matchChar('e') {
+				position++
+				if buffer[position] != 'e' {
 					goto l0
 				}
-				if !matchChar('g') {
+				position++
+				if buffer[position] != 'g' {
 					goto l0
 				}
-				if !p.rules[29]() {
+				position++
+				if !rules[29]() {
 					goto l0
 				}
-				if !p.rules[34]() {
+				if !rules[34]() {
 					goto l0
 				}
-				do(7)
+				do(11)
 				if !(commit(0)) {
 					goto l0
 				}
 				{
 					begin4 := position
-					if !p.rules[7]() {
+					if !rules[7]() {
 						goto l0
 					}
-					do(22)
-					if !p.rules[19]() {
+					do(2)
+					if !rules[19]() {
 						goto l0
 					}
-					if !p.rules[2]() {
+					if !rules[2]() {
 						goto l0
 					}
-					do(23)
+					do(3)
 					{
 						position5, tokenIndex5, thunkPosition5 := position, tokenIndex, thunkPosition
 						{
 							position6, tokenIndex6, thunkPosition6 := position, tokenIndex, thunkPosition
-							if !p.rules[7]() {
+							if !rules[7]() {
 								goto l7
 							}
-							if !p.rules[19]() {
+							if !rules[19]() {
 								goto l7
 							}
 							goto l6
@@ -807,25 +968,25 @@ func (p *Peg) Init() {
 					position3, tokenIndex3, thunkPosition3 := position, tokenIndex, thunkPosition
 					{
 						begin9 := position
-						if !p.rules[7]() {
+						if !rules[7]() {
 							goto l3
 						}
-						do(22)
-						if !p.rules[19]() {
+						do(2)
+						if !rules[19]() {
 							goto l3
 						}
-						if !p.rules[2]() {
+						if !rules[2]() {
 							goto l3
 						}
-						do(23)
+						do(3)
 						{
 							position10, tokenIndex10, thunkPosition10 := position, tokenIndex, thunkPosition
 							{
 								position11, tokenIndex11, thunkPosition11 := position, tokenIndex, thunkPosition
-								if !p.rules[7]() {
+								if !rules[7]() {
 									goto l12
 								}
-								if !p.rules[19]() {
+								if !rules[19]() {
 									goto l12
 								}
 								goto l11
@@ -890,29 +1051,29 @@ func (p *Peg) Init() {
 				begin18 := position
 				{
 					position19, tokenIndex19, thunkPosition19 := position, tokenIndex, thunkPosition
-					if !p.rules[3]() {
+					if !rules[3]() {
 						goto l20
 					}
 				l21:
 					{
 						position22, tokenIndex22, thunkPosition22 := position, tokenIndex, thunkPosition
-						if !p.rules[20]() {
+						if !rules[20]() {
 							goto l22
 						}
-						if !p.rules[3]() {
+						if !rules[3]() {
 							goto l22
 						}
-						do(16)
+						do(44)
 						goto l21
 					l22:
 						position, tokenIndex, thunkPosition = position22, tokenIndex22, thunkPosition22
 					}
 					{
 						position23, tokenIndex23, thunkPosition23 := position, tokenIndex, thunkPosition
-						if !p.rules[20]() {
+						if !rules[20]() {
 							goto l23
 						}
-						do(17)
+						do(45)
 						goto l24
 					l23:
 						position, tokenIndex, thunkPosition = position23, tokenIndex23, thunkPosition23
@@ -921,7 +1082,7 @@ func (p *Peg) Init() {
 					goto l19
 				l20:
 					position, tokenIndex, thunkPosition = position19, tokenIndex19, thunkPosition19
-					do(18)
+					do(46)
 				}
 			l19:
 				if begin18 != position {
@@ -936,16 +1097,16 @@ func (p *Peg) Init() {
 			position25, tokenIndex25, thunkPosition25 := position, tokenIndex, thunkPosition
 			{
 				begin26 := position
-				if !p.rules[4]() {
+				if !rules[4]() {
 					goto l25
 				}
 			l27:
 				{
 					position28, tokenIndex28, thunkPosition28 := position, tokenIndex, thunkPosition
-					if !p.rules[4]() {
+					if !rules[4]() {
 						goto l28
 					}
-					do(46)
+					do(43)
 					goto l27
 				l28:
 					position, tokenIndex, thunkPosition = position28, tokenIndex28, thunkPosition28
@@ -967,28 +1128,26 @@ func (p *Peg) Init() {
 				begin30 := position
 				{
 					position31, tokenIndex31, thunkPosition31 := position, tokenIndex, thunkPosition
-					if !p.rules[21]() {
+					if !rules[21]() {
 						goto l32
 					}
-					if !p.rules[34]() {
+					if !rules[34]() {
 						goto l32
 					}
-					do(8)
+					do(12)
 					goto l31
 				l32:
 					position, tokenIndex, thunkPosition = position31, tokenIndex31, thunkPosition31
 					{
-						if position == len(p.Buffer) {
-							goto l29
-						}
-						switch p.Buffer[position] {
+						switch buffer[position] {
 						case '!':
 							{
 								begin34 := position
-								if !matchChar('!') {
+								if buffer[position] != '!' {
 									goto l29
 								}
-								if !p.rules[29]() {
+								position++
+								if !rules[29]() {
 									goto l29
 								}
 								if begin34 != position {
@@ -996,22 +1155,22 @@ func (p *Peg) Init() {
 									tokenIndex++
 								}
 							}
-							if !p.rules[5]() {
+							if !rules[5]() {
 								goto l29
 							}
-							do(10)
+							do(14)
 							break
 						case '&':
-							if !p.rules[21]() {
+							if !rules[21]() {
 								goto l29
 							}
-							if !p.rules[5]() {
+							if !rules[5]() {
 								goto l29
 							}
-							do(9)
+							do(13)
 							break
 						default:
-							if !p.rules[5]() {
+							if !rules[5]() {
 								goto l29
 							}
 							break
@@ -1039,43 +1198,47 @@ func (p *Peg) Init() {
 					begin37 := position
 					{
 						position38, tokenIndex38, thunkPosition38 := position, tokenIndex, thunkPosition
-						if !matchChar('c') {
+						if buffer[position] != 'c' {
 							goto l39
 						}
-						if !matchChar('o') {
+						position++
+						if buffer[position] != 'o' {
 							goto l39
 						}
-						if !matchChar('m') {
+						position++
+						if buffer[position] != 'm' {
 							goto l39
 						}
-						if !matchChar('m') {
+						position++
+						if buffer[position] != 'm' {
 							goto l39
 						}
-						if !matchChar('i') {
+						position++
+						if buffer[position] != 'i' {
 							goto l39
 						}
-						if !matchChar('t') {
+						position++
+						if buffer[position] != 't' {
 							goto l39
 						}
-						if !p.rules[29]() {
+						position++
+						if !rules[29]() {
 							goto l39
 						}
-						do(41)
+						do(37)
 						goto l38
 					l39:
 						position, tokenIndex, thunkPosition = position38, tokenIndex38, thunkPosition38
 						{
-							if position == len(p.Buffer) {
-								goto l35
-							}
-							switch p.Buffer[position] {
+							switch buffer[position] {
 							case '<':
 								{
 									begin41 := position
-									if !matchChar('<') {
+									if buffer[position] != '<' {
 										goto l35
 									}
-									if !p.rules[29]() {
+									position++
+									if !rules[29]() {
 										goto l35
 									}
 									if begin41 != position {
@@ -1083,15 +1246,16 @@ func (p *Peg) Init() {
 										tokenIndex++
 									}
 								}
-								if !p.rules[2]() {
+								if !rules[2]() {
 									goto l35
 								}
 								{
 									begin42 := position
-									if !matchChar('>') {
+									if buffer[position] != '>' {
 										goto l35
 									}
-									if !p.rules[29]() {
+									position++
+									if !rules[29]() {
 										goto l35
 									}
 									if begin42 != position {
@@ -1099,21 +1263,22 @@ func (p *Peg) Init() {
 										tokenIndex++
 									}
 								}
-								do(45)
+								do(41)
 								break
 							case '{':
-								if !p.rules[34]() {
+								if !rules[34]() {
 									goto l35
 								}
-								do(44)
+								do(40)
 								break
 							case '.':
 								{
 									begin43 := position
-									if !matchChar('.') {
+									if buffer[position] != '.' {
 										goto l35
 									}
-									if !p.rules[29]() {
+									position++
+									if !rules[29]() {
 										goto l35
 									}
 									if begin43 != position {
@@ -1121,34 +1286,37 @@ func (p *Peg) Init() {
 										tokenIndex++
 									}
 								}
-								do(43)
+								do(39)
 								break
 							case '[':
 								{
 									begin44 := position
 									{
 										position45, tokenIndex45, thunkPosition45 := position, tokenIndex, thunkPosition
-										if !matchChar('[') {
+										if buffer[position] != '[' {
 											goto l46
 										}
-										if !matchChar('[') {
+										position++
+										if buffer[position] != '[' {
 											goto l46
 										}
+										position++
 										{
 											position47, tokenIndex47, thunkPosition47 := position, tokenIndex, thunkPosition
 											{
 												position49, tokenIndex49, thunkPosition49 := position, tokenIndex, thunkPosition
-												if !matchChar('^') {
+												if buffer[position] != '^' {
 													goto l50
 												}
-												if !p.rules[13]() {
+												position++
+												if !rules[13]() {
 													goto l50
 												}
-												do(12)
+												do(6)
 												goto l49
 											l50:
 												position, tokenIndex, thunkPosition = position49, tokenIndex49, thunkPosition49
-												if !p.rules[13]() {
+												if !rules[13]() {
 													goto l47
 												}
 											}
@@ -1158,33 +1326,37 @@ func (p *Peg) Init() {
 											position, tokenIndex, thunkPosition = position47, tokenIndex47, thunkPosition47
 										}
 									l48:
-										if !matchChar(']') {
+										if buffer[position] != ']' {
 											goto l46
 										}
-										if !matchChar(']') {
+										position++
+										if buffer[position] != ']' {
 											goto l46
 										}
+										position++
 										goto l45
 									l46:
 										position, tokenIndex, thunkPosition = position45, tokenIndex45, thunkPosition45
-										if !matchChar('[') {
+										if buffer[position] != '[' {
 											goto l35
 										}
+										position++
 										{
 											position51, tokenIndex51, thunkPosition51 := position, tokenIndex, thunkPosition
 											{
 												position53, tokenIndex53, thunkPosition53 := position, tokenIndex, thunkPosition
-												if !matchChar('^') {
+												if buffer[position] != '^' {
 													goto l54
 												}
-												if !p.rules[12]() {
+												position++
+												if !rules[12]() {
 													goto l54
 												}
-												do(13)
+												do(7)
 												goto l53
 											l54:
 												position, tokenIndex, thunkPosition = position53, tokenIndex53, thunkPosition53
-												if !p.rules[12]() {
+												if !rules[12]() {
 													goto l51
 												}
 											}
@@ -1194,12 +1366,13 @@ func (p *Peg) Init() {
 											position, tokenIndex, thunkPosition = position51, tokenIndex51, thunkPosition51
 										}
 									l52:
-										if !matchChar(']') {
+										if buffer[position] != ']' {
 											goto l35
 										}
+										position++
 									}
 								l45:
-									if !p.rules[29]() {
+									if !rules[29]() {
 										goto l35
 									}
 									if begin44 != position {
@@ -1213,21 +1386,23 @@ func (p *Peg) Init() {
 									begin55 := position
 									{
 										position56, tokenIndex56, thunkPosition56 := position, tokenIndex, thunkPosition
-										if !matchChar('\'') {
+										if buffer[position] != '\'' {
 											goto l57
 										}
+										position++
 										{
 											position58, tokenIndex58, thunkPosition58 := position, tokenIndex, thunkPosition
 											{
 												position60, tokenIndex60, thunkPosition60 := position, tokenIndex, thunkPosition
-												if !matchChar('\'') {
+												if buffer[position] != '\'' {
 													goto l60
 												}
+												position++
 												goto l58
 											l60:
 												position, tokenIndex, thunkPosition = position60, tokenIndex60, thunkPosition60
 											}
-											if !p.rules[16]() {
+											if !rules[16]() {
 												goto l58
 											}
 											goto l59
@@ -1240,45 +1415,49 @@ func (p *Peg) Init() {
 											position62, tokenIndex62, thunkPosition62 := position, tokenIndex, thunkPosition
 											{
 												position63, tokenIndex63, thunkPosition63 := position, tokenIndex, thunkPosition
-												if !matchChar('\'') {
+												if buffer[position] != '\'' {
 													goto l63
 												}
+												position++
 												goto l62
 											l63:
 												position, tokenIndex, thunkPosition = position63, tokenIndex63, thunkPosition63
 											}
-											if !p.rules[16]() {
+											if !rules[16]() {
 												goto l62
 											}
-											do(14)
+											do(15)
 											goto l61
 										l62:
 											position, tokenIndex, thunkPosition = position62, tokenIndex62, thunkPosition62
 										}
-										if !matchChar('\'') {
+										if buffer[position] != '\'' {
 											goto l57
 										}
-										if !p.rules[29]() {
+										position++
+										if !rules[29]() {
 											goto l57
 										}
 										goto l56
 									l57:
 										position, tokenIndex, thunkPosition = position56, tokenIndex56, thunkPosition56
-										if !matchChar('"') {
+										if buffer[position] != '"' {
 											goto l35
 										}
+										position++
 										{
 											position64, tokenIndex64, thunkPosition64 := position, tokenIndex, thunkPosition
 											{
 												position66, tokenIndex66, thunkPosition66 := position, tokenIndex, thunkPosition
-												if !matchChar('"') {
+												if buffer[position] != '"' {
 													goto l66
 												}
+												position++
 												goto l64
 											l66:
 												position, tokenIndex, thunkPosition = position66, tokenIndex66, thunkPosition66
 											}
-											if !p.rules[17]() {
+											if !rules[17]() {
 												goto l64
 											}
 											goto l65
@@ -1291,25 +1470,27 @@ func (p *Peg) Init() {
 											position68, tokenIndex68, thunkPosition68 := position, tokenIndex, thunkPosition
 											{
 												position69, tokenIndex69, thunkPosition69 := position, tokenIndex, thunkPosition
-												if !matchChar('"') {
+												if buffer[position] != '"' {
 													goto l69
 												}
+												position++
 												goto l68
 											l69:
 												position, tokenIndex, thunkPosition = position69, tokenIndex69, thunkPosition69
 											}
-											if !p.rules[17]() {
+											if !rules[17]() {
 												goto l68
 											}
-											do(15)
+											do(16)
 											goto l67
 										l68:
 											position, tokenIndex, thunkPosition = position68, tokenIndex68, thunkPosition68
 										}
-										if !matchChar('"') {
+										if buffer[position] != '"' {
 											goto l35
 										}
-										if !p.rules[29]() {
+										position++
+										if !rules[29]() {
 											goto l35
 										}
 									}
@@ -1323,10 +1504,11 @@ func (p *Peg) Init() {
 							case '(':
 								{
 									begin70 := position
-									if !matchChar('(') {
+									if buffer[position] != '(' {
 										goto l35
 									}
-									if !p.rules[29]() {
+									position++
+									if !rules[29]() {
 										goto l35
 									}
 									if begin70 != position {
@@ -1334,15 +1516,16 @@ func (p *Peg) Init() {
 										tokenIndex++
 									}
 								}
-								if !p.rules[2]() {
+								if !rules[2]() {
 									goto l35
 								}
 								{
 									begin71 := position
-									if !matchChar(')') {
+									if buffer[position] != ')' {
 										goto l35
 									}
-									if !p.rules[29]() {
+									position++
+									if !rules[29]() {
 										goto l35
 									}
 									if begin71 != position {
@@ -1352,19 +1535,19 @@ func (p *Peg) Init() {
 								}
 								break
 							default:
-								if !p.rules[7]() {
+								if !rules[7]() {
 									goto l35
 								}
 								{
 									position72, tokenIndex72, thunkPosition72 := position, tokenIndex, thunkPosition
-									if !p.rules[19]() {
+									if !rules[19]() {
 										goto l72
 									}
 									goto l35
 								l72:
 									position, tokenIndex, thunkPosition = position72, tokenIndex72, thunkPosition72
 								}
-								do(42)
+								do(38)
 								break
 							}
 						}
@@ -1379,17 +1562,15 @@ func (p *Peg) Init() {
 				{
 					position73, tokenIndex73, thunkPosition73 := position, tokenIndex, thunkPosition
 					{
-						if position == len(p.Buffer) {
-							goto l73
-						}
-						switch p.Buffer[position] {
+						switch buffer[position] {
 						case '+':
 							{
 								begin76 := position
-								if !matchChar('+') {
+								if buffer[position] != '+' {
 									goto l73
 								}
-								if !p.rules[29]() {
+								position++
+								if !rules[29]() {
 									goto l73
 								}
 								if begin76 != position {
@@ -1397,15 +1578,16 @@ func (p *Peg) Init() {
 									tokenIndex++
 								}
 							}
-							do(21)
+							do(36)
 							break
 						case '*':
 							{
 								begin77 := position
-								if !matchChar('*') {
+								if buffer[position] != '*' {
 									goto l73
 								}
-								if !p.rules[29]() {
+								position++
+								if !rules[29]() {
 									goto l73
 								}
 								if begin77 != position {
@@ -1413,15 +1595,16 @@ func (p *Peg) Init() {
 									tokenIndex++
 								}
 							}
-							do(20)
+							do(35)
 							break
 						default:
 							{
 								begin78 := position
-								if !matchChar('?') {
+								if buffer[position] != '?' {
 									goto l73
 								}
-								if !p.rules[29]() {
+								position++
+								if !rules[29]() {
 									goto l73
 								}
 								if begin78 != position {
@@ -1429,7 +1612,7 @@ func (p *Peg) Init() {
 									tokenIndex++
 								}
 							}
-							do(19)
+							do(34)
 							break
 						}
 					}
@@ -1459,7 +1642,7 @@ func (p *Peg) Init() {
 				{
 					begin = position
 					begin82 := position
-					if !p.rules[8]() {
+					if !rules[8]() {
 						goto l80
 					}
 				l83:
@@ -1469,15 +1652,16 @@ func (p *Peg) Init() {
 							begin85 := position
 							{
 								position86, tokenIndex86, thunkPosition86 := position, tokenIndex, thunkPosition
-								if !p.rules[8]() {
+								if !rules[8]() {
 									goto l87
 								}
 								goto l86
 							l87:
 								position, tokenIndex, thunkPosition = position86, tokenIndex86, thunkPosition86
-								if !matchRange('0', '9') {
+								if c := buffer[position]; c < '0' || c > '9' {
 									goto l84
 								}
+								position++
 							}
 						l86:
 							if begin85 != position {
@@ -1495,7 +1679,7 @@ func (p *Peg) Init() {
 						tokenIndex++
 					}
 				}
-				if !p.rules[29]() {
+				if !rules[29]() {
 					goto l80
 				}
 				if begin81 != position {
@@ -1514,24 +1698,24 @@ func (p *Peg) Init() {
 			{
 				begin89 := position
 				{
-					if position == len(p.Buffer) {
-						goto l88
-					}
-					switch p.Buffer[position] {
+					switch buffer[position] {
 					case '_':
-						if !matchChar('_') {
+						if buffer[position] != '_' {
 							goto l88
 						}
+						position++
 						break
 					case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
-						if !matchRange('A', 'Z') {
+						if c := buffer[position]; c < 'A' || c > 'Z' {
 							goto l88
 						}
+						position++
 						break
 					default:
-						if !matchRange('a', 'z') {
+						if c := buffer[position]; c < 'a' || c > 'z' {
 							goto l88
 						}
+						position++
 						break
 					}
 				}
@@ -1559,14 +1743,15 @@ func (p *Peg) Init() {
 				begin95 := position
 				{
 					position96, tokenIndex96, thunkPosition96 := position, tokenIndex, thunkPosition
-					if !matchChar(']') {
+					if buffer[position] != ']' {
 						goto l96
 					}
+					position++
 					goto l94
 				l96:
 					position, tokenIndex, thunkPosition = position96, tokenIndex96, thunkPosition96
 				}
-				if !p.rules[14]() {
+				if !rules[14]() {
 					goto l94
 				}
 			l97:
@@ -1574,17 +1759,18 @@ func (p *Peg) Init() {
 					position98, tokenIndex98, thunkPosition98 := position, tokenIndex, thunkPosition
 					{
 						position99, tokenIndex99, thunkPosition99 := position, tokenIndex, thunkPosition
-						if !matchChar(']') {
+						if buffer[position] != ']' {
 							goto l99
 						}
+						position++
 						goto l98
 					l99:
 						position, tokenIndex, thunkPosition = position99, tokenIndex99, thunkPosition99
 					}
-					if !p.rules[14]() {
+					if !rules[14]() {
 						goto l98
 					}
-					do(1)
+					do(33)
 					goto l97
 				l98:
 					position, tokenIndex, thunkPosition = position98, tokenIndex98, thunkPosition98
@@ -1606,17 +1792,19 @@ func (p *Peg) Init() {
 				begin101 := position
 				{
 					position102, tokenIndex102, thunkPosition102 := position, tokenIndex, thunkPosition
-					if !matchChar(']') {
+					if buffer[position] != ']' {
 						goto l102
 					}
-					if !matchChar(']') {
+					position++
+					if buffer[position] != ']' {
 						goto l102
 					}
+					position++
 					goto l100
 				l102:
 					position, tokenIndex, thunkPosition = position102, tokenIndex102, thunkPosition102
 				}
-				if !p.rules[15]() {
+				if !rules[15]() {
 					goto l100
 				}
 			l103:
@@ -1624,20 +1812,22 @@ func (p *Peg) Init() {
 					position104, tokenIndex104, thunkPosition104 := position, tokenIndex, thunkPosition
 					{
 						position105, tokenIndex105, thunkPosition105 := position, tokenIndex, thunkPosition
-						if !matchChar(']') {
+						if buffer[position] != ']' {
 							goto l105
 						}
-						if !matchChar(']') {
+						position++
+						if buffer[position] != ']' {
 							goto l105
 						}
+						position++
 						goto l104
 					l105:
 						position, tokenIndex, thunkPosition = position105, tokenIndex105, thunkPosition105
 					}
-					if !p.rules[15]() {
+					if !rules[15]() {
 						goto l104
 					}
-					do(2)
+					do(1)
 					goto l103
 				l104:
 					position, tokenIndex, thunkPosition = position104, tokenIndex104, thunkPosition104
@@ -1659,20 +1849,21 @@ func (p *Peg) Init() {
 				begin107 := position
 				{
 					position108, tokenIndex108, thunkPosition108 := position, tokenIndex, thunkPosition
-					if !p.rules[16]() {
+					if !rules[16]() {
 						goto l109
 					}
-					if !matchChar('-') {
+					if buffer[position] != '-' {
 						goto l109
 					}
-					if !p.rules[16]() {
+					position++
+					if !rules[16]() {
 						goto l109
 					}
-					do(24)
+					do(0)
 					goto l108
 				l109:
 					position, tokenIndex, thunkPosition = position108, tokenIndex108, thunkPosition108
-					if !p.rules[16]() {
+					if !rules[16]() {
 						goto l106
 					}
 				}
@@ -1694,20 +1885,21 @@ func (p *Peg) Init() {
 				begin111 := position
 				{
 					position112, tokenIndex112, thunkPosition112 := position, tokenIndex, thunkPosition
-					if !p.rules[16]() {
+					if !rules[16]() {
 						goto l113
 					}
-					if !matchChar('-') {
+					if buffer[position] != '-' {
 						goto l113
 					}
-					if !p.rules[16]() {
+					position++
+					if !rules[16]() {
 						goto l113
 					}
-					do(0)
+					do(42)
 					goto l112
 				l113:
 					position, tokenIndex, thunkPosition = position112, tokenIndex112, thunkPosition112
-					if !p.rules[17]() {
+					if !rules[17]() {
 						goto l110
 					}
 				}
@@ -1729,7 +1921,7 @@ func (p *Peg) Init() {
 				begin115 := position
 				{
 					position116, tokenIndex116, thunkPosition116 := position, tokenIndex, thunkPosition
-					if !p.rules[18]() {
+					if !rules[18]() {
 						goto l117
 					}
 					goto l116
@@ -1737,9 +1929,10 @@ func (p *Peg) Init() {
 					position, tokenIndex, thunkPosition = position116, tokenIndex116, thunkPosition116
 					{
 						position118, tokenIndex118, thunkPosition118 := position, tokenIndex, thunkPosition
-						if !matchChar('\\') {
+						if buffer[position] != '\\' {
 							goto l118
 						}
+						position++
 						goto l114
 					l118:
 						position, tokenIndex, thunkPosition = position118, tokenIndex118, thunkPosition118
@@ -1756,7 +1949,7 @@ func (p *Peg) Init() {
 							tokenIndex++
 						}
 					}
-					do(11)
+					do(8)
 				}
 			l116:
 				if begin115 != position {
@@ -1776,7 +1969,7 @@ func (p *Peg) Init() {
 				begin121 := position
 				{
 					position122, tokenIndex122, thunkPosition122 := position, tokenIndex, thunkPosition
-					if !p.rules[18]() {
+					if !rules[18]() {
 						goto l123
 					}
 					goto l122
@@ -1787,15 +1980,17 @@ func (p *Peg) Init() {
 						begin125 := position
 						{
 							position126, tokenIndex126, thunkPosition126 := position, tokenIndex, thunkPosition
-							if !matchRange('a', 'z') {
+							if c := buffer[position]; c < 'a' || c > 'z' {
 								goto l127
 							}
+							position++
 							goto l126
 						l127:
 							position, tokenIndex, thunkPosition = position126, tokenIndex126, thunkPosition126
-							if !matchRange('A', 'Z') {
+							if c := buffer[position]; c < 'A' || c > 'Z' {
 								goto l124
 							}
+							position++
 						}
 					l126:
 						end = position
@@ -1804,15 +1999,16 @@ func (p *Peg) Init() {
 							tokenIndex++
 						}
 					}
-					do(3)
+					do(4)
 					goto l122
 				l124:
 					position, tokenIndex, thunkPosition = position122, tokenIndex122, thunkPosition122
 					{
 						position128, tokenIndex128, thunkPosition128 := position, tokenIndex, thunkPosition
-						if !matchChar('\\') {
+						if buffer[position] != '\\' {
 							goto l128
 						}
+						position++
 						goto l120
 					l128:
 						position, tokenIndex, thunkPosition = position128, tokenIndex128, thunkPosition128
@@ -1829,7 +2025,7 @@ func (p *Peg) Init() {
 							tokenIndex++
 						}
 					}
-					do(4)
+					do(5)
 				}
 			l122:
 				if begin121 != position {
@@ -1849,255 +2045,296 @@ func (p *Peg) Init() {
 				begin131 := position
 				{
 					position132, tokenIndex132, thunkPosition132 := position, tokenIndex, thunkPosition
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l133
 					}
+					position++
 					{
 						position134, tokenIndex134, thunkPosition134 := position, tokenIndex, thunkPosition
-						if !matchChar('a') {
+						if buffer[position] != 'a' {
 							goto l135
 						}
+						position++
 						goto l134
 					l135:
 						position, tokenIndex, thunkPosition = position134, tokenIndex134, thunkPosition134
-						if !matchChar('A') {
+						if buffer[position] != 'A' {
 							goto l133
 						}
+						position++
 					}
 				l134:
-					do(25)
+					do(17)
 					goto l132
 				l133:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l136
 					}
+					position++
 					{
 						position137, tokenIndex137, thunkPosition137 := position, tokenIndex, thunkPosition
-						if !matchChar('b') {
+						if buffer[position] != 'b' {
 							goto l138
 						}
+						position++
 						goto l137
 					l138:
 						position, tokenIndex, thunkPosition = position137, tokenIndex137, thunkPosition137
-						if !matchChar('B') {
+						if buffer[position] != 'B' {
 							goto l136
 						}
+						position++
 					}
 				l137:
-					do(26)
+					do(18)
 					goto l132
 				l136:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l139
 					}
+					position++
 					{
 						position140, tokenIndex140, thunkPosition140 := position, tokenIndex, thunkPosition
-						if !matchChar('e') {
+						if buffer[position] != 'e' {
 							goto l141
 						}
+						position++
 						goto l140
 					l141:
 						position, tokenIndex, thunkPosition = position140, tokenIndex140, thunkPosition140
-						if !matchChar('E') {
+						if buffer[position] != 'E' {
 							goto l139
 						}
+						position++
 					}
 				l140:
-					do(27)
+					do(19)
 					goto l132
 				l139:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l142
 					}
+					position++
 					{
 						position143, tokenIndex143, thunkPosition143 := position, tokenIndex, thunkPosition
-						if !matchChar('f') {
+						if buffer[position] != 'f' {
 							goto l144
 						}
+						position++
 						goto l143
 					l144:
 						position, tokenIndex, thunkPosition = position143, tokenIndex143, thunkPosition143
-						if !matchChar('F') {
+						if buffer[position] != 'F' {
 							goto l142
 						}
+						position++
 					}
 				l143:
-					do(28)
+					do(20)
 					goto l132
 				l142:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l145
 					}
+					position++
 					{
 						position146, tokenIndex146, thunkPosition146 := position, tokenIndex, thunkPosition
-						if !matchChar('n') {
+						if buffer[position] != 'n' {
 							goto l147
 						}
+						position++
 						goto l146
 					l147:
 						position, tokenIndex, thunkPosition = position146, tokenIndex146, thunkPosition146
-						if !matchChar('N') {
+						if buffer[position] != 'N' {
 							goto l145
 						}
+						position++
 					}
 				l146:
-					do(29)
+					do(21)
 					goto l132
 				l145:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l148
 					}
+					position++
 					{
 						position149, tokenIndex149, thunkPosition149 := position, tokenIndex, thunkPosition
-						if !matchChar('r') {
+						if buffer[position] != 'r' {
 							goto l150
 						}
+						position++
 						goto l149
 					l150:
 						position, tokenIndex, thunkPosition = position149, tokenIndex149, thunkPosition149
-						if !matchChar('R') {
+						if buffer[position] != 'R' {
 							goto l148
 						}
+						position++
 					}
 				l149:
-					do(30)
+					do(22)
 					goto l132
 				l148:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l151
 					}
+					position++
 					{
 						position152, tokenIndex152, thunkPosition152 := position, tokenIndex, thunkPosition
-						if !matchChar('t') {
+						if buffer[position] != 't' {
 							goto l153
 						}
+						position++
 						goto l152
 					l153:
 						position, tokenIndex, thunkPosition = position152, tokenIndex152, thunkPosition152
-						if !matchChar('T') {
+						if buffer[position] != 'T' {
 							goto l151
 						}
+						position++
 					}
 				l152:
-					do(31)
+					do(23)
 					goto l132
 				l151:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l154
 					}
+					position++
 					{
 						position155, tokenIndex155, thunkPosition155 := position, tokenIndex, thunkPosition
-						if !matchChar('v') {
+						if buffer[position] != 'v' {
 							goto l156
 						}
+						position++
 						goto l155
 					l156:
 						position, tokenIndex, thunkPosition = position155, tokenIndex155, thunkPosition155
-						if !matchChar('V') {
+						if buffer[position] != 'V' {
 							goto l154
 						}
+						position++
 					}
 				l155:
-					do(32)
+					do(24)
 					goto l132
 				l154:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l157
 					}
-					if !matchChar('\'') {
+					position++
+					if buffer[position] != '\'' {
 						goto l157
 					}
-					do(33)
+					position++
+					do(25)
 					goto l132
 				l157:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l158
 					}
-					if !matchChar('"') {
+					position++
+					if buffer[position] != '"' {
 						goto l158
 					}
-					do(34)
+					position++
+					do(26)
 					goto l132
 				l158:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l159
 					}
-					if !matchChar('[') {
+					position++
+					if buffer[position] != '[' {
 						goto l159
 					}
-					do(35)
+					position++
+					do(27)
 					goto l132
 				l159:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l160
 					}
-					if !matchChar(']') {
+					position++
+					if buffer[position] != ']' {
 						goto l160
 					}
-					do(36)
+					position++
+					do(28)
 					goto l132
 				l160:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l161
 					}
-					if !matchChar('-') {
+					position++
+					if buffer[position] != '-' {
 						goto l161
 					}
-					do(37)
+					position++
+					do(29)
 					goto l132
 				l161:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l162
 					}
+					position++
 					{
 						begin = position
 						begin163 := position
-						if !matchRange('0', '3') {
+						if c := buffer[position]; c < '0' || c > '3' {
 							goto l162
 						}
-						if !matchRange('0', '7') {
+						position++
+						if c := buffer[position]; c < '0' || c > '7' {
 							goto l162
 						}
-						if !matchRange('0', '7') {
+						position++
+						if c := buffer[position]; c < '0' || c > '7' {
 							goto l162
 						}
+						position++
 						end = position
 						if begin163 != position {
 							p.Add(RuleEscape, begin163, position, tokenIndex)
 							tokenIndex++
 						}
 					}
-					do(38)
+					do(30)
 					goto l132
 				l162:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l164
 					}
+					position++
 					{
 						begin = position
 						begin165 := position
-						if !matchRange('0', '7') {
+						if c := buffer[position]; c < '0' || c > '7' {
 							goto l164
 						}
+						position++
 						{
 							position166, tokenIndex166, thunkPosition166 := position, tokenIndex, thunkPosition
-							if !matchRange('0', '7') {
+							if c := buffer[position]; c < '0' || c > '7' {
 								goto l166
 							}
+							position++
 							goto l167
 						l166:
 							position, tokenIndex, thunkPosition = position166, tokenIndex166, thunkPosition166
@@ -2109,17 +2346,19 @@ func (p *Peg) Init() {
 							tokenIndex++
 						}
 					}
-					do(39)
+					do(31)
 					goto l132
 				l164:
 					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if !matchChar('\\') {
+					if buffer[position] != '\\' {
 						goto l130
 					}
-					if !matchChar('\\') {
+					position++
+					if buffer[position] != '\\' {
 						goto l130
 					}
-					do(40)
+					position++
+					do(32)
 				}
 			l132:
 				if begin131 != position {
@@ -2137,13 +2376,15 @@ func (p *Peg) Init() {
 			position168, tokenIndex168, thunkPosition168 := position, tokenIndex, thunkPosition
 			{
 				begin169 := position
-				if !matchChar('<') {
+				if buffer[position] != '<' {
 					goto l168
 				}
-				if !matchChar('-') {
+				position++
+				if buffer[position] != '-' {
 					goto l168
 				}
-				if !p.rules[29]() {
+				position++
+				if !rules[29]() {
 					goto l168
 				}
 				if begin169 != position {
@@ -2161,10 +2402,11 @@ func (p *Peg) Init() {
 			position170, tokenIndex170, thunkPosition170 := position, tokenIndex, thunkPosition
 			{
 				begin171 := position
-				if !matchChar('/') {
+				if buffer[position] != '/' {
 					goto l170
 				}
-				if !p.rules[29]() {
+				position++
+				if !rules[29]() {
 					goto l170
 				}
 				if begin171 != position {
@@ -2182,10 +2424,11 @@ func (p *Peg) Init() {
 			position172, tokenIndex172, thunkPosition172 := position, tokenIndex, thunkPosition
 			{
 				begin173 := position
-				if !matchChar('&') {
+				if buffer[position] != '&' {
 					goto l172
 				}
-				if !p.rules[29]() {
+				position++
+				if !rules[29]() {
 					goto l172
 				}
 				if begin173 != position {
@@ -2224,22 +2467,21 @@ func (p *Peg) Init() {
 						{
 							begin187 := position
 							{
-								if position == len(p.Buffer) {
-									goto l186
-								}
-								switch p.Buffer[position] {
+								switch buffer[position] {
 								case '\t':
-									if !matchChar('\t') {
+									if buffer[position] != '\t' {
 										goto l186
 									}
+									position++
 									break
 								case ' ':
-									if !matchChar(' ') {
+									if buffer[position] != ' ' {
 										goto l186
 									}
+									position++
 									break
 								default:
-									if !p.rules[32]() {
+									if !rules[32]() {
 										goto l186
 									}
 									break
@@ -2256,15 +2498,16 @@ func (p *Peg) Init() {
 						position, tokenIndex, thunkPosition = position185, tokenIndex185, thunkPosition185
 						{
 							begin189 := position
-							if !matchChar('#') {
+							if buffer[position] != '#' {
 								goto l184
 							}
+							position++
 						l190:
 							{
 								position191, tokenIndex191, thunkPosition191 := position, tokenIndex, thunkPosition
 								{
 									position192, tokenIndex192, thunkPosition192 := position, tokenIndex, thunkPosition
-									if !p.rules[32]() {
+									if !rules[32]() {
 										goto l192
 									}
 									goto l191
@@ -2278,7 +2521,7 @@ func (p *Peg) Init() {
 							l191:
 								position, tokenIndex, thunkPosition = position191, tokenIndex191, thunkPosition191
 							}
-							if !p.rules[32]() {
+							if !rules[32]() {
 								goto l184
 							}
 							if begin189 != position {
@@ -2310,24 +2553,28 @@ func (p *Peg) Init() {
 				begin196 := position
 				{
 					position197, tokenIndex197, thunkPosition197 := position, tokenIndex, thunkPosition
-					if !matchChar('\r') {
+					if buffer[position] != '\r' {
 						goto l198
 					}
-					if !matchChar('\n') {
+					position++
+					if buffer[position] != '\n' {
 						goto l198
 					}
+					position++
 					goto l197
 				l198:
 					position, tokenIndex, thunkPosition = position197, tokenIndex197, thunkPosition197
-					if !matchChar('\n') {
+					if buffer[position] != '\n' {
 						goto l199
 					}
+					position++
 					goto l197
 				l199:
 					position, tokenIndex, thunkPosition = position197, tokenIndex197, thunkPosition197
-					if !matchChar('\r') {
+					if buffer[position] != '\r' {
 						goto l195
 					}
+					position++
 				}
 			l197:
 				if begin196 != position {
@@ -2347,9 +2594,10 @@ func (p *Peg) Init() {
 			position201, tokenIndex201, thunkPosition201 := position, tokenIndex, thunkPosition
 			{
 				begin202 := position
-				if !matchChar('{') {
+				if buffer[position] != '{' {
 					goto l201
 				}
+				position++
 				{
 					begin = position
 					begin203 := position
@@ -2358,9 +2606,10 @@ func (p *Peg) Init() {
 						position205, tokenIndex205, thunkPosition205 := position, tokenIndex, thunkPosition
 						{
 							position206, tokenIndex206, thunkPosition206 := position, tokenIndex, thunkPosition
-							if !matchChar('}') {
+							if buffer[position] != '}' {
 								goto l206
 							}
+							position++
 							goto l205
 						l206:
 							position, tokenIndex, thunkPosition = position206, tokenIndex206, thunkPosition206
@@ -2378,10 +2627,11 @@ func (p *Peg) Init() {
 						tokenIndex++
 					}
 				}
-				if !matchChar('}') {
+				if buffer[position] != '}' {
 					goto l201
 				}
-				if !p.rules[29]() {
+				position++
+				if !rules[29]() {
 					goto l201
 				}
 				if begin202 != position {
@@ -2399,4 +2649,5 @@ func (p *Peg) Init() {
 		/* 36 End <- <('>' Spacing)> */
 		nil,
 	}
+	p.rules = rules
 }

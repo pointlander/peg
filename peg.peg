@@ -23,7 +23,7 @@ Grammar		<- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begi
                            commit
                            Definition+ EndOfFile
 Definition	<- Identifier 			{ p.AddRule(buffer[begin:end]) }
-		     LeftArrow Expression	{ p.AddExpression() } &(Identifier LeftArrow / !.) commit
+		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.) commit
 Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }
 			    )* (Slash           { p.AddNil(); p.AddAlternate() }
                                )?
@@ -49,6 +49,7 @@ Primary	        <- 'commit' Spacing             { p.AddCommit() }
 
 # Lexical syntax
 
+#PrivateIdentifier <- < [a-z_] IdentCont* > Spacing
 Identifier	<- < IdentStart IdentCont* > Spacing
 IdentStart	<- [[a-z_]]
 IdentCont	<- IdentStart / [0-9]

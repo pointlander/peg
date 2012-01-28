@@ -21,7 +21,7 @@ const PEG_HEADER_TEMPLATE =
 `package {{.PackageName}}
 
 import (
-	"bytes"
+	/*"bytes"*/
 	"fmt"
  	"os"
 	"sort"
@@ -45,11 +45,13 @@ var Rul3s = [...]string {
 
 type TokenTree interface {
 	sort.Interface
+	Print()
 	Prepare()
 	Add(rule Rule, begin, end, next int)
 	Expand(index int) TokenTree
 	Stack() []token32
 	Tokens() <-chan token32
+	Error() []token32
 }
 
 {{range .Sizes}}
@@ -64,9 +66,41 @@ func (t *token{{.}}) isZero() bool {
 	return t.Rule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
+func (t *token{{.}}) GetToken32() token32 {
+	return token32{Rule: t.Rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+}
+
+func (t *token{{.}}) String() string {
+	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", Rul3s[t.Rule], t.begin, t.end, t.next)
+}
+
 type tokens{{.}} struct {
 	tree		[]token{{.}}
 	stackSize	int32
+}
+
+type trace{{.}} struct {
+	*tokens{{.}}
+}
+
+func (t *trace{{.}}) Less(i, j int) bool {
+	ii, jj := t.tree[i], t.tree[j]
+	if ii.Rule != RuleUnknown {
+		if jj.Rule == RuleUnknown {
+			return true
+		} else if ii.end > jj.end {
+			return true
+		} else if ii.end == jj.end {
+			if ii.begin < jj.begin {
+				return true
+			} else if ii.begin == jj.begin {
+				if ii.next > jj.next {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (t *tokens{{.}}) Len() int {
@@ -101,6 +135,12 @@ func (t *tokens{{.}}) Swap(i, j int) {
 	t.tree[i], t.tree[j] = t.tree[j], t.tree[i]
 }
 
+func (t *tokens{{.}}) Print() {
+	for _, token := range t.tree {
+		fmt.Println(token.String())
+	}
+}
+
 func (t *tokens{{.}}) Prepare() {
 	sort.Sort(t)
 	size := int(t.tree[0].next) + 1
@@ -112,6 +152,10 @@ func (t *tokens{{.}}) Prepare() {
 			tree[stack[top].next].next, top = token.next, top - 1
 		}
 		stack[top + 1], top = token, top + 1
+	}
+
+	for top >= 0 {
+		tree[stack[top].next].next, top = int{{.}}(size), top - 1
 	}
 
 	for i, token := range stack {
@@ -139,11 +183,26 @@ func (t *tokens{{.}}) Tokens() <-chan token32 {
 	s := make(chan token32, 16)
 	go func() {
 		for _, v := range t.tree {
-			s <- token32{Rule: v.Rule, begin: int32(v.begin), end: int32(v.end), next: int32(v.next)}
+			s <- v.GetToken32()
 		}
 		close(s)
 	}()
 	return s
+}
+
+func (t *tokens{{.}}) Error() []token32 {
+	sort.Sort(&trace{{.}}{t})
+	open, i, tokens := t.tree[0], 0, make([]token32, 3)
+	tokens[i], i = open.GetToken32(), i + 1
+
+	for _, token := range t.tree[1:] {
+		if token.Rule == RuleUnknown {break}
+		if token.begin < open.begin {
+			tokens[i], open, i = token.GetToken32(), token, i + 1
+			if i >= len(tokens) {break}
+		}
+	}
+	return tokens
 }
 {{end}}
 
@@ -152,8 +211,7 @@ func (t *tokens16) Expand(index int) TokenTree {
 	if index >= len(tree) {
 		expanded := make([]token32, 2 * len(tree))
 		for i, v := range tree {
-			e := &expanded[i]
-			e.Rule, e.begin, e.end, e.next = v.Rule, int32(v.begin), int32(v.end), int32(v.next)
+			expanded[i] = v.GetToken32()
 		}
 		return &tokens32{tree: expanded}
 	}
@@ -175,7 +233,6 @@ const END_SYMBOL byte = 0
 type {{.StructName}} struct {
 	{{.StructVariables}}
 	Buffer		string
-	Min, Max	int
 	rules		[{{.RulesCount}}]func() bool
 
 	TokenTree
@@ -195,40 +252,50 @@ func (p *{{.StructName}}) Parse() os.Error {
 	return &parseError{ p }
 }
 
+type textPosition struct {
+	line, symbol int
+}
+
+type textPositionMap map[int] textPosition
+
+func translatePositions(buffer string, positions []int) textPositionMap {
+	length, translations, j, line, symbol := len(positions), make(textPositionMap, len(positions)), 0, 1, 0
+	sort.Ints(positions)
+
+	search: for i, c := range buffer[0:] {
+		if c == '\n' {line, symbol = line + 1, 0} else {symbol++}
+		if i == positions[j] {
+			translations[positions[j]] = textPosition{line, symbol}
+			for j++; j < length; j++ {if i != positions[j] {continue search}}
+			break search
+		}
+ 	}
+
+	return translations
+}
+
 type parseError struct {
 	p *{{.StructName}}
 }
 
 func (e *parseError) String() string {
-	buf, line, character := new(bytes.Buffer), 1, 0
-
-	for i, c := range e.p.Buffer[0:] {
-		if c == '\n' {
-			line++
-			character = 0
-		} else {
-			character++
-		}
-
-		if i == e.p.Min {
-			if e.p.Min != e.p.Max {
-				fmt.Fprintf(buf, "parse error after line %v character %v\n", line, character)
-   			} else {
-				break
-			}
-  		} else if i == e.p.Max {
-			break
-		}
- 	}
-
-	fmt.Fprintf(buf, "parse error: unexpected ")
-	if e.p.Max >= len(e.p.Buffer) {
-		fmt.Fprintf(buf, "end of file found\n")
-	} else {
-		fmt.Fprintf(buf, "'%c' at line %v character %v\n", e.p.Buffer[e.p.Max], line, character)
+	tokens, error := e.p.TokenTree.Error(), "\n"
+	positions, p := make([]int, 2 * len(tokens)), 0
+	for _, token := range tokens {
+		positions[p], p = int(token.begin), p + 1
+		positions[p], p = int(token.end), p + 1
+	}
+	translations := translatePositions(e.p.Buffer, positions)
+	for _, token := range tokens {
+		begin, end := int(token.begin), int(token.end)
+		error += fmt.Sprintf("parse error near \x1B[34m%v\x1B[m (line %v symbol %v - line %v symbol %v):\n%v\n",
+                                     Rul3s[token.Rule],
+                                     translations[begin].line, translations[begin].symbol,
+                                     translations[end].line, translations[end].symbol,
+                                     /*strconv.Quote(*/e.p.Buffer[begin:end]/*)*/)
 	}
 
-	return buf.String()
+	return error
 }
 
 func (p *{{.StructName}}) PrintSyntaxTree() {
@@ -253,8 +320,8 @@ func (p *{{.StructName}}) Highlighter() {
 	tokenTree := p.TokenTree
 	stack, top, i, c := tokenTree.Stack(), -1, 0, 0
 	for token := range tokenTree.Tokens() {
-		pops := top
 		if top >= 0 && int(stack[top].next) == i {
+			pops := top
 			for top >= 0 && int(stack[top].next) == i {
 				top--
 			}
@@ -262,7 +329,7 @@ func (p *{{.StructName}}) Highlighter() {
 			for c < int(stack[pops].end) {
 				fmt.Printf("%v", c)
 				for t := 0; t <= pops; t++ {
-					if c >= int(stack[t].begin) && c < int(stack[t].end) {
+					if c >= int(stack[t].begin) {
 						fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[stack[t].Rule])
 					}
 				}
@@ -272,13 +339,26 @@ func (p *{{.StructName}}) Highlighter() {
 		}
 		stack[top + 1], top, i = token, top + 1, i + 1
 	}
+
+	if top >= 0 && int(stack[top].next) == i {
+		for c < int(stack[top].end) {
+			fmt.Printf("%v", c)
+			for t := 0; t <= top; t++ {
+				if c >= int(stack[t].begin) {
+					fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[stack[t].Rule])
+				}
+			}
+			fmt.Printf("\n")
+			c++
+		}
+	}
 }
 
 func (p *{{.StructName}}) Init() {
-	position, tokenIndex := 0, 0
+	if p.Buffer[len(p.Buffer) - 1] != END_SYMBOL {p.Buffer = p.Buffer + string(END_SYMBOL)}
 	p.TokenTree = &tokens16{tree: make([]token16, 65536)}
 
-	if p.Buffer[len(p.Buffer) - 1] != END_SYMBOL {p.Buffer = p.Buffer + string(END_SYMBOL)}
+	position, tokenIndex, buffer, rules := 0, 0, p.Buffer, p.rules
 
 	{{if .HasActions}}
  	actions := [...]func(buffer string, begin, end int) {
@@ -307,9 +387,8 @@ func (p *{{.StructName}}) Init() {
 	commit := func(thunkPosition0 int) bool {
 		if thunkPosition0 == 0 {
 			for thunk := 0; thunk < thunkPosition; thunk++ {
-				actions[thunks[thunk].action](p.Buffer, thunks[thunk].begin, thunks[thunk].end)
+				actions[thunks[thunk].action](buffer, thunks[thunk].begin, thunks[thunk].end)
 			}
-			p.Min = position
 			thunkPosition = 0
 			return true
 		}
@@ -320,34 +399,29 @@ func (p *{{.StructName}}) Init() {
 
 	{{if .HasDot}}
 	matchDot := func() bool {
-		if p.Buffer[position] != END_SYMBOL {
+		if buffer[position] != END_SYMBOL {
 			position++
 			return true
-		} else if position >= p.Max {
-			p.Max = position
 		}
 		return false
 	}
 	{{end}}
 
 	{{if .HasCharacter}}
-	matchChar := func(c byte) bool {
-		if p.Buffer[position] == c {
+	/*matchChar := func(c byte) bool {
+		if buffer[position] == c {
 			position++
 			return true
-		} else if position >= p.Max {
-			p.Max = position
 		}
 		return false
-	}
+	}*/
 	{{end}}
 
 	{{if .HasString}}
 	matchString := func(s string) bool {
 		i := position
 		for _, c := range s {
-			if p.Buffer[i] != byte(c) {
-				if i >= p.Max {p.Max = i}
+			if buffer[i] != byte(c) {
 				return false
 			}
 			i++
@@ -358,18 +432,16 @@ func (p *{{.StructName}}) Init() {
 	{{end}}
 
 	{{if .HasRange}}
-	matchRange := func(lower byte, upper byte) bool {
-		if (p.Buffer[position] >= lower) && (p.Buffer[position] <= upper) {
+	/*matchRange := func(lower byte, upper byte) bool {
+		if c := buffer[position]; c >= lower && c <= upper {
 			position++
 			return true
-		} else if position >= p.Max {
-			p.Max = position
 		}
 		return false
-	}
+	}*/
 	{{end}}
 
-	p.rules = [...]func() bool {`
+	rules = [...]func() bool {`
 
 type Type uint8
 const (
@@ -682,13 +754,6 @@ func escape(c string) string {
 		return c[1:len(c) - 1]
 	}
 	return ""
-}
-
-type estimate struct {
-	consumed, depth int
-	consumes bool
-	name string
-	estimates []estimate
 }
 
 func (t *Tree) Compile(file string) {
@@ -1165,7 +1230,9 @@ func (t *Tree) Compile(file string) {
 			fmt.Fprintf(os.Stderr, "internal error #1 (%v)\n", n)
 		case TypeDot:
 			print("\n   if !matchDot() {")
+			/*print("\n   if buffer[position] == END_SYMBOL {")*/
 			printJump(ko)
+			/*print("}\nposition++")*/
 			print("}")
 		case TypeName:
 			name := n.String()
@@ -1174,7 +1241,7 @@ func (t *Tree) Compile(file string) {
 				compile(rule.Front(), ko)
 				return
 			}
-			print("\n   if !p.rules[%d]() {", rule.GetId())
+			print("\n   if !rules[%d]() {", rule.GetId())
 			printJump(ko)
 			print("}")
 		case TypeRange:
@@ -1182,13 +1249,15 @@ func (t *Tree) Compile(file string) {
 			lower := element
 			element = element.Next()
 			upper := element
-			print("\n   if !matchRange('%v', '%v') {", escape(lower.String()), escape(upper.String()))
+			/*print("\n   if !matchRange('%v', '%v') {", escape(lower.String()), escape(upper.String()))*/
+			print("\n   if c := buffer[position]; c < '%v' || c > '%v' {", escape(lower.String()), escape(upper.String()))
 			printJump(ko)
-			print("}")
+			print("}\nposition++")
 		case TypeCharacter:
-			print("\n   if !matchChar('%v') {", escape(n.String()))
+			/*print("\n   if !matchChar('%v') {", escape(n.String()))*/
+			print("\n   if buffer[position] != '%v' {", escape(n.String()))
 			printJump(ko)
-			print("}")
+			print("}\nposition++")
 		case TypeString:
 			print("\n   if !matchString(%v) {", strconv.Quote(n.String()))
 			printJump(ko)
@@ -1254,10 +1323,7 @@ func (t *Tree) Compile(file string) {
 			done, ok := ko, label
 			label++
 			printBegin()
-			print("\n   if position == len(p.Buffer) {")
-			printJump(done)
-			print("}")
-			print("\n   switch p.Buffer[position] {")
+			print("\n   switch buffer[position] {")
 			element := n.Front()
 			for ; element.Next() != nil; element = element.Next() {
 				sequence := element.Front()
@@ -1412,6 +1478,6 @@ func (t *Tree) Compile(file string) {
 		}
 		print("\n  },")
 	}
-	print("\n }")
+	print("\n }\n p.rules = rules")
 	print("\n}\n")
 }
