@@ -21,7 +21,7 @@ peg.peg: peg in its own language
 
 Building
 
-make
+gomake
 
 
 Testing

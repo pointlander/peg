@@ -52,6 +52,7 @@ type TokenTree interface {
 	Stack() []token32
 	Tokens() <-chan token32
 	Error() []token32
+	trim(length int)
 }
 
 {{range .Sizes}}
@@ -77,6 +78,10 @@ func (t *token{{.}}) String() string {
 type tokens{{.}} struct {
 	tree		[]token{{.}}
 	stackSize	int32
+}
+
+func (t *tokens{{.}}) trim(length int) {
+	t.tree = t.tree[0:length]
 }
 
 type trace{{.}} struct {
@@ -234,7 +239,8 @@ type {{.StructName}} struct {
 	{{.StructVariables}}
 	Buffer		string
 	rules		[{{.RulesCount}}]func() bool
-
+	Parse		func(rule ...int) os.Error
+	Reset		func()
 	TokenTree
 }
 
@@ -245,12 +251,6 @@ func (p *{{.StructName}}) Add(rule Rule, begin, end, next int) {
 	p.TokenTree.Add(rule, begin, end, next)
 }
 
-func (p *{{.StructName}}) Parse() os.Error {
-	if p.rules[0]() {
-		return nil
-	}
-	return &parseError{ p }
-}
 
 type textPosition struct {
 	line, symbol int
@@ -357,8 +357,18 @@ func (p *{{.StructName}}) Highlighter() {
 func (p *{{.StructName}}) Init() {
 	if p.Buffer[len(p.Buffer) - 1] != END_SYMBOL {p.Buffer = p.Buffer + string(END_SYMBOL)}
 	p.TokenTree = &tokens16{tree: make([]token16, 65536)}
-
 	position, tokenIndex, buffer, rules := 0, 0, p.Buffer, p.rules
+	p.Parse = func(rule ...int) os.Error {
+		r := 0
+		if len(rule) > 0 {
+			r = rule[0]
+		}
+		if p.rules[r]() {
+			p.TokenTree.trim(tokenIndex)
+			return nil
+		}
+		return &parseError{p}
+	}
 
 	{{if .HasActions}}
  	actions := [...]func(buffer string, begin, end int) {
@@ -396,6 +406,14 @@ func (p *{{.StructName}}) Init() {
 	}
 	{{end}}
 	{{end}}
+
+	p.Reset = func() {
+		position, tokenIndex = 0, 0
+		{{if .HasActions}}
+		thunkPosition = 0
+		{{end}}
+	}
+
 
 	{{if .HasDot}}
 	matchDot := func() bool {

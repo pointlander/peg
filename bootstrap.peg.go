@@ -102,6 +102,7 @@ type TokenTree interface {
 	Stack() []token32
 	Tokens() <-chan token32
 	Error() []token32
+	trim(length int)
 }
 
 /* ${@} bit structure for abstract syntax tree */
@@ -125,6 +126,10 @@ func (t *token16) String() string {
 type tokens16 struct {
 	tree      []token16
 	stackSize int32
+}
+
+func (t *tokens16) trim(length int) {
+	t.tree = t.tree[0:length]
 }
 
 type trace16 struct {
@@ -278,6 +283,10 @@ func (t *token32) String() string {
 type tokens32 struct {
 	tree      []token32
 	stackSize int32
+}
+
+func (t *tokens32) trim(length int) {
+	t.tree = t.tree[0:length]
 }
 
 type trace32 struct {
@@ -439,7 +448,8 @@ type Peg struct {
 
 	Buffer string
 	rules  [37]func() bool
-
+	Parse  func(rule ...int) os.Error
+	Reset  func()
 	TokenTree
 }
 
@@ -448,13 +458,6 @@ func (p *Peg) Add(rule Rule, begin, end, next int) {
 		p.TokenTree = tree
 	}
 	p.TokenTree.Add(rule, begin, end, next)
-}
-
-func (p *Peg) Parse() os.Error {
-	if p.rules[0]() {
-		return nil
-	}
-	return &parseError{p}
 }
 
 type textPosition struct {
@@ -573,8 +576,18 @@ func (p *Peg) Init() {
 		p.Buffer = p.Buffer + string(END_SYMBOL)
 	}
 	p.TokenTree = &tokens16{tree: make([]token16, 65536)}
-
 	position, tokenIndex, buffer, rules := 0, 0, p.Buffer, p.rules
+	p.Parse = func(rule ...int) os.Error {
+		r := 0
+		if len(rule) > 0 {
+			r = rule[0]
+		}
+		if p.rules[r]() {
+			p.TokenTree.trim(tokenIndex)
+			return nil
+		}
+		return &parseError{p}
+	}
 
 	actions := [...]func(buffer string, begin, end int){
 		/* 0 */
@@ -801,6 +814,13 @@ func (p *Peg) Init() {
 			return true
 		}
 		return false
+	}
+
+	p.Reset = func() {
+		position, tokenIndex = 0, 0
+
+		thunkPosition = 0
+
 	}
 
 	matchDot := func() bool {

@@ -1,0 +1,1024 @@
+#!../bin/fexl
+# ^^^ use that line for the locally built version
+
+#!/usr/bin/fexl
+# ^^^ use that line for the installed version
+
+
+# NOTE: If you run ./try.fxl, it will go through a bunch of tests, including
+# one at the end where it asks you to type lines of text and terminate with
+# Ctrl-D.  If you'd like to run the test without having to type anything, and
+# compare it with the reference output, do this:
+#
+#   cat try.fxl | ../bin/fexl | cmp - out
+#
+# That should run quietly with exit code 0.
+
+
+#####
+
+# This function halts by simply consuming all arguments given to it.
+\halt == (\_ halt)
+
+# Useful:
+\string_from = (\x
+	string_type x x;
+	long_type x (long_string x);
+	double_type x (double_string x);
+	x)
+
+\print = (\item string_put (string_from item))
+\nl = (print "
+")
+
+\T = (\T\F T)
+\F = (\T\F F)
+
+\string_eq=(\x\y string_compare x y F T F)
+
+\long_le = (\x\y long_compare x y T T F)
+\long_lt = (\x\y long_compare x y T F F)
+\long_ge = (\x\y long_compare x y F T T)
+\long_gt = (\x\y long_compare x y F F T)
+\long_ne = (\x\y long_compare x y T F T)
+\long_min = (\x\y long_compare x y  x x y)
+
+### List functions
+
+# "end" is the empty list.
+\end = (\end\item end)
+
+# The "item" (cons) list constructor is built-in, but could be defined thus:
+# \item = (\head\tail \end\item item head tail)
+
+# Return the first N items of the list.
+\list_prefix == (\list\N
+	long_le N 0 end;
+	list end \head\tail
+	\N = (long_sub N 1)
+	item head; list_prefix tail N
+	)
+
+# Return the item at position N in the list, or default if no such item.
+\list_at == (\list\N\default
+	list default \head\tail
+	long_compare N 0 default head
+	\N = (long_sub N 1)
+	list_at tail N default
+	)
+
+\list_map == (\next\fun\list
+	list next \head\tail fun head; list_map next fun tail)
+
+\list_do = (list_map I)
+
+\list_print = (\fun list_do \x string_put; fun x)
+
+# We don't use char_put because of buffering problems.
+\chars_print = (list_print long_char)
+
+\bits_print = (list_print \x x "1" "0")
+
+# Reverse a list.
+\reverse=(\list
+	\reverse==(\list\result list result \h\t reverse t (item h result))
+	reverse list end
+	)
+
+########
+
+\test_hello_world==
+(
+print "hello world" nl;
+)
+
+########
+
+\test_cat==
+(
+print "=== Enter lines of text and I'll echo them.  Press Ctrl-D to stop";nl;
+
+\long_lt = (\x\y long_compare x y T F F)
+
+# The cat program echoes the input to the output.
+\cat == (char_get \ch long_lt ch 0 I; char_put ch; cat)
+cat
+)
+
+########
+
+\test_string_slice==
+(
+print (string_slice "abcde" 0 1); nl;
+print (string_slice "abcde" 0 2); nl;
+print (string_slice "abcde" 0 3); nl;
+print (string_slice "abcde" 0 4); nl;
+print (string_slice "abcde" 0 5); nl;
+print (string_slice "abcde" 0 6); nl;
+print (string_slice "abcde" 0 700); nl;
+print (string_slice "a" 0 0); nl;
+print (string_slice "a" 0 1); nl;
+print (string_slice "a" 0 2); nl;
+print (string_slice "a" -1 0); nl;
+print "=====";nl;
+print (string_slice "a" 0 1); nl;
+print (string_slice "a" -1 2); nl;
+print (string_slice "a" -2 3); nl;
+print (string_slice "a" -2 4); nl;
+print (string_slice "a" -2 0); nl;
+print (string_slice "abcde" 0 5); nl;
+print (string_slice "abcde" -1 5); nl;
+print (string_slice "abcde" -2 5); nl;
+print (string_slice "abcde" -3 5); nl;
+print (string_slice "abcde" -4 5); nl;
+print (string_slice "abcde" -5 5); nl;
+print (string_slice "abcde" -5 6); nl;
+print (string_slice "abcde" -5 7); nl;
+print (string_slice "abcde" -5 8); nl;
+print (string_slice "abcde" -5 9); nl;
+print (string_slice "abcde" -5 10); nl;
+print (string_slice "abcde" -5 11); nl;
+print "=====";nl;
+print (string_slice "" 0 0); nl;
+print (string_slice "" 0 800); nl;
+print (string_slice "" -30 800); nl;
+#string_put (string_from (string_slice "a" 0 1));nl;
+#string_put (string_from (string_slice "a" 0 1));nl;
+#string_put (string_from (string_slice "a" 0 1));nl;
+#string_put (string_from (string_slice "a" 0 1));nl;
+
+#string_put (string_slice "a" 0 0)
+)
+
+########
+
+\test_write_binary ==
+(
+# Writing binary
+
+\string_3014 =
+	(
+	string_append (long_char 03);
+	string_append (long_char 00);
+	string_append (long_char 01);
+	string_append (long_char 04);
+	""
+	)
+
+string_put string_3014;
+)
+
+########
+
+\test_string_len==
+(
+print (string_len ""); nl;
+print (string_len "a"); nl;
+print (string_len "ab"); nl;
+print (string_len "12345678901234567890123456789012"); nl;
+)
+
+########
+
+\test_string_at==
+(
+print (string_at "abc" -1); nl;
+print (string_at "abc" 0); nl;
+print (string_at "abc" 1); nl;
+print (string_at "abc" 2); nl;
+print (string_at "abc" 3); nl;
+)
+
+########
+
+\test_string_compare==
+(
+\string_014 =
+	(
+	string_append (long_char 00);
+	string_append (long_char 01);
+	string_append (long_char 04);
+	""
+	)
+
+\string_041 =
+	(
+	string_append (long_char 00);
+	string_append (long_char 04);
+	string_append (long_char 01);
+	""
+	)
+
+\string_0142 = (string_append string_014; long_char 02);
+
+\do_compare=(\x\y\expect
+	\result = (string_compare x y "LT" "EQ" "GT")
+	print "string_compare "; print x; print " "; print y; print " ";
+	print result; print " ";
+	print (string_eq result expect "GOOD" "BAD");
+	nl;
+	)
+
+do_compare string_0142 string_014 "GT";
+do_compare string_014 string_0142 "LT";
+do_compare string_014 string_014 "EQ";
+do_compare string_014 string_041 "LT";
+do_compare string_041 string_014 "GT";
+do_compare string_041 string_0142 "GT";
+)
+
+########
+\test_string_common ==
+(
+\string_eq=(\x\y string_compare x y F T F)
+\long_eq=(\x\y long_compare x y F T F)
+
+\check = (\value\expect
+	\halt == (\_ halt)
+	\ok = (long_eq value expect)
+	print " "; print (ok "GOOD" "BAD");nl;
+	ok I halt
+	)
+
+\test_string_common = (\x\y\expect
+	\len = (string_common x y)
+	print "string_common ";print x; print " "; print y; print " = "; print len;
+	check len expect;
+	)
+
+test_string_common "" "" 0;
+test_string_common "" "a" 0;
+test_string_common "a" "a" 1;
+test_string_common "a" "ab" 1;
+test_string_common "ab" "a" 1;
+test_string_common "ab" "ab" 2;
+test_string_common "abc" "abd" 2;
+test_string_common "aac" "abd" 1;
+test_string_common "abd" "abd" 3;
+test_string_common "cbd" "abd" 0;
+test_string_common "x" "" 0;
+)
+
+########
+
+\test_long_add==
+(
+\x=(long_add 37 23)
+print "The value of x is "; print x; print "."; nl;
+)
+
+########
+\test_procedural==
+(
+# Make some abbreviations.
+\add=double_add
+\sub=double_sub
+\mul=double_mul
+\div=double_div
+
+
+print ~@
+===
+Here we demonstrate an ordinary "procedural" style of programming.  This works
+because definitions are NOT recursive by default.  If you want a recursive
+definition, you must use "==" instead of just "=".
+
+@;
+
+\show=(\name\value print name; print " = "; print value; nl;)
+
+\x=3.0
+\y=4.0
+\x=(add x x)
+\y=(mul y x)
+show "x" x; show "y" y;
+\x=(div x; mul y 4.0)
+show "x" x; show "y" y;
+
+\z=(mul x; mul y; add 1.0 y)
+show "x" x; show "y" y; show "z" z;
+\z=(div z 5.0)
+show "z" z;
+)
+
+\test_eager==
+(
+\long_le = (\x\y long_compare x y T T F)
+
+\sum == (\total\count
+	long_le count 0 total;
+
+	# This form evaluates eagerly:
+	\total = (long_add total count)
+
+	# Or if you prefer, you can use "?" to force eager evaluation like this:
+	#? (long_add total count) \total
+
+	sum total (long_sub count 1))
+
+\sum = (sum 0)
+
+\count = 100000
+print "The sum of 1 .. ";print count; print " is "; print (sum count);nl;
+)
+
+\test_double_compare ==
+(
+\do_compare=(\x\y\expect
+	\result = (double_compare x y "LT" "EQ" "GT")
+	print "double_compare "; print x; print " "; print y; print " ";
+	print result; print " ";
+	print (string_eq result expect "GOOD" "BAD");
+	nl;
+	)
+do_compare 23.0 23.0 "EQ"
+do_compare 23.0 24.0 "LT"
+do_compare 23.1 23.2 "LT"
+do_compare 24.0 23.0 "GT"
+do_compare 24.0 240.0 "LT"
+do_compare -1.0 4.0 "LT"
+do_compare 4.0 -1.0 "GT"
+do_compare -1.0 -1.0 "EQ"
+)
+
+####### Some tests with arbitrary precision arithmetic.
+
+\module_test_arithmetic ==
+(
+
+# These put a binary digit 0 or 1 on the front of a list.
+\d0 = (item F)
+\d1 = (item T)
+
+# the natural numbers 0 and 1
+\nat_0 = end
+\nat_1 = (d1 nat_0)
+
+# (nat_2x x) is twice x.
+\nat_2x=(\x x nat_0 \_\_ d0 x)
+
+# (nat_2x1 x) is twice x plus 1.
+\nat_2x1=d1
+
+# (nat_eq0 x) is true iff x = 0
+\nat_eq0=(\x x T \_\_ F)
+
+# (nat_inc x) is x+1.  (x incremented by 1).  Both x and the result are of
+# type nat.
+\nat_inc==(\x x nat_1 \b\n b (d0; nat_inc n) (d1 n))
+
+# (nat_dec x) is x-1 if x > 0, or 0 if x = 0.  (x decremented by 1)  Both x
+# and the result are of type nat.
+\nat_dec==(\x x nat_0 \b\n b (nat_eq0 n nat_0 (d0 n)) (d1; nat_dec n))
+
+# (nat_add x y) is x+y.  (the sum of x and y)  The x, y, and result are of
+# type nat.
+\nat_add == (\x\y x y \bx\nx y x \by\ny
+	\sum=(nat_add nx ny)
+	bx
+		(by (d0; nat_inc sum) (d1 sum))
+		(item by sum)
+	)
+
+# (nat_mul x y) is x*y.  (the product of x and y)  The x, y, and result are
+# of type nat.
+\nat_mul == (\x\y x nat_0 \bx\nx y nat_0 \by\ny
+	bx
+		(by (d1; nat_add nx (nat_mul ny x)) (d0; nat_mul ny x))
+		(by (d0; nat_mul nx y) (d0; d0; nat_mul nx ny))
+	)
+
+# (int_ge0 x) is true if int x >= 0.
+\int_ge0=(\x x T \s\_ s)
+
+# (int_abs x) is the absolute value of int x.  The result is a nat.
+\int_abs=(\x x nat_0 \_\n n)
+
+\int_0 = end
+\int_1 = (d1; d1; int_0)
+
+# (nat_int x) is nat x converted to the int +x.
+\nat_int=(\x nat_eq0 x int_0; d1 x)
+# (nat_neg x) is nat x converted to the int -x.
+\nat_neg=(\x nat_eq0 x int_0; d0 x)
+
+# (int_2x x) is twice x.
+\int_2x=(\x x int_0 \b\n item b; d0; n)
+
+# (int_inc x) is int x+1.
+\int_inc=(\x x int_1 \b\n b (d1; nat_inc n) (nat_neg (nat_dec n)))
+
+# (int_dec x) is int x-1.
+\int_dec=(\x x (d0; nat_1) \b\n b (nat_int (nat_dec n)) (d0; nat_inc n))
+
+# (nat_sub x y) is x-y.  (x minus y)  The x, y are of type nat, but the
+# result is of type int because the result might be negative.
+\nat_sub==(\x\y x (nat_neg y) \bx\nx y (nat_int x) \by\ny
+	\z = (int_2x (nat_sub nx ny))
+	bx (by I int_inc) (by int_dec I) z
+	)
+
+# (nat_div x y) divides x by y.  It yields a pair <q,r>, where q is the
+# quotient and r is the remainder.
+#
+# The result satisfies the equation x = q*y + r,  0 <= r < y.
+#
+# NOTE:  If you divide by zero, the function yields the pair <0,0>.
+
+\nat_div==(\x\y\return
+	x (return nat_0 nat_0) \bx\nx
+	y (return nat_0 nat_0) \by\ny
+	by
+		(
+		# divide by odd
+		nat_div nx y \q\r
+		\r=(bx nat_2x1 nat_2x r)
+		\d=(nat_sub r y)
+		int_ge0 d
+			(return (nat_2x1 q) (int_abs d))
+			(return (nat_2x q) r)
+		)
+		(
+		# divide by even
+		nat_div nx ny \q\r
+		return q (bx nat_2x1 nat_2x r)
+		)
+	)
+
+\nat_compare == (\x\y \lt\eq\gt
+	x (y eq \_\_ lt) \bx\nx
+	y gt \by\ny
+	nat_compare nx ny
+		lt
+		(bx (by eq gt) (by lt eq))
+		gt
+	)
+
+\nat_le = (\x\y nat_compare x y T T F)
+\nat_ge = (\x\y nat_compare x y F T T)
+
+\nat_2 = (d0 nat_1)
+\nat_5 = (d1 nat_2)
+\nat_10 = (d0 nat_5)
+
+\nat_div10 = (\x nat_div x nat_10)
+
+# Convert a nat into a machine long value, ignoring any overflow.
+\nat_long =
+	(
+	\nat_long == (\sum\pow\bits
+		bits sum \bit\bits
+		\sum = (bit (long_add pow) I sum)
+		\pow = (long_mul 2 pow)
+		nat_long sum pow bits
+		)
+
+	nat_long 0 1
+	)
+
+# (nat_base_10_lo n) is the list of ASCII decimal digits for n starting
+# with the least significant digit.
+\nat_base_10_lo == (\x
+	nat_div10 x \q\r
+	\ch = (long_add 48; nat_long r);
+	item ch;
+	nat_eq0 q end;
+	nat_base_10_lo q
+	)
+
+# (nat_base_10 n) is the list of ASCII decimal digits for n starting
+# with the most significant digit.
+\nat_base_10=(\n reverse; nat_base_10_lo n)
+
+\nat_print = (\x chars_print (nat_base_10 x))
+\nat_print_lo = (\x chars_print (nat_base_10_lo x))
+
+# for testing:
+# show in reverse decimal
+#\nat_print = nat_print_lo
+# show in binary
+#\nat_print = bits_print
+
+\int_base_10 = (\x
+	int_ge0 x
+		(nat_base_10; int_abs x)
+		(item 45; nat_base_10; int_abs x)
+		)
+
+\int_print = (\x chars_print (int_base_10 x))
+
+# LATER maybe char constants?  e.g. '0' == 48  '-' == 45
+# This would be handled in the standard resolution context.  It would not be
+# part of the grammar.  The symbol "'0'" would simply be resolved to the long
+# value 48.
+
+######
+
+\nat_2 = (d0 nat_1)
+\nat_3 = (d1 nat_1)
+\nat_4 = (d0 nat_2)
+\nat_5 = (d1 nat_2)
+\nat_6 = (d0 nat_3)
+\nat_7 = (d1 nat_3)
+\nat_8 = (d0 nat_4)
+\nat_9 = (d1 nat_4)
+\nat_10 = (d0 nat_5)
+\nat_11 = (d1 nat_5)
+\nat_12 = (d0 nat_6)
+\nat_13 = (d1 nat_6)
+\nat_14 = (d0 nat_7)
+\nat_15 = (d1 nat_7)
+\nat_16 = (d0 nat_8)
+\nat_17 = (d1 nat_8)
+\nat_18 = (d0 nat_9)
+\nat_19 = (d1 nat_9)
+\nat_32 = (d0 nat_16)
+\nat_20 = (d0 nat_10)
+\nat_24 = (d0 nat_12)
+\nat_31 = (d1 nat_15)
+\nat_48 = (d0 nat_24)
+\nat_49 = (d1 nat_24)
+
+####
+
+\test_fibonacci ==
+(
+
+# This lets you use either built-in arithmetic or arbitrary-precision
+# arithmetic.
+
+\test_case ==
+(
+\if_show_all
+\number_type
+\num_rounds
+
+if_show_all
+(
+print "Print the first ";print num_rounds; print " Fibonacci numbers ";
+print "using number type ";print number_type;nl;
+)
+(
+print "Print the Fibonacci number at position ";print num_rounds;
+print " using number type ";print number_type;nl;
+)
+
+\choose =
+(
+\return
+\case = (string_eq number_type)
+case "double" (return print double_add 1.0);
+case "nat" (return nat_print nat_add nat_1);
+halt
+)
+
+choose \num_print \num_add \num_1
+
+\nums_print = (list_do \x num_print x; nl)
+
+# Produces the infinite list of all Fibonacci numbers.
+\fibonacci =
+	(
+	\1
+	\add
+
+	\fibonacci == (\x\y
+		item x;
+		\z = (add x y)
+		fibonacci y z
+		)
+
+	fibonacci 1 1
+	)
+
+\fibonacci = (fibonacci num_1 num_add)
+
+if_show_all
+(nums_print; list_prefix fibonacci num_rounds)
+(num_print; list_at fibonacci (long_sub num_rounds 1) num_1)
+nl;
+)
+
+#test_case T "nat" 200;
+#test_case T "nat" 2000;
+#test_case T "nat" 1;
+#test_case T "nat" 2;
+#test_case T "nat" 3;
+#test_case F "nat" 4;
+#test_case F "double" 4;
+#test_case F "nat" 1000;
+#test_case F "nat" 100;
+#test_case T "nat" 100;
+#test_case F "double" 1000;
+#test_case F "nat" 10000;
+#test_case T "nat" 100;
+#test_case T "nat" 10;
+#test_case F "nat" 500;
+
+#test_case T "double" 200;
+#test_case T "nat" 200;
+#test_case F "nat" 200;
+#test_case F "nat" 2000;
+
+test_case T "nat" 300;
+test_case F "nat" 1600;   # 10.208s
+)
+
+####
+\test_binary_counter ==
+(
+
+\loop ==
+(
+\count
+\num
+long_le count 0 I;
+print (nat_long num); print " ";
+bits_print num;
+nl;
+\count = (long_sub count 1)
+\num = (nat_inc num)
+loop count num
+)
+
+loop 50 nat_0
+)
+
+\test_divide==
+(
+# LATER automatically check the constraints
+\test_div = (\x\y
+	nat_div x y \q\r
+	print "test_div";nl;
+	\show=(\key\val print key;print " = "; nat_print val; nl;)
+	show "x" x;
+	show "y" y;
+	show "q" q;
+	show "r" r;
+	nl;
+	)
+
+test_div nat_0 nat_0;
+test_div nat_0 nat_1;
+test_div nat_1 nat_0;
+test_div nat_1 nat_1;
+test_div nat_2 nat_1;
+
+test_div nat_0 nat_2;
+test_div nat_1 nat_2;
+test_div nat_2 nat_2;
+test_div nat_3 nat_2;
+test_div nat_4 nat_2;
+
+test_div nat_0 nat_3;
+test_div nat_1 nat_3;
+test_div nat_2 nat_3;
+test_div nat_3 nat_3;
+test_div nat_4 nat_3;
+test_div nat_5 nat_3;
+test_div nat_6 nat_3;
+test_div nat_7 nat_3;
+test_div nat_8 nat_3;
+test_div nat_9 nat_3;
+test_div nat_10 nat_3;
+test_div nat_11 nat_3;
+test_div nat_12 nat_3;
+
+test_div nat_0 nat_4;
+test_div nat_1 nat_4;
+test_div nat_2 nat_4;
+test_div nat_3 nat_4;
+test_div nat_4 nat_4;
+test_div nat_5 nat_4;
+test_div nat_6 nat_4;
+test_div nat_7 nat_4;
+test_div nat_8 nat_4;
+test_div nat_9 nat_4;
+test_div nat_10 nat_4;
+test_div nat_11 nat_4;
+test_div nat_12 nat_4;
+test_div nat_12 nat_4;
+
+test_div nat_0 nat_5;
+test_div nat_1 nat_5;
+test_div nat_2 nat_5;
+test_div nat_3 nat_5;
+test_div nat_4 nat_5;
+test_div nat_5 nat_5;
+test_div nat_6 nat_5;
+test_div nat_7 nat_5;
+test_div nat_8 nat_5;
+test_div nat_9 nat_5;
+test_div nat_10 nat_5;
+test_div nat_11 nat_5;
+test_div nat_12 nat_5;
+test_div nat_13 nat_5;
+test_div nat_14 nat_5;
+test_div nat_15 nat_5;
+test_div nat_16 nat_5;
+test_div nat_17 nat_5;
+test_div nat_18 nat_5;
+test_div nat_19 nat_5;
+
+\big_test =
+(
+\next
+\x = (nat_mul nat_31 nat_19)
+\churn = (\x nat_add nat_17; nat_mul x x)
+\x = (churn x)
+\x = (churn x)
+\x = (churn x)
+\x = (churn x)
+\x = (churn x)
+\x = (churn x)
+\y =nat_10
+\y=(nat_mul y y)
+
+test_div x y;
+test_div (churn x) (churn; churn; churn; churn; churn; churn y);
+next
+)
+
+big_test
+#big_test;
+#big_test;
+#big_test;
+#big_test;
+)
+
+\test_sub ==
+(
+\test_sub = (\x\y
+	\z = (nat_sub x y)
+	print "== test_sub: ";
+	nat_print x;
+	print " - ";
+	nat_print y;
+	print " = ";
+	int_print z;nl;
+	)
+
+test_sub nat_0 nat_0
+test_sub nat_1 nat_0
+test_sub nat_2 nat_0
+test_sub nat_3 nat_0
+test_sub nat_4 nat_0
+
+test_sub nat_1 nat_1
+test_sub nat_0 nat_1
+
+test_sub nat_0 nat_2
+test_sub nat_1 nat_2
+test_sub nat_2 nat_2
+test_sub nat_3 nat_2
+test_sub nat_4 nat_2
+
+test_sub nat_0 nat_3
+test_sub nat_1 nat_3
+test_sub nat_2 nat_3
+test_sub nat_3 nat_3
+test_sub nat_4 nat_3
+test_sub nat_5 nat_3
+test_sub nat_6 nat_3
+
+test_sub nat_0 nat_4
+test_sub nat_1 nat_4
+test_sub nat_2 nat_4
+test_sub nat_3 nat_4
+test_sub nat_4 nat_4
+test_sub nat_5 nat_4
+test_sub nat_6 nat_4
+test_sub nat_7 nat_4
+
+test_sub nat_0 nat_5
+test_sub nat_1 nat_5
+test_sub nat_2 nat_5
+test_sub nat_3 nat_5
+test_sub nat_4 nat_5
+test_sub nat_5 nat_5
+test_sub nat_6 nat_5
+test_sub nat_7 nat_5
+test_sub nat_8 nat_5
+test_sub nat_9 nat_5
+
+test_sub nat_3 nat_19
+test_sub nat_19 nat_19
+test_sub nat_49 nat_19
+test_sub nat_48 nat_19
+)
+
+\return return test_fibonacci test_binary_counter test_divide
+	test_sub
+)
+
+module_test_arithmetic
+\test_fibonacci \test_binary_counter \test_divide \test_sub
+
+########
+
+# Choose your test(s) to run down here.  Comment the ones don't want to run.
+
+\test_string_type==
+(
+\test_case=(\x\expect
+	\result = (string_type x "yes" "no")
+	print "string_type "; print result;
+	print " [";
+	print (string_eq result expect "GOOD" "BAD");
+	print "]";
+	nl;
+	)
+
+test_case 4 "no"
+test_case 2.3 "no"
+test_case (\x\y y x) "no"
+test_case C "no"
+test_case (string_append "hello " "world") "yes"
+test_case ((\x\y y x) "hi" I) "yes"
+test_case "hey!" "yes"
+)
+
+\test_double_type==
+(
+\test_case=(\x\expect
+	\result = (double_type x "yes" "no")
+	print "double_type "; print result;
+	print " [";
+	print (string_eq result expect "GOOD" "BAD");
+	print "]";
+	nl;
+	)
+
+test_case 4 "no"
+test_case 2.3 "yes"
+test_case (\x\y y x) "no"
+test_case C "no"
+test_case (string_append "hello " "world") "no"
+test_case ((\x\y y x) (double_add 4.2 2.6) I) "yes"
+test_case "hey!" "no"
+)
+
+\test_long_type==
+(
+\test_case=(\x\expect
+	\result = (long_type x "yes" "no")
+	print "long_type "; print result;
+	print " [";
+	print (string_eq result expect "GOOD" "BAD");
+	print "]";
+	nl;
+	)
+
+test_case 4 "yes"
+test_case 2.3 "no"
+test_case (\x\y y x) "no"
+test_case C "no"
+test_case (string_append "hello " "world") "no"
+test_case ((\x\y y x) (long_add 4 2) I) "yes"
+test_case "hey!" "no"
+)
+
+\test_string_long ==
+(
+\test_case=(\x\expect
+	\quote = ~@ "@
+	\result = (string_long x "no" \n string_append "yes " (long_string n))
+	print "string_long ";
+	string_put quote; string_put x; string_put quote
+	print " : "; print result;
+	print " [";
+	print (string_eq result expect "GOOD" "BAD");
+	print "]";
+	nl;
+	)
+
+test_case "0" "yes 0"
+test_case "1" "yes 1"
+test_case "-1" "yes -1"
+test_case "123" "yes 123"
+test_case "-123" "yes -123"
+test_case "x123" "no"
+test_case "1x23" "no"
+test_case "" "no"
+test_case "   456   " "no"
+test_case "456   " "no"
+test_case "1.6" "no"
+test_case "0." "no"
+)
+
+\test_string_double ==
+(
+\test_case=(\x\expect
+	\quote = ~@ "@
+	\result = (string_double x "no" \n string_append "yes " (double_string n))
+	print "string_double ";
+	string_put quote; string_put x; string_put quote
+	print " : "; print result;
+	print " [";
+	print (string_eq result expect "GOOD" "BAD");
+	print "]";
+	nl;
+	)
+
+test_case "0" "yes 0"
+test_case "1" "yes 1"
+test_case "-1" "yes -1"
+test_case "123" "yes 123"
+test_case "-123" "yes -123"
+test_case "x123" "no"
+test_case "1x23" "no"
+test_case "" "no"
+test_case "   456   " "no"
+test_case "   456.78   " "no"
+test_case "456.78" "yes 456.78"
+test_case "456   " "no"
+test_case "1.6" "yes 1.6"
+test_case "0." "yes 0"
+test_case "-0" "yes -0"
+test_case "-0.0" "yes -0"
+test_case "-0.0123" "yes -0.0123"
+)
+
+\test_long_double ==
+(
+\test_case = (
+\x
+\y = (long_double x)
+
+\x_str = (long_string x)
+\y_str = (double_string y)
+
+print "long x = "; string_put x_str;
+print " double y = "; string_put y_str;nl;
+)
+
+test_case 4
+test_case 0
+test_case -1
+test_case -37
+test_case 126478
+)
+
+\test_double_long ==
+(
+\test_case = (
+\x
+\y = (double_long x)
+
+\x_str = (double_string x)
+\y_str = (long_string y)
+
+print "double x = "; string_put x_str;
+print " long y = "; string_put y_str;nl;
+)
+
+test_case 4.0
+test_case 0.0
+test_case -1.0
+test_case -37.0
+test_case 126478.0
+test_case 4.3
+test_case 0.3
+test_case -1.3
+test_case -37.3
+test_case 126478.3
+test_case 4.9
+test_case 0.9
+test_case -1.9
+test_case -37.9
+test_case 126478.9
+test_case -126478.9
+)
+
+####
+
+test_string_type
+test_double_type
+test_long_type
+
+test_long_double
+test_double_long
+
+test_string_long
+test_string_double
+
+test_hello_world
+test_string_slice
+test_write_binary
+test_string_len
+test_string_at
+test_string_compare
+test_string_common
+test_long_add
+test_double_compare
+test_procedural
+test_eager
+
+test_binary_counter;
+test_divide;
+test_sub;
+test_fibonacci
+test_cat
+
+\\Extra stuff down here becomes input
+to the test_cat function.

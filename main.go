@@ -38,14 +38,14 @@ func main() {
 	}
 
 	if *test {
-		total, iterations := 0.0, 1000
+		iterations, p := 1000, &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
+		p.Init()
+		start := time.Nanoseconds()
 		for i := 0; i < iterations; i++ {
-			p := &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
-			p.Init()
-			start := time.Nanoseconds()
 			p.Parse()
-			total += float64(time.Nanoseconds() - start) / 1000.0
+			p.Reset()
 		}
+		total := float64(time.Nanoseconds() - start) / 1000.0
 		fmt.Printf("time: %v us\n", total / float64(iterations))
 		return
 	}
