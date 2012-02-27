@@ -28,6 +28,8 @@ import (
 	"strconv"
 )
 
+const END_SYMBOL byte = {{.EndSymbol}}
+
 /* The rule types inferred from the grammar are below. */
 type Rule uint8
 
@@ -232,8 +234,6 @@ func (t *tokens32) Expand(index int) TokenTree {
 	}
 	return nil
 }
-
-const END_SYMBOL byte = 0
 
 type {{.StructName}} struct {
 	{{.StructVariables}}
@@ -629,6 +629,7 @@ type Tree struct {
 	RuleNames	[]Node
 	Sizes		[2]int
 	PackageName     string
+	EndSymbol	byte
 	StructName      string
 	StructVariables string
 	RulesCount      int
@@ -776,6 +777,7 @@ func escape(c string) string {
 
 func (t *Tree) Compile(file string) {
 	counts := [TypeLast]uint{}
+	t.EndSymbol = 0
 
 	for element := t.Front(); element != nil; element = element.Next() {
 		node := element.Value.(Node)
@@ -927,29 +929,29 @@ func (t *Tree) Compile(file string) {
 	}
 
 	if t._switch {
-		var optimizeAlternates func(node Node) (consumes, eof, peek bool, class *characterClass)
+		var optimizeAlternates func(node Node) (consumes, peek bool, class *characterClass)
 		cache := make([]struct {
-			reached, consumes, eof, peek bool
+			reached, consumes, peek bool
 			class *characterClass
 		}, len(t.Rules))
-		optimizeAlternates = func(n Node) (consumes, eof, peek bool, class *characterClass) {
+		optimizeAlternates = func(n Node) (consumes, peek bool, class *characterClass) {
 			switch n.GetType() {
 			case TypeRule:
 				cache := &cache[n.GetId()]
 				if cache.reached {
-					consumes, eof, peek, class = cache.consumes, cache.eof, cache.peek, cache.class
+					consumes, peek, class = cache.consumes, cache.peek, cache.class
 					return
 				}
 				cache.reached = true
-				consumes, eof, peek, class = optimizeAlternates(n.Front())
-				cache.consumes, cache.eof, cache.peek, cache.class = consumes, eof, peek, class
+				consumes, peek, class = optimizeAlternates(n.Front())
+				cache.consumes, cache.peek, cache.class = consumes, peek, class
 			case TypeName:
-				consumes, eof, peek, class = optimizeAlternates(t.Rules[n.String()])
+				consumes, peek, class = optimizeAlternates(t.Rules[n.String()])
 			case TypeDot:
 				consumes, class = true, new(characterClass)
-				for index, _ := range *class {
-					class[index] = 0xff
-				}
+				/* TypeDot class doesn't include the EndSymbol */
+				class.add(t.EndSymbol)
+				class.complement()
 			case TypeString, TypeCharacter:
 				consumes, class = true, new(characterClass)
 				class.add(n.String()[0])
@@ -964,21 +966,18 @@ func (t *Tree) Compile(file string) {
 				}
 			case TypeAlternate:
 				consumes, peek, class = true, true, new(characterClass)
-				mconsumes, meof, mpeek, properties, c :=
-					consumes, eof, peek, make([]struct {
+				mconsumes, mpeek, properties, c :=
+					consumes, peek, make([]struct {
 						intersects bool
 						class      *characterClass
 					}, n.Len()), 0
 				for element := n.Front(); element != nil; element = element.Next() {
-					mconsumes, meof, mpeek, properties[c].class = optimizeAlternates(element)
-					consumes, eof, peek = consumes && mconsumes, eof || meof, peek && mpeek
+					mconsumes, mpeek, properties[c].class = optimizeAlternates(element)
+					consumes, peek = consumes && mconsumes, peek && mpeek
 					if properties[c].class != nil {
 						class.union(properties[c].class)
 					}
 					c++
-				}
-				if eof {
-					break
 				}
 				intersections := 2
 			compare:
@@ -1042,16 +1041,16 @@ func (t *Tree) Compile(file string) {
 				}
 			case TypeSequence:
 				sequence := n
-				meof, classes, c, element :=
-					eof, make([]struct {
+				classes, c, element :=
+					make([]struct {
 						peek  bool
 						class *characterClass
 					}, sequence.Len()), 0, sequence.Front()
 				for ; !consumes && element != nil; element, c = element.Next(), c + 1 {
-					consumes, meof, classes[c].peek, classes[c].class = optimizeAlternates(element)
-					eof, peek = eof || meof, peek || classes[c].peek
+					consumes, classes[c].peek, classes[c].class = optimizeAlternates(element)
+					peek = peek || classes[c].peek
 				}
-				eof, peek, class = !consumes && eof, !consumes && peek, new(characterClass)
+				peek, class = !consumes && peek, new(characterClass)
 				for c--; c >= 0; c-- {
 					if classes[c].class != nil {
 						if classes[c].peek {
@@ -1066,17 +1065,16 @@ func (t *Tree) Compile(file string) {
 				}
 			case TypePeekNot:
 				peek = true
-				_, eof, _, class = optimizeAlternates(n.Front())
-				eof = !eof
+				_, _, class = optimizeAlternates(n.Front())
 				class = class.copy()
 				class.complement()
 			case TypePeekFor:
 				peek = true
 				fallthrough
 			case TypeQuery, TypeStar:
-				_, eof, _, class = optimizeAlternates(n.Front())
+				_, _, class = optimizeAlternates(n.Front())
 			case TypePlus, TypePush, TypeImplicitPush:
-				consumes, eof, peek, class = optimizeAlternates(n.Front())
+				consumes, peek, class = optimizeAlternates(n.Front())
 			case TypeAction, TypeNil:
 				class = new(characterClass)
 			}

@@ -8,6 +8,8 @@ import (
 	"strconv"
 )
 
+const END_SYMBOL byte = 0
+
 /* The rule types inferred from the grammar are below. */
 type Rule uint8
 
@@ -440,8 +442,6 @@ func (t *tokens32) Expand(index int) TokenTree {
 	}
 	return nil
 }
-
-const END_SYMBOL byte = 0
 
 type Peg struct {
 	*Tree
