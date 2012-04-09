@@ -5,7 +5,7 @@
 package main
 
 import (
-	"big"
+	"math/big"
 )
 
 type Type uint8

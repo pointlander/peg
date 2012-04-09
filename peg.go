@@ -13,7 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"template"
+	"text/template"
 )
 
 const PEG_HEADER_TEMPLATE =
@@ -23,7 +23,6 @@ import (
 	/*"bytes"*/
 	"fmt"
 	"math"
- 	"os"
 	"sort"
 	"strconv"
 )
@@ -320,7 +319,7 @@ type {{.StructName}} struct {
 	{{.StructVariables}}
 	Buffer		string
 	rules		[{{.RulesCount}}]func() bool
-	Parse		func(rule ...int) os.Error
+	Parse		func(rule ...int) error
 	Reset		func()
 	TokenTree
 }
@@ -351,7 +350,7 @@ type parseError struct {
 	p *{{.StructName}}
 }
 
-func (e *parseError) String() string {
+func (e *parseError) Error() string {
 	tokens, error := e.p.TokenTree.Error(), "\n"
 	positions, p := make([]int, 2 * len(tokens)), 0
 	for _, token := range tokens {
@@ -402,7 +401,7 @@ func (p *{{.StructName}}) Init() {
 	var tree TokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
 	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.Buffer, p.rules
 
-	p.Parse = func(rule ...int) os.Error {
+	p.Parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
 			r = rule[0]
@@ -726,7 +725,7 @@ func (t *Tree) AddDoubleCharacter(text string) {
 	t.AddAlternate()
 }
 func (t *Tree) AddOctalCharacter(text string) {
-	octal, _ := strconv.Btoui64(text, 8)
+	octal, _ := strconv.ParseInt(text, 8, 8)
 	t.push(&node{Type: TypeCharacter, string: string(octal)})
 }
 func (t *Tree) AddPredicate(text string) { t.push(&node{Type: TypePredicate, string: text}) }
@@ -1173,7 +1172,7 @@ func (t *Tree) Compile(file string) {
 			return
 		}
 		formatter := printer.Config{printer.TabIndent | printer.UseSpaces, 8}
-		_, error = formatter.Fprint(out, fileSet, code)
+		error = formatter.Fprint(out, fileSet, code)
 		if error != nil {
 			buffer.WriteTo(out)
 			fmt.Printf("%v: %v\n", file, error)

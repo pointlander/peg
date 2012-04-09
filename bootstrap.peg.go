@@ -4,7 +4,6 @@ import (
 	/*"bytes"*/
 	"fmt"
 	"math"
-	"os"
 	"sort"
 	"strconv"
 )
@@ -696,7 +695,7 @@ type Peg struct {
 
 	Buffer string
 	rules  [85]func() bool
-	Parse  func(rule ...int) os.Error
+	Parse  func(rule ...int) error
 	Reset  func()
 	TokenTree
 }
@@ -736,7 +735,7 @@ type parseError struct {
 	p *Peg
 }
 
-func (e *parseError) String() string {
+func (e *parseError) Error() string {
 	tokens, error := e.p.TokenTree.Error(), "\n"
 	positions, p := make([]int, 2*len(tokens)), 0
 	for _, token := range tokens {
@@ -750,7 +749,7 @@ func (e *parseError) String() string {
 			Rul3s[token.Rule],
 			translations[begin].line, translations[begin].symbol,
 			translations[end].line, translations[end].symbol,
-			/*strconv.Quote(*/ e.p.Buffer[begin:end] /*)*/ )
+			/*strconv.Quote(*/ e.p.Buffer[begin:end] /*)*/)
 	}
 
 	return error
@@ -880,7 +879,7 @@ func (p *Peg) Init() {
 	var tree TokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
 	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.Buffer, p.rules
 
-	p.Parse = func(rule ...int) os.Error {
+	p.Parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
 			r = rule[0]

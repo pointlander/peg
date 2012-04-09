@@ -2,19 +2,11 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-include $(GOROOT)/src/Make.inc
-
-TARG=calculator
-
-GOFILES=\
-	calculator.go\
-	calculator.peg.go\
-        main.go\
-
-PREREQ+=calculator.peg.go
-CLEANFILES+=calculator.peg.go
-
-include $(GOROOT)/src/Make.cmd
+calculator: calculator.peg.go calculator.go main.go
+	go build
 
 calculator.peg.go: calculator.peg
 	../peg -switch -inline calculator.peg
+
+clean:
+	rm -f calculator calculator.peg.go
