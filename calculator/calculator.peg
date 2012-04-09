@@ -8,7 +8,7 @@ type Calculator Peg {
  Expression
 }
 
-e <- s e1 !. commit
+e <- s e1 !.
 e1 <- e2 ( add e2 { p.AddOperator(TypeAdd) }
          / minus e2 { p.AddOperator(TypeSubtract) }
          )*

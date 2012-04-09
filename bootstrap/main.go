@@ -25,7 +25,6 @@ func main() {
 	/* Grammar         <- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
 	   'type' Spacing Identifier         { p.AddPeg(buffer[begin:end]) }
 	   'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
-	   commit
 	   Definition+ EndOfFile */
 	t.AddRule("Grammar")
 	t.AddName("Spacing")
@@ -75,8 +74,6 @@ func main() {
 	t.AddSequence()
 	t.AddAction(" p.AddState(buffer[begin:end]) ")
 	t.AddSequence()
-	t.AddCommit()
-	t.AddSequence()
 	t.AddName("Definition")
 	t.AddPlus()
 	t.AddSequence()
@@ -85,7 +82,7 @@ func main() {
 	t.AddExpression()
 
 	/* Definition      <- Identifier                   { p.AddRule(buffer[begin:end]) }
-	   LeftArrow Expression         { p.AddExpression() } &(Identifier LeftArrow / !.) commit */
+	   LeftArrow Expression         { p.AddExpression() } &(Identifier LeftArrow / !.)*/
 	t.AddRule("Definition")
 	t.AddName("Identifier")
 	t.AddAction(" p.AddRule(buffer[begin:end]) ")
@@ -103,8 +100,6 @@ func main() {
 	t.AddPeekNot()
 	t.AddAlternate()
 	t.AddPeekFor()
-	t.AddSequence()
-	t.AddCommit()
 	t.AddSequence()
 	t.AddExpression()
 
@@ -188,8 +183,7 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	/* Primary         <- 'commit' Spacing             { p.AddCommit() }
-	   / Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
+	/* Primary         <- Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
 	   / Open Expression Close
 	   / Literal
 	   / Class
@@ -197,28 +191,12 @@ func main() {
 	   / Action                       { p.AddAction(buffer[begin:end]) }
 	   / Begin Expression End         { p.AddPush() }*/
 	t.AddRule("Primary")
-	t.AddCharacter(`c`)
-	t.AddCharacter(`o`)
-	t.AddSequence()
-	t.AddCharacter(`m`)
-	t.AddSequence()
-	t.AddCharacter(`m`)
-	t.AddSequence()
-	t.AddCharacter(`i`)
-	t.AddSequence()
-	t.AddCharacter(`t`)
-	t.AddSequence()
-	t.AddName("Spacing")
-	t.AddSequence()
-	t.AddAction(" p.AddCommit() ")
-	t.AddSequence()
 	t.AddName("Identifier")
 	t.AddName("LeftArrow")
 	t.AddPeekNot()
 	t.AddSequence()
 	t.AddAction(" p.AddName(buffer[begin:end]) ")
 	t.AddSequence()
-	t.AddAlternate()
 	t.AddName("Open")
 	t.AddName("Expression")
 	t.AddSequence()

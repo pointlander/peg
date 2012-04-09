@@ -3,6 +3,7 @@ package main
 import (
 	/*"bytes"*/
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -52,6 +53,57 @@ const (
 	RuleAction
 	RuleBegin
 	RuleEnd
+	RuleAction0
+	RuleAction1
+	RuleAction2
+	RuleAction3
+	RuleAction4
+	RuleAction5
+	RuleAction6
+	RuleAction7
+	RuleAction8
+	RuleAction9
+	RuleAction10
+	RuleAction11
+	RuleAction12
+	RuleAction13
+	RuleAction14
+	RuleAction15
+	RuleAction16
+	RuleAction17
+	RuleAction18
+	RulePegText
+	RuleAction19
+	RuleAction20
+	RuleAction21
+	RuleAction22
+	RuleAction23
+	RuleAction24
+	RuleAction25
+	RuleAction26
+	RuleAction27
+	RuleAction28
+	RuleAction29
+	RuleAction30
+	RuleAction31
+	RuleAction32
+	RuleAction33
+	RuleAction34
+	RuleAction35
+	RuleAction36
+	RuleAction37
+	RuleAction38
+	RuleAction39
+	RuleAction40
+	RuleAction41
+	RuleAction42
+	RuleAction43
+	RuleAction44
+	RuleAction45
+
+	RulePre_
+	Rule_In_
+	Rule_Suf
 )
 
 var Rul3s = [...]string{
@@ -93,15 +145,65 @@ var Rul3s = [...]string{
 	"Action",
 	"Begin",
 	"End",
+	"Action0",
+	"Action1",
+	"Action2",
+	"Action3",
+	"Action4",
+	"Action5",
+	"Action6",
+	"Action7",
+	"Action8",
+	"Action9",
+	"Action10",
+	"Action11",
+	"Action12",
+	"Action13",
+	"Action14",
+	"Action15",
+	"Action16",
+	"Action17",
+	"Action18",
+	"PegText",
+	"Action19",
+	"Action20",
+	"Action21",
+	"Action22",
+	"Action23",
+	"Action24",
+	"Action25",
+	"Action26",
+	"Action27",
+	"Action28",
+	"Action29",
+	"Action30",
+	"Action31",
+	"Action32",
+	"Action33",
+	"Action34",
+	"Action35",
+	"Action36",
+	"Action37",
+	"Action38",
+	"Action39",
+	"Action40",
+	"Action41",
+	"Action42",
+	"Action43",
+	"Action44",
+	"Action45",
+
+	"Pre_",
+	"_In_",
+	"_Suf",
 }
 
 type TokenTree interface {
-	sort.Interface
 	Print()
-	Prepare()
-	Add(rule Rule, begin, end, next int)
+	PrintSyntax()
+	PrintSyntaxTree(buffer string)
+	Add(rule Rule, begin, end, next, depth int)
 	Expand(index int) TokenTree
-	Stack() []token32
 	Tokens() <-chan token32
 	Error() []token32
 	trim(length int)
@@ -117,6 +219,10 @@ func (t *token16) isZero() bool {
 	return t.Rule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
+func (t *token16) isParentOf(u token16) bool {
+	return t.begin <= u.begin && t.end >= u.end && t.next > u.next
+}
+
 func (t *token16) GetToken32() token32 {
 	return token32{Rule: t.Rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
 }
@@ -126,68 +232,12 @@ func (t *token16) String() string {
 }
 
 type tokens16 struct {
-	tree      []token16
-	stackSize int32
+	tree    []token16
+	ordered [][]token16
 }
 
 func (t *tokens16) trim(length int) {
 	t.tree = t.tree[0:length]
-}
-
-type trace16 struct {
-	*tokens16
-}
-
-func (t *trace16) Less(i, j int) bool {
-	ii, jj := t.tree[i], t.tree[j]
-	if ii.Rule != RuleUnknown {
-		if jj.Rule == RuleUnknown {
-			return true
-		} else if ii.end > jj.end {
-			return true
-		} else if ii.end == jj.end {
-			if ii.begin < jj.begin {
-				return true
-			} else if ii.begin == jj.begin {
-				if ii.next > jj.next {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func (t *tokens16) Len() int {
-	return len(t.tree)
-}
-
-func (t *tokens16) Less(i, j int) bool {
-	ii, jj := t.tree[i], t.tree[j]
-	if ii.Rule != RuleUnknown {
-		if jj.Rule == RuleUnknown {
-			return true
-		} else if ii.begin < jj.begin {
-			return true
-		} else if ii.begin == jj.begin {
-			if ii.end == ii.begin || jj.end == jj.begin {
-				if ii.next < jj.next {
-					return true
-				}
-			} else if ii.end > jj.end {
-				return true
-			} else if ii.end == jj.end {
-				if ii.next > jj.next {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func (t *tokens16) Swap(i, j int) {
-	t.tree[i], t.tree[j] = t.tree[j], t.tree[i]
 }
 
 func (t *tokens16) Print() {
@@ -196,42 +246,173 @@ func (t *tokens16) Print() {
 	}
 }
 
-func (t *tokens16) Prepare() {
-	sort.Sort(t)
-	size := int(t.tree[0].next) + 1
-
-	tree, stack, top := t.tree[0:size], make([]token16, size), -1
-	for i, token := range tree {
-		token.next = int16(i)
-		for top >= 0 && token.begin >= stack[top].end {
-			tree[stack[top].next].next, top = token.next, top-1
-		}
-		stack[top+1], top = token, top+1
+func (t *tokens16) Order() [][]token16 {
+	if t.ordered != nil {
+		return t.ordered
 	}
 
-	for top >= 0 {
-		tree[stack[top].next].next, top = int16(size), top-1
-	}
-
-	for i, token := range stack {
-		if token.isZero() {
-			t.stackSize = int32(i)
+	depths := make([]int16, 1, math.MaxInt16)
+	for i, token := range t.tree {
+		if token.Rule == RuleUnknown {
+			t.tree = t.tree[:i]
 			break
 		}
+		depth := int(token.next)
+		if length := len(depths); depth >= length {
+			depths = depths[:depth+1]
+		}
+		depths[depth]++
+	}
+	depths = append(depths, 0)
+
+	ordered, pool := make([][]token16, len(depths)), make([]token16, len(t.tree)+len(depths))
+	for i, depth := range depths {
+		depth++
+		ordered[i], pool, depths[i] = pool[:depth], pool[depth:], 0
 	}
 
-	t.tree = tree
-}
-
-func (t *tokens16) Add(rule Rule, begin, end, next int) {
-	t.tree[next] = token16{Rule: rule, begin: int16(begin), end: int16(end), next: int16(next)}
-}
-
-func (t *tokens16) Stack() []token32 {
-	if t.stackSize == 0 {
-		t.Prepare()
+	for i, token := range t.tree {
+		depth := token.next
+		token.next = int16(i)
+		ordered[depth][depths[depth]] = token
+		depths[depth]++
 	}
-	return make([]token32, t.stackSize)
+	t.ordered = ordered
+	return ordered
+}
+
+type State16 struct {
+	token16
+	depths []int16
+	leaf   bool
+}
+
+func (t *tokens16) PreOrder() (<-chan State16, [][]token16) {
+	s, ordered := make(chan State16, 6), t.Order()
+	go func() {
+		var states [8]State16
+		for i, _ := range states {
+			states[i].depths = make([]int16, len(ordered))
+		}
+		depths, state, depth := make([]int16, len(ordered)), 0, 1
+		write := func(t token16, leaf bool) {
+			S := states[state]
+			state, S.Rule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.Rule, t.begin, t.end, int16(depth), leaf
+			copy(S.depths, depths)
+			s <- S
+		}
+
+		states[state].token16 = ordered[0][0]
+		depths[0]++
+		state++
+		a, b := ordered[depth-1][depths[depth-1]-1], ordered[depth][depths[depth]]
+	depthFirstSearch:
+		for {
+			for {
+				if i := depths[depth]; i > 0 {
+					if c, j := ordered[depth][i-1], depths[depth-1]; a.isParentOf(c) &&
+						(j < 2 || !ordered[depth-1][j-2].isParentOf(c)) {
+						if c.end != b.begin {
+							write(token16{Rule: Rule_In_, begin: c.end, end: b.begin}, true)
+						}
+						break
+					}
+				}
+
+				if a.begin < b.begin {
+					write(token16{Rule: RulePre_, begin: a.begin, end: b.begin}, true)
+				}
+				break
+			}
+
+			next := depth + 1
+			if c := ordered[next][depths[next]]; c.Rule != RuleUnknown && b.isParentOf(c) {
+				write(b, false)
+				depths[depth]++
+				depth, a, b = next, b, c
+				continue
+			}
+
+			write(b, true)
+			depths[depth]++
+			c, parent := ordered[depth][depths[depth]], true
+			for {
+				if c.Rule != RuleUnknown && a.isParentOf(c) {
+					b = c
+					continue depthFirstSearch
+				} else if parent && b.end != a.end {
+					write(token16{Rule: Rule_Suf, begin: b.end, end: a.end}, true)
+				}
+
+				depth--
+				if depth > 0 {
+					a, b, c = ordered[depth-1][depths[depth-1]-1], a, ordered[depth][depths[depth]]
+					parent = a.isParentOf(b)
+					continue
+				}
+
+				break depthFirstSearch
+			}
+		}
+
+		close(s)
+	}()
+	return s, ordered
+}
+
+func (t *tokens16) PrintSyntax() {
+	tokens, ordered := t.PreOrder()
+	max := -1
+	for token := range tokens {
+		if !token.leaf {
+			fmt.Printf("%v", token.begin)
+			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
+				fmt.Printf(" \x1B[36m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+			}
+			fmt.Printf(" \x1B[36m%v\x1B[m\n", Rul3s[token.Rule])
+		} else if token.begin == token.end {
+			fmt.Printf("%v", token.begin)
+			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
+				fmt.Printf(" \x1B[31m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+			}
+			fmt.Printf(" \x1B[31m%v\x1B[m\n", Rul3s[token.Rule])
+		} else {
+			for c, end := token.begin, token.end; c < end; c++ {
+				if i := int(c); max+1 < i {
+					for j := max; j < i; j++ {
+						fmt.Printf("skip %v %v\n", j, token.String())
+					}
+					max = i
+				} else if i := int(c); i <= max {
+					for j := i; j <= max; j++ {
+						fmt.Printf("dupe %v %v\n", j, token.String())
+					}
+				} else {
+					max = int(c)
+				}
+				fmt.Printf("%v", c)
+				for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
+					fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+				}
+				fmt.Printf(" \x1B[34m%v\x1B[m\n", Rul3s[token.Rule])
+			}
+			fmt.Printf("\n")
+		}
+	}
+}
+
+func (t *tokens16) PrintSyntaxTree(buffer string) {
+	tokens, _ := t.PreOrder()
+	for token := range tokens {
+		for c := 0; c < int(token.next); c++ {
+			fmt.Printf(" ")
+		}
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", Rul3s[token.Rule], strconv.Quote(buffer[token.begin:token.end]))
+	}
+}
+
+func (t *tokens16) Add(rule Rule, begin, end, depth, index int) {
+	t.tree[index] = token16{Rule: rule, begin: int16(begin), end: int16(end), next: int16(depth)}
 }
 
 func (t *tokens16) Tokens() <-chan token32 {
@@ -246,19 +427,13 @@ func (t *tokens16) Tokens() <-chan token32 {
 }
 
 func (t *tokens16) Error() []token32 {
-	sort.Sort(&trace16{t})
-	open, i, tokens := t.tree[0], 0, make([]token32, 3)
-	tokens[i], i = open.GetToken32(), i+1
-
-	for _, token := range t.tree[1:] {
-		if token.Rule == RuleUnknown {
-			break
-		}
-		if token.begin < open.begin {
-			tokens[i], open, i = token.GetToken32(), token, i+1
-			if i >= len(tokens) {
-				break
-			}
+	ordered := t.Order()
+	length := len(ordered)
+	tokens, length := make([]token32, length), length-1
+	for i, _ := range tokens {
+		o := ordered[length-i]
+		if len(o) > 1 {
+			tokens[i] = o[len(o)-2].GetToken32()
 		}
 	}
 	return tokens
@@ -274,6 +449,10 @@ func (t *token32) isZero() bool {
 	return t.Rule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
+func (t *token32) isParentOf(u token32) bool {
+	return t.begin <= u.begin && t.end >= u.end && t.next > u.next
+}
+
 func (t *token32) GetToken32() token32 {
 	return token32{Rule: t.Rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
 }
@@ -283,68 +462,12 @@ func (t *token32) String() string {
 }
 
 type tokens32 struct {
-	tree      []token32
-	stackSize int32
+	tree    []token32
+	ordered [][]token32
 }
 
 func (t *tokens32) trim(length int) {
 	t.tree = t.tree[0:length]
-}
-
-type trace32 struct {
-	*tokens32
-}
-
-func (t *trace32) Less(i, j int) bool {
-	ii, jj := t.tree[i], t.tree[j]
-	if ii.Rule != RuleUnknown {
-		if jj.Rule == RuleUnknown {
-			return true
-		} else if ii.end > jj.end {
-			return true
-		} else if ii.end == jj.end {
-			if ii.begin < jj.begin {
-				return true
-			} else if ii.begin == jj.begin {
-				if ii.next > jj.next {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func (t *tokens32) Len() int {
-	return len(t.tree)
-}
-
-func (t *tokens32) Less(i, j int) bool {
-	ii, jj := t.tree[i], t.tree[j]
-	if ii.Rule != RuleUnknown {
-		if jj.Rule == RuleUnknown {
-			return true
-		} else if ii.begin < jj.begin {
-			return true
-		} else if ii.begin == jj.begin {
-			if ii.end == ii.begin || jj.end == jj.begin {
-				if ii.next < jj.next {
-					return true
-				}
-			} else if ii.end > jj.end {
-				return true
-			} else if ii.end == jj.end {
-				if ii.next > jj.next {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func (t *tokens32) Swap(i, j int) {
-	t.tree[i], t.tree[j] = t.tree[j], t.tree[i]
 }
 
 func (t *tokens32) Print() {
@@ -353,42 +476,173 @@ func (t *tokens32) Print() {
 	}
 }
 
-func (t *tokens32) Prepare() {
-	sort.Sort(t)
-	size := int(t.tree[0].next) + 1
-
-	tree, stack, top := t.tree[0:size], make([]token32, size), -1
-	for i, token := range tree {
-		token.next = int32(i)
-		for top >= 0 && token.begin >= stack[top].end {
-			tree[stack[top].next].next, top = token.next, top-1
-		}
-		stack[top+1], top = token, top+1
+func (t *tokens32) Order() [][]token32 {
+	if t.ordered != nil {
+		return t.ordered
 	}
 
-	for top >= 0 {
-		tree[stack[top].next].next, top = int32(size), top-1
-	}
-
-	for i, token := range stack {
-		if token.isZero() {
-			t.stackSize = int32(i)
+	depths := make([]int32, 1, math.MaxInt16)
+	for i, token := range t.tree {
+		if token.Rule == RuleUnknown {
+			t.tree = t.tree[:i]
 			break
 		}
+		depth := int(token.next)
+		if length := len(depths); depth >= length {
+			depths = depths[:depth+1]
+		}
+		depths[depth]++
+	}
+	depths = append(depths, 0)
+
+	ordered, pool := make([][]token32, len(depths)), make([]token32, len(t.tree)+len(depths))
+	for i, depth := range depths {
+		depth++
+		ordered[i], pool, depths[i] = pool[:depth], pool[depth:], 0
 	}
 
-	t.tree = tree
-}
-
-func (t *tokens32) Add(rule Rule, begin, end, next int) {
-	t.tree[next] = token32{Rule: rule, begin: int32(begin), end: int32(end), next: int32(next)}
-}
-
-func (t *tokens32) Stack() []token32 {
-	if t.stackSize == 0 {
-		t.Prepare()
+	for i, token := range t.tree {
+		depth := token.next
+		token.next = int32(i)
+		ordered[depth][depths[depth]] = token
+		depths[depth]++
 	}
-	return make([]token32, t.stackSize)
+	t.ordered = ordered
+	return ordered
+}
+
+type State32 struct {
+	token32
+	depths []int32
+	leaf   bool
+}
+
+func (t *tokens32) PreOrder() (<-chan State32, [][]token32) {
+	s, ordered := make(chan State32, 6), t.Order()
+	go func() {
+		var states [8]State32
+		for i, _ := range states {
+			states[i].depths = make([]int32, len(ordered))
+		}
+		depths, state, depth := make([]int32, len(ordered)), 0, 1
+		write := func(t token32, leaf bool) {
+			S := states[state]
+			state, S.Rule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.Rule, t.begin, t.end, int32(depth), leaf
+			copy(S.depths, depths)
+			s <- S
+		}
+
+		states[state].token32 = ordered[0][0]
+		depths[0]++
+		state++
+		a, b := ordered[depth-1][depths[depth-1]-1], ordered[depth][depths[depth]]
+	depthFirstSearch:
+		for {
+			for {
+				if i := depths[depth]; i > 0 {
+					if c, j := ordered[depth][i-1], depths[depth-1]; a.isParentOf(c) &&
+						(j < 2 || !ordered[depth-1][j-2].isParentOf(c)) {
+						if c.end != b.begin {
+							write(token32{Rule: Rule_In_, begin: c.end, end: b.begin}, true)
+						}
+						break
+					}
+				}
+
+				if a.begin < b.begin {
+					write(token32{Rule: RulePre_, begin: a.begin, end: b.begin}, true)
+				}
+				break
+			}
+
+			next := depth + 1
+			if c := ordered[next][depths[next]]; c.Rule != RuleUnknown && b.isParentOf(c) {
+				write(b, false)
+				depths[depth]++
+				depth, a, b = next, b, c
+				continue
+			}
+
+			write(b, true)
+			depths[depth]++
+			c, parent := ordered[depth][depths[depth]], true
+			for {
+				if c.Rule != RuleUnknown && a.isParentOf(c) {
+					b = c
+					continue depthFirstSearch
+				} else if parent && b.end != a.end {
+					write(token32{Rule: Rule_Suf, begin: b.end, end: a.end}, true)
+				}
+
+				depth--
+				if depth > 0 {
+					a, b, c = ordered[depth-1][depths[depth-1]-1], a, ordered[depth][depths[depth]]
+					parent = a.isParentOf(b)
+					continue
+				}
+
+				break depthFirstSearch
+			}
+		}
+
+		close(s)
+	}()
+	return s, ordered
+}
+
+func (t *tokens32) PrintSyntax() {
+	tokens, ordered := t.PreOrder()
+	max := -1
+	for token := range tokens {
+		if !token.leaf {
+			fmt.Printf("%v", token.begin)
+			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
+				fmt.Printf(" \x1B[36m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+			}
+			fmt.Printf(" \x1B[36m%v\x1B[m\n", Rul3s[token.Rule])
+		} else if token.begin == token.end {
+			fmt.Printf("%v", token.begin)
+			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
+				fmt.Printf(" \x1B[31m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+			}
+			fmt.Printf(" \x1B[31m%v\x1B[m\n", Rul3s[token.Rule])
+		} else {
+			for c, end := token.begin, token.end; c < end; c++ {
+				if i := int(c); max+1 < i {
+					for j := max; j < i; j++ {
+						fmt.Printf("skip %v %v\n", j, token.String())
+					}
+					max = i
+				} else if i := int(c); i <= max {
+					for j := i; j <= max; j++ {
+						fmt.Printf("dupe %v %v\n", j, token.String())
+					}
+				} else {
+					max = int(c)
+				}
+				fmt.Printf("%v", c)
+				for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
+					fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+				}
+				fmt.Printf(" \x1B[34m%v\x1B[m\n", Rul3s[token.Rule])
+			}
+			fmt.Printf("\n")
+		}
+	}
+}
+
+func (t *tokens32) PrintSyntaxTree(buffer string) {
+	tokens, _ := t.PreOrder()
+	for token := range tokens {
+		for c := 0; c < int(token.next); c++ {
+			fmt.Printf(" ")
+		}
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", Rul3s[token.Rule], strconv.Quote(buffer[token.begin:token.end]))
+	}
+}
+
+func (t *tokens32) Add(rule Rule, begin, end, depth, index int) {
+	t.tree[index] = token32{Rule: rule, begin: int32(begin), end: int32(end), next: int32(depth)}
 }
 
 func (t *tokens32) Tokens() <-chan token32 {
@@ -403,19 +657,13 @@ func (t *tokens32) Tokens() <-chan token32 {
 }
 
 func (t *tokens32) Error() []token32 {
-	sort.Sort(&trace32{t})
-	open, i, tokens := t.tree[0], 0, make([]token32, 3)
-	tokens[i], i = open.GetToken32(), i+1
-
-	for _, token := range t.tree[1:] {
-		if token.Rule == RuleUnknown {
-			break
-		}
-		if token.begin < open.begin {
-			tokens[i], open, i = token.GetToken32(), token, i+1
-			if i >= len(tokens) {
-				break
-			}
+	ordered := t.Order()
+	length := len(ordered)
+	tokens, length := make([]token32, length), length-1
+	for i, _ := range tokens {
+		o := ordered[length-i]
+		if len(o) > 1 {
+			tokens[i] = o[len(o)-2].GetToken32()
 		}
 	}
 	return tokens
@@ -447,17 +695,10 @@ type Peg struct {
 	*Tree
 
 	Buffer string
-	rules  [37]func() bool
+	rules  [85]func() bool
 	Parse  func(rule ...int) os.Error
 	Reset  func()
 	TokenTree
-}
-
-func (p *Peg) Add(rule Rule, begin, end, next int) {
-	if tree := p.TokenTree.Expand(next); tree != nil {
-		p.TokenTree = tree
-	}
-	p.TokenTree.Add(rule, begin, end, next)
 }
 
 type textPosition struct {
@@ -516,57 +757,117 @@ func (e *parseError) String() string {
 }
 
 func (p *Peg) PrintSyntaxTree() {
-	tokenTree := p.TokenTree
-	stack, top, i := tokenTree.Stack(), -1, 0
-	for token := range tokenTree.Tokens() {
-		if top >= 0 && int(stack[top].next) == i {
-			for top >= 0 && int(stack[top].next) == i {
-				top--
-			}
-		}
-		stack[top+1], top, i = token, top+1, i+1
-
-		for c := 0; c < top; c++ {
-			fmt.Printf(" ")
-		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", Rul3s[token.Rule], strconv.Quote(p.Buffer[token.begin:token.end]))
-	}
+	p.TokenTree.PrintSyntaxTree(p.Buffer)
 }
 
 func (p *Peg) Highlighter() {
-	tokenTree := p.TokenTree
-	stack, top, i, c := tokenTree.Stack(), -1, 0, 0
-	for token := range tokenTree.Tokens() {
-		if top >= 0 && int(stack[top].next) == i {
-			pops := top
-			for top >= 0 && int(stack[top].next) == i {
-				top--
-			}
+	p.TokenTree.PrintSyntax()
+}
 
-			for c < int(stack[pops].end) {
-				fmt.Printf("%v", c)
-				for t := 0; t <= pops; t++ {
-					if c >= int(stack[t].begin) {
-						fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[stack[t].Rule])
-					}
-				}
-				fmt.Printf("\n")
-				c++
-			}
-		}
-		stack[top+1], top, i = token, top+1, i+1
-	}
+func (p *Peg) Execute() {
+	buffer, begin, end := p.Buffer, 0, 0
+	for token := range p.TokenTree.Tokens() {
+		switch token.Rule {
+		case RulePegText:
+			begin, end = int(token.begin), int(token.end)
+		case RuleAction0:
+			p.AddPackage(buffer[begin:end])
+		case RuleAction1:
+			p.AddPeg(buffer[begin:end])
+		case RuleAction2:
+			p.AddState(buffer[begin:end])
+		case RuleAction3:
+			p.AddRule(buffer[begin:end])
+		case RuleAction4:
+			p.AddExpression()
+		case RuleAction5:
+			p.AddAlternate()
+		case RuleAction6:
+			p.AddNil()
+			p.AddAlternate()
+		case RuleAction7:
+			p.AddNil()
+		case RuleAction8:
+			p.AddSequence()
+		case RuleAction9:
+			p.AddPredicate(buffer[begin:end])
+		case RuleAction10:
+			p.AddPeekFor()
+		case RuleAction11:
+			p.AddPeekNot()
+		case RuleAction12:
+			p.AddQuery()
+		case RuleAction13:
+			p.AddStar()
+		case RuleAction14:
+			p.AddPlus()
+		case RuleAction15:
+			p.AddName(buffer[begin:end])
+		case RuleAction16:
+			p.AddDot()
+		case RuleAction17:
+			p.AddAction(buffer[begin:end])
+		case RuleAction18:
+			p.AddPush()
+		case RuleAction19:
+			p.AddSequence()
+		case RuleAction20:
+			p.AddSequence()
+		case RuleAction21:
+			p.AddPeekNot()
+			p.AddDot()
+			p.AddSequence()
+		case RuleAction22:
+			p.AddPeekNot()
+			p.AddDot()
+			p.AddSequence()
+		case RuleAction23:
+			p.AddAlternate()
+		case RuleAction24:
+			p.AddAlternate()
+		case RuleAction25:
+			p.AddRange()
+		case RuleAction26:
+			p.AddDoubleRange()
+		case RuleAction27:
+			p.AddCharacter(buffer[begin:end])
+		case RuleAction28:
+			p.AddDoubleCharacter(buffer[begin:end])
+		case RuleAction29:
+			p.AddCharacter(buffer[begin:end])
+		case RuleAction30:
+			p.AddCharacter("\a")
+		case RuleAction31:
+			p.AddCharacter("\b")
+		case RuleAction32:
+			p.AddCharacter("\x1B")
+		case RuleAction33:
+			p.AddCharacter("\f")
+		case RuleAction34:
+			p.AddCharacter("\n")
+		case RuleAction35:
+			p.AddCharacter("\r")
+		case RuleAction36:
+			p.AddCharacter("\t")
+		case RuleAction37:
+			p.AddCharacter("\v")
+		case RuleAction38:
+			p.AddCharacter("'")
+		case RuleAction39:
+			p.AddCharacter("\"")
+		case RuleAction40:
+			p.AddCharacter("[")
+		case RuleAction41:
+			p.AddCharacter("]")
+		case RuleAction42:
+			p.AddCharacter("-")
+		case RuleAction43:
+			p.AddOctalCharacter(buffer[begin:end])
+		case RuleAction44:
+			p.AddOctalCharacter(buffer[begin:end])
+		case RuleAction45:
+			p.AddCharacter("\\")
 
-	if top >= 0 && int(stack[top].next) == i {
-		for c < int(stack[top].end) {
-			fmt.Printf("%v", c)
-			for t := 0; t <= top; t++ {
-				if c >= int(stack[t].begin) {
-					fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[stack[t].Rule])
-				}
-			}
-			fmt.Printf("\n")
-			c++
 		}
 	}
 }
@@ -575,252 +876,34 @@ func (p *Peg) Init() {
 	if p.Buffer[len(p.Buffer)-1] != END_SYMBOL {
 		p.Buffer = p.Buffer + string(END_SYMBOL)
 	}
-	p.TokenTree = &tokens16{tree: make([]token16, 65536)}
-	position, tokenIndex, buffer, rules := 0, 0, p.Buffer, p.rules
+
+	var tree TokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
+	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.Buffer, p.rules
+
 	p.Parse = func(rule ...int) os.Error {
-		r := 0
+		r := 1
 		if len(rule) > 0 {
 			r = rule[0]
 		}
-		if p.rules[r]() {
+		matches := p.rules[r]()
+		p.TokenTree = tree
+		if matches {
 			p.TokenTree.trim(tokenIndex)
 			return nil
 		}
 		return &parseError{p}
 	}
 
-	actions := [...]func(buffer string, begin, end int){
-		/* 0 */
-		func(buffer string, begin, end int) {
-			p.AddRange()
-		},
-		/* 1 */
-		func(buffer string, begin, end int) {
-			p.AddAlternate()
-		},
-		/* 2 */
-		func(buffer string, begin, end int) {
-			p.AddRule(buffer[begin:end])
-		},
-		/* 3 */
-		func(buffer string, begin, end int) {
-			p.AddExpression()
-		},
-		/* 4 */
-		func(buffer string, begin, end int) {
-			p.AddDoubleCharacter(buffer[begin:end])
-		},
-		/* 5 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter(buffer[begin:end])
-		},
-		/* 6 */
-		func(buffer string, begin, end int) {
-			p.AddPeekNot()
-			p.AddDot()
-			p.AddSequence()
-		},
-		/* 7 */
-		func(buffer string, begin, end int) {
-			p.AddPeekNot()
-			p.AddDot()
-			p.AddSequence()
-		},
-		/* 8 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter(buffer[begin:end])
-		},
-		/* 9 */
-		func(buffer string, begin, end int) {
-			p.AddPackage(buffer[begin:end])
-		},
-		/* 10 */
-		func(buffer string, begin, end int) {
-			p.AddPeg(buffer[begin:end])
-		},
-		/* 11 */
-		func(buffer string, begin, end int) {
-			p.AddState(buffer[begin:end])
-		},
-		/* 12 */
-		func(buffer string, begin, end int) {
-			p.AddPredicate(buffer[begin:end])
-		},
-		/* 13 */
-		func(buffer string, begin, end int) {
-			p.AddPeekFor()
-		},
-		/* 14 */
-		func(buffer string, begin, end int) {
-			p.AddPeekNot()
-		},
-		/* 15 */
-		func(buffer string, begin, end int) {
-			p.AddSequence()
-		},
-		/* 16 */
-		func(buffer string, begin, end int) {
-			p.AddSequence()
-		},
-		/* 17 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\a")
-		},
-		/* 18 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\b")
-		},
-		/* 19 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\x1B")
-		},
-		/* 20 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\f")
-		},
-		/* 21 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\n")
-		},
-		/* 22 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\r")
-		},
-		/* 23 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\t")
-		},
-		/* 24 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\v")
-		},
-		/* 25 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("'")
-		},
-		/* 26 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\"")
-		},
-		/* 27 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("[")
-		},
-		/* 28 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("]")
-		},
-		/* 29 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("-")
-		},
-		/* 30 */
-		func(buffer string, begin, end int) {
-			p.AddOctalCharacter(buffer[begin:end])
-		},
-		/* 31 */
-		func(buffer string, begin, end int) {
-			p.AddOctalCharacter(buffer[begin:end])
-		},
-		/* 32 */
-		func(buffer string, begin, end int) {
-			p.AddCharacter("\\")
-		},
-		/* 33 */
-		func(buffer string, begin, end int) {
-			p.AddAlternate()
-		},
-		/* 34 */
-		func(buffer string, begin, end int) {
-			p.AddQuery()
-		},
-		/* 35 */
-		func(buffer string, begin, end int) {
-			p.AddStar()
-		},
-		/* 36 */
-		func(buffer string, begin, end int) {
-			p.AddPlus()
-		},
-		/* 37 */
-		func(buffer string, begin, end int) {
-			p.AddCommit()
-		},
-		/* 38 */
-		func(buffer string, begin, end int) {
-			p.AddName(buffer[begin:end])
-		},
-		/* 39 */
-		func(buffer string, begin, end int) {
-			p.AddDot()
-		},
-		/* 40 */
-		func(buffer string, begin, end int) {
-			p.AddAction(buffer[begin:end])
-		},
-		/* 41 */
-		func(buffer string, begin, end int) {
-			p.AddPush()
-		},
-		/* 42 */
-		func(buffer string, begin, end int) {
-			p.AddDoubleRange()
-		},
-		/* 43 */
-		func(buffer string, begin, end int) {
-			p.AddSequence()
-		},
-		/* 44 */
-		func(buffer string, begin, end int) {
-			p.AddAlternate()
-		},
-		/* 45 */
-		func(buffer string, begin, end int) {
-			p.AddNil()
-			p.AddAlternate()
-		},
-		/* 46 */
-		func(buffer string, begin, end int) {
-			p.AddNil()
-		},
-	}
-
-	var thunkPosition, begin, end int
-	thunks := make([]struct {
-		action     uint8
-		begin, end int
-	}, 32)
-	do := func(action uint8) {
-		if thunkPosition == len(thunks) {
-			newThunks := make([]struct {
-				action     uint8
-				begin, end int
-			}, 2*len(thunks))
-			copy(newThunks, thunks)
-			thunks = newThunks
-		}
-		thunks[thunkPosition].action = action
-		thunks[thunkPosition].begin = begin
-		thunks[thunkPosition].end = end
-		thunkPosition++
-	}
-
-	commit := func(thunkPosition0 int) bool {
-		if thunkPosition0 == 0 {
-			for thunk := 0; thunk < thunkPosition; thunk++ {
-				actions[thunks[thunk].action](buffer, thunks[thunk].begin, thunks[thunk].end)
-			}
-			thunkPosition = 0
-			return true
-		}
-		return false
-	}
-
 	p.Reset = func() {
-		position, tokenIndex = 0, 0
+		position, tokenIndex, depth = 0, 0, 0
+	}
 
-		thunkPosition = 0
-
+	add := func(rule Rule, begin int) {
+		if t := tree.Expand(tokenIndex); t != nil {
+			tree = t
+		}
+		tree.Add(rule, begin, position, depth, tokenIndex)
+		tokenIndex++
 	}
 
 	matchDot := func() bool {
@@ -848,12 +931,14 @@ func (p *Peg) Init() {
 	}*/
 
 	rules = [...]func() bool{
-		/* 0 Grammar <- <(Spacing ('p' 'a' 'c' 'k' 'a' 'g' 'e') Spacing Identifier { p.AddPackage(buffer[begin:end]) } ('t' 'y' 'p' 'e') Spacing Identifier { p.AddPeg(buffer[begin:end]) } ('P' 'e' 'g') Spacing Action { p.AddState(buffer[begin:end]) } commit Definition+ EndOfFile)> */
+		nil,
+		/* 0 Grammar <- <(Spacing ('p' 'a' 'c' 'k' 'a' 'g' 'e') Spacing Identifier Action0 ('t' 'y' 'p' 'e') Spacing Identifier Action1 ('P' 'e' 'g') Spacing Action Action2 Definition+ EndOfFile)> */
 		func() bool {
-			position0, tokenIndex0, thunkPosition0 := position, tokenIndex, thunkPosition
+			position0, tokenIndex0, depth0 := position, tokenIndex, depth
 			{
-				begin1 := position
-				if !rules[29]() {
+				position1 := position
+				depth++
+				if !rules[RuleSpacing]() {
 					goto l0
 				}
 				if buffer[position] != 'p' {
@@ -884,13 +969,15 @@ func (p *Peg) Init() {
 					goto l0
 				}
 				position++
-				if !rules[29]() {
+				if !rules[RuleSpacing]() {
 					goto l0
 				}
-				if !rules[7]() {
+				if !rules[RuleIdentifier]() {
 					goto l0
 				}
-				do(9)
+				{
+					add(RuleAction0, position)
+				}
 				if buffer[position] != 't' {
 					goto l0
 				}
@@ -907,13 +994,15 @@ func (p *Peg) Init() {
 					goto l0
 				}
 				position++
-				if !rules[29]() {
+				if !rules[RuleSpacing]() {
 					goto l0
 				}
-				if !rules[7]() {
+				if !rules[RuleIdentifier]() {
 					goto l0
 				}
-				do(10)
+				{
+					add(RuleAction1, position)
+				}
 				if buffer[position] != 'P' {
 					goto l0
 				}
@@ -926,1539 +1015,1535 @@ func (p *Peg) Init() {
 					goto l0
 				}
 				position++
-				if !rules[29]() {
+				if !rules[RuleSpacing]() {
 					goto l0
 				}
-				if !rules[34]() {
-					goto l0
-				}
-				do(11)
-				if !(commit(0)) {
+				if !rules[RuleAction]() {
 					goto l0
 				}
 				{
-					begin4 := position
-					if !rules[7]() {
+					add(RuleAction2, position)
+				}
+				{
+					position7 := position
+					depth++
+					if !rules[RuleIdentifier]() {
 						goto l0
 					}
-					do(2)
-					if !rules[19]() {
-						goto l0
-					}
-					if !rules[2]() {
-						goto l0
-					}
-					do(3)
 					{
-						position5, tokenIndex5, thunkPosition5 := position, tokenIndex, thunkPosition
+						add(RuleAction3, position)
+					}
+					if !rules[RuleLeftArrow]() {
+						goto l0
+					}
+					if !rules[RuleExpression]() {
+						goto l0
+					}
+					{
+						add(RuleAction4, position)
+					}
+					{
+						position10, tokenIndex10, depth10 := position, tokenIndex, depth
 						{
-							position6, tokenIndex6, thunkPosition6 := position, tokenIndex, thunkPosition
-							if !rules[7]() {
-								goto l7
+							position11, tokenIndex11, depth11 := position, tokenIndex, depth
+							if !rules[RuleIdentifier]() {
+								goto l12
 							}
-							if !rules[19]() {
-								goto l7
+							if !rules[RuleLeftArrow]() {
+								goto l12
 							}
-							goto l6
-						l7:
-							position, tokenIndex, thunkPosition = position6, tokenIndex6, thunkPosition6
+							goto l11
+						l12:
+							position, tokenIndex, depth = position11, tokenIndex11, depth11
 							{
-								position8, tokenIndex8, thunkPosition8 := position, tokenIndex, thunkPosition
+								position13, tokenIndex13, depth13 := position, tokenIndex, depth
 								if !matchDot() {
-									goto l8
+									goto l13
 								}
 								goto l0
-							l8:
-								position, tokenIndex, thunkPosition = position8, tokenIndex8, thunkPosition8
+							l13:
+								position, tokenIndex, depth = position13, tokenIndex13, depth13
 							}
 						}
-					l6:
-						position, tokenIndex, thunkPosition = position5, tokenIndex5, thunkPosition5
+					l11:
+						position, tokenIndex, depth = position10, tokenIndex10, depth10
 					}
-					if !(commit(0)) {
-						goto l0
-					}
-					if begin4 != position {
-						p.Add(RuleDefinition, begin4, position, tokenIndex)
-						tokenIndex++
-					}
+					depth--
+					add(RuleDefinition, position7)
 				}
-			l2:
+			l5:
 				{
-					position3, tokenIndex3, thunkPosition3 := position, tokenIndex, thunkPosition
+					position6, tokenIndex6, depth6 := position, tokenIndex, depth
 					{
-						begin9 := position
-						if !rules[7]() {
-							goto l3
+						position14 := position
+						depth++
+						if !rules[RuleIdentifier]() {
+							goto l6
 						}
-						do(2)
-						if !rules[19]() {
-							goto l3
-						}
-						if !rules[2]() {
-							goto l3
-						}
-						do(3)
 						{
-							position10, tokenIndex10, thunkPosition10 := position, tokenIndex, thunkPosition
+							add(RuleAction3, position)
+						}
+						if !rules[RuleLeftArrow]() {
+							goto l6
+						}
+						if !rules[RuleExpression]() {
+							goto l6
+						}
+						{
+							add(RuleAction4, position)
+						}
+						{
+							position17, tokenIndex17, depth17 := position, tokenIndex, depth
 							{
-								position11, tokenIndex11, thunkPosition11 := position, tokenIndex, thunkPosition
-								if !rules[7]() {
-									goto l12
+								position18, tokenIndex18, depth18 := position, tokenIndex, depth
+								if !rules[RuleIdentifier]() {
+									goto l19
 								}
-								if !rules[19]() {
-									goto l12
+								if !rules[RuleLeftArrow]() {
+									goto l19
 								}
-								goto l11
-							l12:
-								position, tokenIndex, thunkPosition = position11, tokenIndex11, thunkPosition11
+								goto l18
+							l19:
+								position, tokenIndex, depth = position18, tokenIndex18, depth18
 								{
-									position13, tokenIndex13, thunkPosition13 := position, tokenIndex, thunkPosition
+									position20, tokenIndex20, depth20 := position, tokenIndex, depth
 									if !matchDot() {
-										goto l13
+										goto l20
 									}
-									goto l3
-								l13:
-									position, tokenIndex, thunkPosition = position13, tokenIndex13, thunkPosition13
+									goto l6
+								l20:
+									position, tokenIndex, depth = position20, tokenIndex20, depth20
 								}
 							}
-						l11:
-							position, tokenIndex, thunkPosition = position10, tokenIndex10, thunkPosition10
+						l18:
+							position, tokenIndex, depth = position17, tokenIndex17, depth17
 						}
-						if !(commit(0)) {
-							goto l3
-						}
-						if begin9 != position {
-							p.Add(RuleDefinition, begin9, position, tokenIndex)
-							tokenIndex++
-						}
+						depth--
+						add(RuleDefinition, position14)
 					}
-					goto l2
-				l3:
-					position, tokenIndex, thunkPosition = position3, tokenIndex3, thunkPosition3
+					goto l5
+				l6:
+					position, tokenIndex, depth = position6, tokenIndex6, depth6
 				}
 				{
-					begin14 := position
+					position21 := position
+					depth++
 					{
-						position15, tokenIndex15, thunkPosition15 := position, tokenIndex, thunkPosition
+						position22, tokenIndex22, depth22 := position, tokenIndex, depth
 						if !matchDot() {
-							goto l15
+							goto l22
 						}
 						goto l0
-					l15:
-						position, tokenIndex, thunkPosition = position15, tokenIndex15, thunkPosition15
+					l22:
+						position, tokenIndex, depth = position22, tokenIndex22, depth22
 					}
-					if begin14 != position {
-						p.Add(RuleEndOfFile, begin14, position, tokenIndex)
-						tokenIndex++
-					}
+					depth--
+					add(RuleEndOfFile, position21)
 				}
-				if begin1 != position {
-					p.Add(RuleGrammar, begin1, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleGrammar, position1)
 			}
 			return true
 		l0:
-			position, tokenIndex, thunkPosition = position0, tokenIndex0, thunkPosition0
+			position, tokenIndex, depth = position0, tokenIndex0, depth0
 			return false
 		},
-		/* 1 Definition <- <(Identifier { p.AddRule(buffer[begin:end]) } LeftArrow Expression { p.AddExpression() } &((Identifier LeftArrow) / !.) commit)> */
+		/* 1 Definition <- <(Identifier Action3 LeftArrow Expression Action4 &((Identifier LeftArrow) / !.))> */
 		nil,
-		/* 2 Expression <- <((Sequence (Slash Sequence { p.AddAlternate() })* (Slash { p.AddNil(); p.AddAlternate() })?) / { p.AddNil() })> */
+		/* 2 Expression <- <((Sequence (Slash Sequence Action5)* (Slash Action6)?) / Action7)> */
 		func() bool {
 			{
-				begin18 := position
+				position25 := position
+				depth++
 				{
-					position19, tokenIndex19, thunkPosition19 := position, tokenIndex, thunkPosition
-					if !rules[3]() {
-						goto l20
+					position26, tokenIndex26, depth26 := position, tokenIndex, depth
+					if !rules[RuleSequence]() {
+						goto l27
 					}
-				l21:
+				l28:
 					{
-						position22, tokenIndex22, thunkPosition22 := position, tokenIndex, thunkPosition
-						if !rules[20]() {
-							goto l22
+						position29, tokenIndex29, depth29 := position, tokenIndex, depth
+						if !rules[RuleSlash]() {
+							goto l29
 						}
-						if !rules[3]() {
-							goto l22
+						if !rules[RuleSequence]() {
+							goto l29
 						}
-						do(44)
-						goto l21
-					l22:
-						position, tokenIndex, thunkPosition = position22, tokenIndex22, thunkPosition22
+						{
+							add(RuleAction5, position)
+						}
+						goto l28
+					l29:
+						position, tokenIndex, depth = position29, tokenIndex29, depth29
 					}
 					{
-						position23, tokenIndex23, thunkPosition23 := position, tokenIndex, thunkPosition
-						if !rules[20]() {
-							goto l23
+						position31, tokenIndex31, depth31 := position, tokenIndex, depth
+						if !rules[RuleSlash]() {
+							goto l31
 						}
-						do(45)
-						goto l24
-					l23:
-						position, tokenIndex, thunkPosition = position23, tokenIndex23, thunkPosition23
+						{
+							add(RuleAction6, position)
+						}
+						goto l32
+					l31:
+						position, tokenIndex, depth = position31, tokenIndex31, depth31
 					}
-				l24:
-					goto l19
-				l20:
-					position, tokenIndex, thunkPosition = position19, tokenIndex19, thunkPosition19
-					do(46)
+				l32:
+					goto l26
+				l27:
+					position, tokenIndex, depth = position26, tokenIndex26, depth26
+					{
+						add(RuleAction7, position)
+					}
 				}
-			l19:
-				if begin18 != position {
-					p.Add(RuleExpression, begin18, position, tokenIndex)
-					tokenIndex++
-				}
+			l26:
+				depth--
+				add(RuleExpression, position25)
 			}
 			return true
 		},
-		/* 3 Sequence <- <(Prefix (Prefix { p.AddSequence() })*)> */
+		/* 3 Sequence <- <(Prefix (Prefix Action8)*)> */
 		func() bool {
-			position25, tokenIndex25, thunkPosition25 := position, tokenIndex, thunkPosition
+			position35, tokenIndex35, depth35 := position, tokenIndex, depth
 			{
-				begin26 := position
-				if !rules[4]() {
-					goto l25
+				position36 := position
+				depth++
+				if !rules[RulePrefix]() {
+					goto l35
 				}
-			l27:
+			l37:
 				{
-					position28, tokenIndex28, thunkPosition28 := position, tokenIndex, thunkPosition
-					if !rules[4]() {
-						goto l28
+					position38, tokenIndex38, depth38 := position, tokenIndex, depth
+					if !rules[RulePrefix]() {
+						goto l38
 					}
-					do(43)
-					goto l27
-				l28:
-					position, tokenIndex, thunkPosition = position28, tokenIndex28, thunkPosition28
+					{
+						add(RuleAction8, position)
+					}
+					goto l37
+				l38:
+					position, tokenIndex, depth = position38, tokenIndex38, depth38
 				}
-				if begin26 != position {
-					p.Add(RuleSequence, begin26, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleSequence, position36)
 			}
 			return true
-		l25:
-			position, tokenIndex, thunkPosition = position25, tokenIndex25, thunkPosition25
+		l35:
+			position, tokenIndex, depth = position35, tokenIndex35, depth35
 			return false
 		},
-		/* 4 Prefix <- <((And Action { p.AddPredicate(buffer[begin:end]) }) / ((&('!') (Not Suffix { p.AddPeekNot() })) | (&('&') (And Suffix { p.AddPeekFor() })) | (&('"' | '\'' | '(' | '.' | '<' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '[' | '_' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' | '{') Suffix)))> */
+		/* 4 Prefix <- <((And Action Action9) / ((&('!') (Not Suffix Action11)) | (&('&') (And Suffix Action10)) | (&('"' | '\'' | '(' | '.' | '<' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '[' | '_' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' | '{') Suffix)))> */
 		func() bool {
-			position29, tokenIndex29, thunkPosition29 := position, tokenIndex, thunkPosition
+			position40, tokenIndex40, depth40 := position, tokenIndex, depth
 			{
-				begin30 := position
+				position41 := position
+				depth++
 				{
-					position31, tokenIndex31, thunkPosition31 := position, tokenIndex, thunkPosition
-					if !rules[21]() {
-						goto l32
+					position42, tokenIndex42, depth42 := position, tokenIndex, depth
+					if !rules[RuleAnd]() {
+						goto l43
 					}
-					if !rules[34]() {
-						goto l32
+					if !rules[RuleAction]() {
+						goto l43
 					}
-					do(12)
-					goto l31
-				l32:
-					position, tokenIndex, thunkPosition = position31, tokenIndex31, thunkPosition31
+					{
+						add(RuleAction9, position)
+					}
+					goto l42
+				l43:
+					position, tokenIndex, depth = position42, tokenIndex42, depth42
 					{
 						switch buffer[position] {
 						case '!':
 							{
-								begin34 := position
+								position46 := position
+								depth++
 								if buffer[position] != '!' {
-									goto l29
+									goto l40
 								}
 								position++
-								if !rules[29]() {
-									goto l29
+								if !rules[RuleSpacing]() {
+									goto l40
 								}
-								if begin34 != position {
-									p.Add(RuleNot, begin34, position, tokenIndex)
-									tokenIndex++
-								}
+								depth--
+								add(RuleNot, position46)
 							}
-							if !rules[5]() {
-								goto l29
+							if !rules[RuleSuffix]() {
+								goto l40
 							}
-							do(14)
+							{
+								add(RuleAction11, position)
+							}
 							break
 						case '&':
-							if !rules[21]() {
-								goto l29
+							if !rules[RuleAnd]() {
+								goto l40
 							}
-							if !rules[5]() {
-								goto l29
+							if !rules[RuleSuffix]() {
+								goto l40
 							}
-							do(13)
+							{
+								add(RuleAction10, position)
+							}
 							break
 						default:
-							if !rules[5]() {
-								goto l29
+							if !rules[RuleSuffix]() {
+								goto l40
 							}
 							break
 						}
 					}
 
 				}
-			l31:
-				if begin30 != position {
-					p.Add(RulePrefix, begin30, position, tokenIndex)
-					tokenIndex++
-				}
+			l42:
+				depth--
+				add(RulePrefix, position41)
 			}
 			return true
-		l29:
-			position, tokenIndex, thunkPosition = position29, tokenIndex29, thunkPosition29
+		l40:
+			position, tokenIndex, depth = position40, tokenIndex40, depth40
 			return false
 		},
-		/* 5 Suffix <- <(Primary ((&('+') (Plus { p.AddPlus() })) | (&('*') (Star { p.AddStar() })) | (&('?') (Question { p.AddQuery() })))?)> */
+		/* 5 Suffix <- <(Primary ((&('+') (Plus Action14)) | (&('*') (Star Action13)) | (&('?') (Question Action12)))?)> */
 		func() bool {
-			position35, tokenIndex35, thunkPosition35 := position, tokenIndex, thunkPosition
+			position49, tokenIndex49, depth49 := position, tokenIndex, depth
 			{
-				begin36 := position
+				position50 := position
+				depth++
 				{
-					begin37 := position
+					position51 := position
+					depth++
 					{
-						position38, tokenIndex38, thunkPosition38 := position, tokenIndex, thunkPosition
-						if buffer[position] != 'c' {
-							goto l39
-						}
-						position++
-						if buffer[position] != 'o' {
-							goto l39
-						}
-						position++
-						if buffer[position] != 'm' {
-							goto l39
-						}
-						position++
-						if buffer[position] != 'm' {
-							goto l39
-						}
-						position++
-						if buffer[position] != 'i' {
-							goto l39
-						}
-						position++
-						if buffer[position] != 't' {
-							goto l39
-						}
-						position++
-						if !rules[29]() {
-							goto l39
-						}
-						do(37)
-						goto l38
-					l39:
-						position, tokenIndex, thunkPosition = position38, tokenIndex38, thunkPosition38
-						{
-							switch buffer[position] {
-							case '<':
-								{
-									begin41 := position
-									if buffer[position] != '<' {
-										goto l35
-									}
-									position++
-									if !rules[29]() {
-										goto l35
-									}
-									if begin41 != position {
-										p.Add(RuleBegin, begin41, position, tokenIndex)
-										tokenIndex++
-									}
+						switch buffer[position] {
+						case '<':
+							{
+								position53 := position
+								depth++
+								if buffer[position] != '<' {
+									goto l49
 								}
-								if !rules[2]() {
-									goto l35
+								position++
+								if !rules[RuleSpacing]() {
+									goto l49
 								}
-								{
-									begin42 := position
-									if buffer[position] != '>' {
-										goto l35
-									}
-									position++
-									if !rules[29]() {
-										goto l35
-									}
-									if begin42 != position {
-										p.Add(RuleEnd, begin42, position, tokenIndex)
-										tokenIndex++
-									}
-								}
-								do(41)
-								break
-							case '{':
-								if !rules[34]() {
-									goto l35
-								}
-								do(40)
-								break
-							case '.':
-								{
-									begin43 := position
-									if buffer[position] != '.' {
-										goto l35
-									}
-									position++
-									if !rules[29]() {
-										goto l35
-									}
-									if begin43 != position {
-										p.Add(RuleDot, begin43, position, tokenIndex)
-										tokenIndex++
-									}
-								}
-								do(39)
-								break
-							case '[':
-								{
-									begin44 := position
-									{
-										position45, tokenIndex45, thunkPosition45 := position, tokenIndex, thunkPosition
-										if buffer[position] != '[' {
-											goto l46
-										}
-										position++
-										if buffer[position] != '[' {
-											goto l46
-										}
-										position++
-										{
-											position47, tokenIndex47, thunkPosition47 := position, tokenIndex, thunkPosition
-											{
-												position49, tokenIndex49, thunkPosition49 := position, tokenIndex, thunkPosition
-												if buffer[position] != '^' {
-													goto l50
-												}
-												position++
-												if !rules[13]() {
-													goto l50
-												}
-												do(6)
-												goto l49
-											l50:
-												position, tokenIndex, thunkPosition = position49, tokenIndex49, thunkPosition49
-												if !rules[13]() {
-													goto l47
-												}
-											}
-										l49:
-											goto l48
-										l47:
-											position, tokenIndex, thunkPosition = position47, tokenIndex47, thunkPosition47
-										}
-									l48:
-										if buffer[position] != ']' {
-											goto l46
-										}
-										position++
-										if buffer[position] != ']' {
-											goto l46
-										}
-										position++
-										goto l45
-									l46:
-										position, tokenIndex, thunkPosition = position45, tokenIndex45, thunkPosition45
-										if buffer[position] != '[' {
-											goto l35
-										}
-										position++
-										{
-											position51, tokenIndex51, thunkPosition51 := position, tokenIndex, thunkPosition
-											{
-												position53, tokenIndex53, thunkPosition53 := position, tokenIndex, thunkPosition
-												if buffer[position] != '^' {
-													goto l54
-												}
-												position++
-												if !rules[12]() {
-													goto l54
-												}
-												do(7)
-												goto l53
-											l54:
-												position, tokenIndex, thunkPosition = position53, tokenIndex53, thunkPosition53
-												if !rules[12]() {
-													goto l51
-												}
-											}
-										l53:
-											goto l52
-										l51:
-											position, tokenIndex, thunkPosition = position51, tokenIndex51, thunkPosition51
-										}
-									l52:
-										if buffer[position] != ']' {
-											goto l35
-										}
-										position++
-									}
-								l45:
-									if !rules[29]() {
-										goto l35
-									}
-									if begin44 != position {
-										p.Add(RuleClass, begin44, position, tokenIndex)
-										tokenIndex++
-									}
-								}
-								break
-							case '"', '\'':
-								{
-									begin55 := position
-									{
-										position56, tokenIndex56, thunkPosition56 := position, tokenIndex, thunkPosition
-										if buffer[position] != '\'' {
-											goto l57
-										}
-										position++
-										{
-											position58, tokenIndex58, thunkPosition58 := position, tokenIndex, thunkPosition
-											{
-												position60, tokenIndex60, thunkPosition60 := position, tokenIndex, thunkPosition
-												if buffer[position] != '\'' {
-													goto l60
-												}
-												position++
-												goto l58
-											l60:
-												position, tokenIndex, thunkPosition = position60, tokenIndex60, thunkPosition60
-											}
-											if !rules[16]() {
-												goto l58
-											}
-											goto l59
-										l58:
-											position, tokenIndex, thunkPosition = position58, tokenIndex58, thunkPosition58
-										}
-									l59:
-									l61:
-										{
-											position62, tokenIndex62, thunkPosition62 := position, tokenIndex, thunkPosition
-											{
-												position63, tokenIndex63, thunkPosition63 := position, tokenIndex, thunkPosition
-												if buffer[position] != '\'' {
-													goto l63
-												}
-												position++
-												goto l62
-											l63:
-												position, tokenIndex, thunkPosition = position63, tokenIndex63, thunkPosition63
-											}
-											if !rules[16]() {
-												goto l62
-											}
-											do(15)
-											goto l61
-										l62:
-											position, tokenIndex, thunkPosition = position62, tokenIndex62, thunkPosition62
-										}
-										if buffer[position] != '\'' {
-											goto l57
-										}
-										position++
-										if !rules[29]() {
-											goto l57
-										}
-										goto l56
-									l57:
-										position, tokenIndex, thunkPosition = position56, tokenIndex56, thunkPosition56
-										if buffer[position] != '"' {
-											goto l35
-										}
-										position++
-										{
-											position64, tokenIndex64, thunkPosition64 := position, tokenIndex, thunkPosition
-											{
-												position66, tokenIndex66, thunkPosition66 := position, tokenIndex, thunkPosition
-												if buffer[position] != '"' {
-													goto l66
-												}
-												position++
-												goto l64
-											l66:
-												position, tokenIndex, thunkPosition = position66, tokenIndex66, thunkPosition66
-											}
-											if !rules[17]() {
-												goto l64
-											}
-											goto l65
-										l64:
-											position, tokenIndex, thunkPosition = position64, tokenIndex64, thunkPosition64
-										}
-									l65:
-									l67:
-										{
-											position68, tokenIndex68, thunkPosition68 := position, tokenIndex, thunkPosition
-											{
-												position69, tokenIndex69, thunkPosition69 := position, tokenIndex, thunkPosition
-												if buffer[position] != '"' {
-													goto l69
-												}
-												position++
-												goto l68
-											l69:
-												position, tokenIndex, thunkPosition = position69, tokenIndex69, thunkPosition69
-											}
-											if !rules[17]() {
-												goto l68
-											}
-											do(16)
-											goto l67
-										l68:
-											position, tokenIndex, thunkPosition = position68, tokenIndex68, thunkPosition68
-										}
-										if buffer[position] != '"' {
-											goto l35
-										}
-										position++
-										if !rules[29]() {
-											goto l35
-										}
-									}
-								l56:
-									if begin55 != position {
-										p.Add(RuleLiteral, begin55, position, tokenIndex)
-										tokenIndex++
-									}
-								}
-								break
-							case '(':
-								{
-									begin70 := position
-									if buffer[position] != '(' {
-										goto l35
-									}
-									position++
-									if !rules[29]() {
-										goto l35
-									}
-									if begin70 != position {
-										p.Add(RuleOpen, begin70, position, tokenIndex)
-										tokenIndex++
-									}
-								}
-								if !rules[2]() {
-									goto l35
-								}
-								{
-									begin71 := position
-									if buffer[position] != ')' {
-										goto l35
-									}
-									position++
-									if !rules[29]() {
-										goto l35
-									}
-									if begin71 != position {
-										p.Add(RuleClose, begin71, position, tokenIndex)
-										tokenIndex++
-									}
-								}
-								break
-							default:
-								if !rules[7]() {
-									goto l35
-								}
-								{
-									position72, tokenIndex72, thunkPosition72 := position, tokenIndex, thunkPosition
-									if !rules[19]() {
-										goto l72
-									}
-									goto l35
-								l72:
-									position, tokenIndex, thunkPosition = position72, tokenIndex72, thunkPosition72
-								}
-								do(38)
-								break
+								depth--
+								add(RuleBegin, position53)
 							}
+							if !rules[RuleExpression]() {
+								goto l49
+							}
+							{
+								position54 := position
+								depth++
+								if buffer[position] != '>' {
+									goto l49
+								}
+								position++
+								if !rules[RuleSpacing]() {
+									goto l49
+								}
+								depth--
+								add(RuleEnd, position54)
+							}
+							{
+								add(RuleAction18, position)
+							}
+							break
+						case '{':
+							if !rules[RuleAction]() {
+								goto l49
+							}
+							{
+								add(RuleAction17, position)
+							}
+							break
+						case '.':
+							{
+								position57 := position
+								depth++
+								if buffer[position] != '.' {
+									goto l49
+								}
+								position++
+								if !rules[RuleSpacing]() {
+									goto l49
+								}
+								depth--
+								add(RuleDot, position57)
+							}
+							{
+								add(RuleAction16, position)
+							}
+							break
+						case '[':
+							{
+								position59 := position
+								depth++
+								{
+									position60, tokenIndex60, depth60 := position, tokenIndex, depth
+									if buffer[position] != '[' {
+										goto l61
+									}
+									position++
+									if buffer[position] != '[' {
+										goto l61
+									}
+									position++
+									{
+										position62, tokenIndex62, depth62 := position, tokenIndex, depth
+										{
+											position64, tokenIndex64, depth64 := position, tokenIndex, depth
+											if buffer[position] != '^' {
+												goto l65
+											}
+											position++
+											if !rules[RuleDoubleRanges]() {
+												goto l65
+											}
+											{
+												add(RuleAction21, position)
+											}
+											goto l64
+										l65:
+											position, tokenIndex, depth = position64, tokenIndex64, depth64
+											if !rules[RuleDoubleRanges]() {
+												goto l62
+											}
+										}
+									l64:
+										goto l63
+									l62:
+										position, tokenIndex, depth = position62, tokenIndex62, depth62
+									}
+								l63:
+									if buffer[position] != ']' {
+										goto l61
+									}
+									position++
+									if buffer[position] != ']' {
+										goto l61
+									}
+									position++
+									goto l60
+								l61:
+									position, tokenIndex, depth = position60, tokenIndex60, depth60
+									if buffer[position] != '[' {
+										goto l49
+									}
+									position++
+									{
+										position67, tokenIndex67, depth67 := position, tokenIndex, depth
+										{
+											position69, tokenIndex69, depth69 := position, tokenIndex, depth
+											if buffer[position] != '^' {
+												goto l70
+											}
+											position++
+											if !rules[RuleRanges]() {
+												goto l70
+											}
+											{
+												add(RuleAction22, position)
+											}
+											goto l69
+										l70:
+											position, tokenIndex, depth = position69, tokenIndex69, depth69
+											if !rules[RuleRanges]() {
+												goto l67
+											}
+										}
+									l69:
+										goto l68
+									l67:
+										position, tokenIndex, depth = position67, tokenIndex67, depth67
+									}
+								l68:
+									if buffer[position] != ']' {
+										goto l49
+									}
+									position++
+								}
+							l60:
+								if !rules[RuleSpacing]() {
+									goto l49
+								}
+								depth--
+								add(RuleClass, position59)
+							}
+							break
+						case '"', '\'':
+							{
+								position72 := position
+								depth++
+								{
+									position73, tokenIndex73, depth73 := position, tokenIndex, depth
+									if buffer[position] != '\'' {
+										goto l74
+									}
+									position++
+									{
+										position75, tokenIndex75, depth75 := position, tokenIndex, depth
+										{
+											position77, tokenIndex77, depth77 := position, tokenIndex, depth
+											if buffer[position] != '\'' {
+												goto l77
+											}
+											position++
+											goto l75
+										l77:
+											position, tokenIndex, depth = position77, tokenIndex77, depth77
+										}
+										if !rules[RuleChar]() {
+											goto l75
+										}
+										goto l76
+									l75:
+										position, tokenIndex, depth = position75, tokenIndex75, depth75
+									}
+								l76:
+								l78:
+									{
+										position79, tokenIndex79, depth79 := position, tokenIndex, depth
+										{
+											position80, tokenIndex80, depth80 := position, tokenIndex, depth
+											if buffer[position] != '\'' {
+												goto l80
+											}
+											position++
+											goto l79
+										l80:
+											position, tokenIndex, depth = position80, tokenIndex80, depth80
+										}
+										if !rules[RuleChar]() {
+											goto l79
+										}
+										{
+											add(RuleAction19, position)
+										}
+										goto l78
+									l79:
+										position, tokenIndex, depth = position79, tokenIndex79, depth79
+									}
+									if buffer[position] != '\'' {
+										goto l74
+									}
+									position++
+									if !rules[RuleSpacing]() {
+										goto l74
+									}
+									goto l73
+								l74:
+									position, tokenIndex, depth = position73, tokenIndex73, depth73
+									if buffer[position] != '"' {
+										goto l49
+									}
+									position++
+									{
+										position82, tokenIndex82, depth82 := position, tokenIndex, depth
+										{
+											position84, tokenIndex84, depth84 := position, tokenIndex, depth
+											if buffer[position] != '"' {
+												goto l84
+											}
+											position++
+											goto l82
+										l84:
+											position, tokenIndex, depth = position84, tokenIndex84, depth84
+										}
+										if !rules[RuleDoubleChar]() {
+											goto l82
+										}
+										goto l83
+									l82:
+										position, tokenIndex, depth = position82, tokenIndex82, depth82
+									}
+								l83:
+								l85:
+									{
+										position86, tokenIndex86, depth86 := position, tokenIndex, depth
+										{
+											position87, tokenIndex87, depth87 := position, tokenIndex, depth
+											if buffer[position] != '"' {
+												goto l87
+											}
+											position++
+											goto l86
+										l87:
+											position, tokenIndex, depth = position87, tokenIndex87, depth87
+										}
+										if !rules[RuleDoubleChar]() {
+											goto l86
+										}
+										{
+											add(RuleAction20, position)
+										}
+										goto l85
+									l86:
+										position, tokenIndex, depth = position86, tokenIndex86, depth86
+									}
+									if buffer[position] != '"' {
+										goto l49
+									}
+									position++
+									if !rules[RuleSpacing]() {
+										goto l49
+									}
+								}
+							l73:
+								depth--
+								add(RuleLiteral, position72)
+							}
+							break
+						case '(':
+							{
+								position89 := position
+								depth++
+								if buffer[position] != '(' {
+									goto l49
+								}
+								position++
+								if !rules[RuleSpacing]() {
+									goto l49
+								}
+								depth--
+								add(RuleOpen, position89)
+							}
+							if !rules[RuleExpression]() {
+								goto l49
+							}
+							{
+								position90 := position
+								depth++
+								if buffer[position] != ')' {
+									goto l49
+								}
+								position++
+								if !rules[RuleSpacing]() {
+									goto l49
+								}
+								depth--
+								add(RuleClose, position90)
+							}
+							break
+						default:
+							if !rules[RuleIdentifier]() {
+								goto l49
+							}
+							{
+								position91, tokenIndex91, depth91 := position, tokenIndex, depth
+								if !rules[RuleLeftArrow]() {
+									goto l91
+								}
+								goto l49
+							l91:
+								position, tokenIndex, depth = position91, tokenIndex91, depth91
+							}
+							{
+								add(RuleAction15, position)
+							}
+							break
 						}
+					}
 
-					}
-				l38:
-					if begin37 != position {
-						p.Add(RulePrimary, begin37, position, tokenIndex)
-						tokenIndex++
-					}
+					depth--
+					add(RulePrimary, position51)
 				}
 				{
-					position73, tokenIndex73, thunkPosition73 := position, tokenIndex, thunkPosition
+					position93, tokenIndex93, depth93 := position, tokenIndex, depth
 					{
 						switch buffer[position] {
 						case '+':
 							{
-								begin76 := position
+								position96 := position
+								depth++
 								if buffer[position] != '+' {
-									goto l73
+									goto l93
 								}
 								position++
-								if !rules[29]() {
-									goto l73
+								if !rules[RuleSpacing]() {
+									goto l93
 								}
-								if begin76 != position {
-									p.Add(RulePlus, begin76, position, tokenIndex)
-									tokenIndex++
-								}
+								depth--
+								add(RulePlus, position96)
 							}
-							do(36)
+							{
+								add(RuleAction14, position)
+							}
 							break
 						case '*':
 							{
-								begin77 := position
+								position98 := position
+								depth++
 								if buffer[position] != '*' {
-									goto l73
+									goto l93
 								}
 								position++
-								if !rules[29]() {
-									goto l73
+								if !rules[RuleSpacing]() {
+									goto l93
 								}
-								if begin77 != position {
-									p.Add(RuleStar, begin77, position, tokenIndex)
-									tokenIndex++
-								}
+								depth--
+								add(RuleStar, position98)
 							}
-							do(35)
+							{
+								add(RuleAction13, position)
+							}
 							break
 						default:
 							{
-								begin78 := position
+								position100 := position
+								depth++
 								if buffer[position] != '?' {
-									goto l73
+									goto l93
 								}
 								position++
-								if !rules[29]() {
-									goto l73
+								if !rules[RuleSpacing]() {
+									goto l93
 								}
-								if begin78 != position {
-									p.Add(RuleQuestion, begin78, position, tokenIndex)
-									tokenIndex++
-								}
+								depth--
+								add(RuleQuestion, position100)
 							}
-							do(34)
+							{
+								add(RuleAction12, position)
+							}
 							break
 						}
 					}
 
-					goto l74
-				l73:
-					position, tokenIndex, thunkPosition = position73, tokenIndex73, thunkPosition73
+					goto l94
+				l93:
+					position, tokenIndex, depth = position93, tokenIndex93, depth93
 				}
-			l74:
-				if begin36 != position {
-					p.Add(RuleSuffix, begin36, position, tokenIndex)
-					tokenIndex++
-				}
+			l94:
+				depth--
+				add(RuleSuffix, position50)
 			}
 			return true
-		l35:
-			position, tokenIndex, thunkPosition = position35, tokenIndex35, thunkPosition35
+		l49:
+			position, tokenIndex, depth = position49, tokenIndex49, depth49
 			return false
 		},
-		/* 6 Primary <- <(('c' 'o' 'm' 'm' 'i' 't' Spacing { p.AddCommit() }) / ((&('<') (Begin Expression End { p.AddPush() })) | (&('{') (Action { p.AddAction(buffer[begin:end]) })) | (&('.') (Dot { p.AddDot() })) | (&('[') Class) | (&('"' | '\'') Literal) | (&('(') (Open Expression Close)) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '_' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') (Identifier !LeftArrow { p.AddName(buffer[begin:end]) }))))> */
+		/* 6 Primary <- <((&('<') (Begin Expression End Action18)) | (&('{') (Action Action17)) | (&('.') (Dot Action16)) | (&('[') Class) | (&('"' | '\'') Literal) | (&('(') (Open Expression Close)) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '_' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') (Identifier !LeftArrow Action15)))> */
 		nil,
 		/* 7 Identifier <- <(<(IdentStart IdentCont*)> Spacing)> */
 		func() bool {
-			position80, tokenIndex80, thunkPosition80 := position, tokenIndex, thunkPosition
+			position103, tokenIndex103, depth103 := position, tokenIndex, depth
 			{
-				begin81 := position
+				position104 := position
+				depth++
 				{
-					begin = position
-					begin82 := position
-					if !rules[8]() {
-						goto l80
+					position105 := position
+					depth++
+					if !rules[RuleIdentStart]() {
+						goto l103
 					}
-				l83:
+				l106:
 					{
-						position84, tokenIndex84, thunkPosition84 := position, tokenIndex, thunkPosition
+						position107, tokenIndex107, depth107 := position, tokenIndex, depth
 						{
-							begin85 := position
+							position108 := position
+							depth++
 							{
-								position86, tokenIndex86, thunkPosition86 := position, tokenIndex, thunkPosition
-								if !rules[8]() {
-									goto l87
+								position109, tokenIndex109, depth109 := position, tokenIndex, depth
+								if !rules[RuleIdentStart]() {
+									goto l110
 								}
-								goto l86
-							l87:
-								position, tokenIndex, thunkPosition = position86, tokenIndex86, thunkPosition86
+								goto l109
+							l110:
+								position, tokenIndex, depth = position109, tokenIndex109, depth109
 								if c := buffer[position]; c < '0' || c > '9' {
-									goto l84
+									goto l107
 								}
 								position++
 							}
-						l86:
-							if begin85 != position {
-								p.Add(RuleIdentCont, begin85, position, tokenIndex)
-								tokenIndex++
-							}
+						l109:
+							depth--
+							add(RuleIdentCont, position108)
 						}
-						goto l83
-					l84:
-						position, tokenIndex, thunkPosition = position84, tokenIndex84, thunkPosition84
+						goto l106
+					l107:
+						position, tokenIndex, depth = position107, tokenIndex107, depth107
 					}
-					end = position
-					if begin82 != position {
-						p.Add(RuleIdentifier, begin82, position, tokenIndex)
-						tokenIndex++
-					}
+					depth--
+					add(RulePegText, position105)
 				}
-				if !rules[29]() {
-					goto l80
+				if !rules[RuleSpacing]() {
+					goto l103
 				}
-				if begin81 != position {
-					p.Add(RuleIdentifier, begin81, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleIdentifier, position104)
 			}
 			return true
-		l80:
-			position, tokenIndex, thunkPosition = position80, tokenIndex80, thunkPosition80
+		l103:
+			position, tokenIndex, depth = position103, tokenIndex103, depth103
 			return false
 		},
 		/* 8 IdentStart <- <((&('_') '_') | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))> */
 		func() bool {
-			position88, tokenIndex88, thunkPosition88 := position, tokenIndex, thunkPosition
+			position111, tokenIndex111, depth111 := position, tokenIndex, depth
 			{
-				begin89 := position
+				position112 := position
+				depth++
 				{
 					switch buffer[position] {
 					case '_':
 						if buffer[position] != '_' {
-							goto l88
+							goto l111
 						}
 						position++
 						break
 					case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
 						if c := buffer[position]; c < 'A' || c > 'Z' {
-							goto l88
+							goto l111
 						}
 						position++
 						break
 					default:
 						if c := buffer[position]; c < 'a' || c > 'z' {
-							goto l88
+							goto l111
 						}
 						position++
 						break
 					}
 				}
 
-				if begin89 != position {
-					p.Add(RuleIdentStart, begin89, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleIdentStart, position112)
 			}
 			return true
-		l88:
-			position, tokenIndex, thunkPosition = position88, tokenIndex88, thunkPosition88
+		l111:
+			position, tokenIndex, depth = position111, tokenIndex111, depth111
 			return false
 		},
 		/* 9 IdentCont <- <(IdentStart / [0-9])> */
 		nil,
-		/* 10 Literal <- <(('\'' (!'\'' Char)? (!'\'' Char { p.AddSequence() })* '\'' Spacing) / ('"' (!'"' DoubleChar)? (!'"' DoubleChar { p.AddSequence() })* '"' Spacing))> */
+		/* 10 Literal <- <(('\'' (!'\'' Char)? (!'\'' Char Action19)* '\'' Spacing) / ('"' (!'"' DoubleChar)? (!'"' DoubleChar Action20)* '"' Spacing))> */
 		nil,
-		/* 11 Class <- <((('[' '[' (('^' DoubleRanges { p.AddPeekNot(); p.AddDot(); p.AddSequence() }) / DoubleRanges)? (']' ']')) / ('[' (('^' Ranges { p.AddPeekNot(); p.AddDot(); p.AddSequence() }) / Ranges)? ']')) Spacing)> */
+		/* 11 Class <- <((('[' '[' (('^' DoubleRanges Action21) / DoubleRanges)? (']' ']')) / ('[' (('^' Ranges Action22) / Ranges)? ']')) Spacing)> */
 		nil,
-		/* 12 Ranges <- <(!']' Range (!']' Range { p.AddAlternate() })*)> */
+		/* 12 Ranges <- <(!']' Range (!']' Range Action23)*)> */
 		func() bool {
-			position94, tokenIndex94, thunkPosition94 := position, tokenIndex, thunkPosition
+			position117, tokenIndex117, depth117 := position, tokenIndex, depth
 			{
-				begin95 := position
+				position118 := position
+				depth++
 				{
-					position96, tokenIndex96, thunkPosition96 := position, tokenIndex, thunkPosition
+					position119, tokenIndex119, depth119 := position, tokenIndex, depth
 					if buffer[position] != ']' {
-						goto l96
+						goto l119
 					}
 					position++
-					goto l94
-				l96:
-					position, tokenIndex, thunkPosition = position96, tokenIndex96, thunkPosition96
+					goto l117
+				l119:
+					position, tokenIndex, depth = position119, tokenIndex119, depth119
 				}
-				if !rules[14]() {
-					goto l94
+				if !rules[RuleRange]() {
+					goto l117
 				}
-			l97:
+			l120:
 				{
-					position98, tokenIndex98, thunkPosition98 := position, tokenIndex, thunkPosition
+					position121, tokenIndex121, depth121 := position, tokenIndex, depth
 					{
-						position99, tokenIndex99, thunkPosition99 := position, tokenIndex, thunkPosition
+						position122, tokenIndex122, depth122 := position, tokenIndex, depth
 						if buffer[position] != ']' {
-							goto l99
+							goto l122
 						}
 						position++
-						goto l98
-					l99:
-						position, tokenIndex, thunkPosition = position99, tokenIndex99, thunkPosition99
+						goto l121
+					l122:
+						position, tokenIndex, depth = position122, tokenIndex122, depth122
 					}
-					if !rules[14]() {
-						goto l98
+					if !rules[RuleRange]() {
+						goto l121
 					}
-					do(33)
-					goto l97
-				l98:
-					position, tokenIndex, thunkPosition = position98, tokenIndex98, thunkPosition98
+					{
+						add(RuleAction23, position)
+					}
+					goto l120
+				l121:
+					position, tokenIndex, depth = position121, tokenIndex121, depth121
 				}
-				if begin95 != position {
-					p.Add(RuleRanges, begin95, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleRanges, position118)
 			}
 			return true
-		l94:
-			position, tokenIndex, thunkPosition = position94, tokenIndex94, thunkPosition94
+		l117:
+			position, tokenIndex, depth = position117, tokenIndex117, depth117
 			return false
 		},
-		/* 13 DoubleRanges <- <(!(']' ']') DoubleRange (!(']' ']') DoubleRange { p.AddAlternate() })*)> */
+		/* 13 DoubleRanges <- <(!(']' ']') DoubleRange (!(']' ']') DoubleRange Action24)*)> */
 		func() bool {
-			position100, tokenIndex100, thunkPosition100 := position, tokenIndex, thunkPosition
+			position124, tokenIndex124, depth124 := position, tokenIndex, depth
 			{
-				begin101 := position
+				position125 := position
+				depth++
 				{
-					position102, tokenIndex102, thunkPosition102 := position, tokenIndex, thunkPosition
+					position126, tokenIndex126, depth126 := position, tokenIndex, depth
 					if buffer[position] != ']' {
-						goto l102
+						goto l126
 					}
 					position++
 					if buffer[position] != ']' {
-						goto l102
+						goto l126
 					}
 					position++
-					goto l100
-				l102:
-					position, tokenIndex, thunkPosition = position102, tokenIndex102, thunkPosition102
+					goto l124
+				l126:
+					position, tokenIndex, depth = position126, tokenIndex126, depth126
 				}
-				if !rules[15]() {
-					goto l100
+				if !rules[RuleDoubleRange]() {
+					goto l124
 				}
-			l103:
+			l127:
 				{
-					position104, tokenIndex104, thunkPosition104 := position, tokenIndex, thunkPosition
+					position128, tokenIndex128, depth128 := position, tokenIndex, depth
 					{
-						position105, tokenIndex105, thunkPosition105 := position, tokenIndex, thunkPosition
+						position129, tokenIndex129, depth129 := position, tokenIndex, depth
 						if buffer[position] != ']' {
-							goto l105
+							goto l129
 						}
 						position++
 						if buffer[position] != ']' {
-							goto l105
+							goto l129
 						}
 						position++
-						goto l104
-					l105:
-						position, tokenIndex, thunkPosition = position105, tokenIndex105, thunkPosition105
+						goto l128
+					l129:
+						position, tokenIndex, depth = position129, tokenIndex129, depth129
 					}
-					if !rules[15]() {
-						goto l104
+					if !rules[RuleDoubleRange]() {
+						goto l128
 					}
-					do(1)
-					goto l103
-				l104:
-					position, tokenIndex, thunkPosition = position104, tokenIndex104, thunkPosition104
+					{
+						add(RuleAction24, position)
+					}
+					goto l127
+				l128:
+					position, tokenIndex, depth = position128, tokenIndex128, depth128
 				}
-				if begin101 != position {
-					p.Add(RuleDoubleRanges, begin101, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleDoubleRanges, position125)
 			}
 			return true
-		l100:
-			position, tokenIndex, thunkPosition = position100, tokenIndex100, thunkPosition100
+		l124:
+			position, tokenIndex, depth = position124, tokenIndex124, depth124
 			return false
 		},
-		/* 14 Range <- <((Char '-' Char { p.AddRange() }) / Char)> */
+		/* 14 Range <- <((Char '-' Char Action25) / Char)> */
 		func() bool {
-			position106, tokenIndex106, thunkPosition106 := position, tokenIndex, thunkPosition
+			position131, tokenIndex131, depth131 := position, tokenIndex, depth
 			{
-				begin107 := position
+				position132 := position
+				depth++
 				{
-					position108, tokenIndex108, thunkPosition108 := position, tokenIndex, thunkPosition
-					if !rules[16]() {
-						goto l109
-					}
-					if buffer[position] != '-' {
-						goto l109
-					}
-					position++
-					if !rules[16]() {
-						goto l109
-					}
-					do(0)
-					goto l108
-				l109:
-					position, tokenIndex, thunkPosition = position108, tokenIndex108, thunkPosition108
-					if !rules[16]() {
-						goto l106
-					}
-				}
-			l108:
-				if begin107 != position {
-					p.Add(RuleRange, begin107, position, tokenIndex)
-					tokenIndex++
-				}
-			}
-			return true
-		l106:
-			position, tokenIndex, thunkPosition = position106, tokenIndex106, thunkPosition106
-			return false
-		},
-		/* 15 DoubleRange <- <((Char '-' Char { p.AddDoubleRange() }) / DoubleChar)> */
-		func() bool {
-			position110, tokenIndex110, thunkPosition110 := position, tokenIndex, thunkPosition
-			{
-				begin111 := position
-				{
-					position112, tokenIndex112, thunkPosition112 := position, tokenIndex, thunkPosition
-					if !rules[16]() {
-						goto l113
-					}
-					if buffer[position] != '-' {
-						goto l113
-					}
-					position++
-					if !rules[16]() {
-						goto l113
-					}
-					do(42)
-					goto l112
-				l113:
-					position, tokenIndex, thunkPosition = position112, tokenIndex112, thunkPosition112
-					if !rules[17]() {
-						goto l110
-					}
-				}
-			l112:
-				if begin111 != position {
-					p.Add(RuleDoubleRange, begin111, position, tokenIndex)
-					tokenIndex++
-				}
-			}
-			return true
-		l110:
-			position, tokenIndex, thunkPosition = position110, tokenIndex110, thunkPosition110
-			return false
-		},
-		/* 16 Char <- <(Escape / (!'\\' <.> { p.AddCharacter(buffer[begin:end]) }))> */
-		func() bool {
-			position114, tokenIndex114, thunkPosition114 := position, tokenIndex, thunkPosition
-			{
-				begin115 := position
-				{
-					position116, tokenIndex116, thunkPosition116 := position, tokenIndex, thunkPosition
-					if !rules[18]() {
-						goto l117
-					}
-					goto l116
-				l117:
-					position, tokenIndex, thunkPosition = position116, tokenIndex116, thunkPosition116
-					{
-						position118, tokenIndex118, thunkPosition118 := position, tokenIndex, thunkPosition
-						if buffer[position] != '\\' {
-							goto l118
-						}
-						position++
-						goto l114
-					l118:
-						position, tokenIndex, thunkPosition = position118, tokenIndex118, thunkPosition118
-					}
-					{
-						begin = position
-						begin119 := position
-						if !matchDot() {
-							goto l114
-						}
-						end = position
-						if begin119 != position {
-							p.Add(RuleChar, begin119, position, tokenIndex)
-							tokenIndex++
-						}
-					}
-					do(8)
-				}
-			l116:
-				if begin115 != position {
-					p.Add(RuleChar, begin115, position, tokenIndex)
-					tokenIndex++
-				}
-			}
-			return true
-		l114:
-			position, tokenIndex, thunkPosition = position114, tokenIndex114, thunkPosition114
-			return false
-		},
-		/* 17 DoubleChar <- <(Escape / (<([a-z] / [A-Z])> { p.AddDoubleCharacter(buffer[begin:end]) }) / (!'\\' <.> { p.AddCharacter(buffer[begin:end]) }))> */
-		func() bool {
-			position120, tokenIndex120, thunkPosition120 := position, tokenIndex, thunkPosition
-			{
-				begin121 := position
-				{
-					position122, tokenIndex122, thunkPosition122 := position, tokenIndex, thunkPosition
-					if !rules[18]() {
-						goto l123
-					}
-					goto l122
-				l123:
-					position, tokenIndex, thunkPosition = position122, tokenIndex122, thunkPosition122
-					{
-						begin = position
-						begin125 := position
-						{
-							position126, tokenIndex126, thunkPosition126 := position, tokenIndex, thunkPosition
-							if c := buffer[position]; c < 'a' || c > 'z' {
-								goto l127
-							}
-							position++
-							goto l126
-						l127:
-							position, tokenIndex, thunkPosition = position126, tokenIndex126, thunkPosition126
-							if c := buffer[position]; c < 'A' || c > 'Z' {
-								goto l124
-							}
-							position++
-						}
-					l126:
-						end = position
-						if begin125 != position {
-							p.Add(RuleDoubleChar, begin125, position, tokenIndex)
-							tokenIndex++
-						}
-					}
-					do(4)
-					goto l122
-				l124:
-					position, tokenIndex, thunkPosition = position122, tokenIndex122, thunkPosition122
-					{
-						position128, tokenIndex128, thunkPosition128 := position, tokenIndex, thunkPosition
-						if buffer[position] != '\\' {
-							goto l128
-						}
-						position++
-						goto l120
-					l128:
-						position, tokenIndex, thunkPosition = position128, tokenIndex128, thunkPosition128
-					}
-					{
-						begin = position
-						begin129 := position
-						if !matchDot() {
-							goto l120
-						}
-						end = position
-						if begin129 != position {
-							p.Add(RuleDoubleChar, begin129, position, tokenIndex)
-							tokenIndex++
-						}
-					}
-					do(5)
-				}
-			l122:
-				if begin121 != position {
-					p.Add(RuleDoubleChar, begin121, position, tokenIndex)
-					tokenIndex++
-				}
-			}
-			return true
-		l120:
-			position, tokenIndex, thunkPosition = position120, tokenIndex120, thunkPosition120
-			return false
-		},
-		/* 18 Escape <- <(('\\' ('a' / 'A') { p.AddCharacter("\a") }) / ('\\' ('b' / 'B') { p.AddCharacter("\b") }) / ('\\' ('e' / 'E') { p.AddCharacter("\x1B") }) / ('\\' ('f' / 'F') { p.AddCharacter("\f") }) / ('\\' ('n' / 'N') { p.AddCharacter("\n") }) / ('\\' ('r' / 'R') { p.AddCharacter("\r") }) / ('\\' ('t' / 'T') { p.AddCharacter("\t") }) / ('\\' ('v' / 'V') { p.AddCharacter("\v") }) / ('\\' '\'' { p.AddCharacter("'") }) / ('\\' '"' { p.AddCharacter("\"") }) / ('\\' '[' { p.AddCharacter("[") }) / ('\\' ']' { p.AddCharacter("]") }) / ('\\' '-' { p.AddCharacter("-") }) / ('\\' <([0-3] [0-7] [0-7])> { p.AddOctalCharacter(buffer[begin:end]) }) / ('\\' <([0-7] [0-7]?)> { p.AddOctalCharacter(buffer[begin:end]) }) / ('\\' '\\' { p.AddCharacter("\\") }))> */
-		func() bool {
-			position130, tokenIndex130, thunkPosition130 := position, tokenIndex, thunkPosition
-			{
-				begin131 := position
-				{
-					position132, tokenIndex132, thunkPosition132 := position, tokenIndex, thunkPosition
-					if buffer[position] != '\\' {
-						goto l133
-					}
-					position++
-					{
-						position134, tokenIndex134, thunkPosition134 := position, tokenIndex, thunkPosition
-						if buffer[position] != 'a' {
-							goto l135
-						}
-						position++
+					position133, tokenIndex133, depth133 := position, tokenIndex, depth
+					if !rules[RuleChar]() {
 						goto l134
-					l135:
-						position, tokenIndex, thunkPosition = position134, tokenIndex134, thunkPosition134
-						if buffer[position] != 'A' {
-							goto l133
-						}
-						position++
 					}
-				l134:
-					do(17)
-					goto l132
-				l133:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if buffer[position] != '\\' {
-						goto l136
+					if buffer[position] != '-' {
+						goto l134
 					}
 					position++
-					{
-						position137, tokenIndex137, thunkPosition137 := position, tokenIndex, thunkPosition
-						if buffer[position] != 'b' {
-							goto l138
-						}
-						position++
-						goto l137
-					l138:
-						position, tokenIndex, thunkPosition = position137, tokenIndex137, thunkPosition137
-						if buffer[position] != 'B' {
-							goto l136
-						}
-						position++
+					if !rules[RuleChar]() {
+						goto l134
 					}
-				l137:
-					do(18)
-					goto l132
-				l136:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if buffer[position] != '\\' {
+					{
+						add(RuleAction25, position)
+					}
+					goto l133
+				l134:
+					position, tokenIndex, depth = position133, tokenIndex133, depth133
+					if !rules[RuleChar]() {
+						goto l131
+					}
+				}
+			l133:
+				depth--
+				add(RuleRange, position132)
+			}
+			return true
+		l131:
+			position, tokenIndex, depth = position131, tokenIndex131, depth131
+			return false
+		},
+		/* 15 DoubleRange <- <((Char '-' Char Action26) / DoubleChar)> */
+		func() bool {
+			position136, tokenIndex136, depth136 := position, tokenIndex, depth
+			{
+				position137 := position
+				depth++
+				{
+					position138, tokenIndex138, depth138 := position, tokenIndex, depth
+					if !rules[RuleChar]() {
+						goto l139
+					}
+					if buffer[position] != '-' {
 						goto l139
 					}
 					position++
-					{
-						position140, tokenIndex140, thunkPosition140 := position, tokenIndex, thunkPosition
-						if buffer[position] != 'e' {
-							goto l141
-						}
-						position++
-						goto l140
-					l141:
-						position, tokenIndex, thunkPosition = position140, tokenIndex140, thunkPosition140
-						if buffer[position] != 'E' {
-							goto l139
-						}
-						position++
+					if !rules[RuleChar]() {
+						goto l139
 					}
-				l140:
-					do(19)
-					goto l132
+					{
+						add(RuleAction26, position)
+					}
+					goto l138
 				l139:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if buffer[position] != '\\' {
-						goto l142
+					position, tokenIndex, depth = position138, tokenIndex138, depth138
+					if !rules[RuleDoubleChar]() {
+						goto l136
 					}
-					position++
+				}
+			l138:
+				depth--
+				add(RuleDoubleRange, position137)
+			}
+			return true
+		l136:
+			position, tokenIndex, depth = position136, tokenIndex136, depth136
+			return false
+		},
+		/* 16 Char <- <(Escape / (!'\\' <.> Action27))> */
+		func() bool {
+			position141, tokenIndex141, depth141 := position, tokenIndex, depth
+			{
+				position142 := position
+				depth++
+				{
+					position143, tokenIndex143, depth143 := position, tokenIndex, depth
+					if !rules[RuleEscape]() {
+						goto l144
+					}
+					goto l143
+				l144:
+					position, tokenIndex, depth = position143, tokenIndex143, depth143
 					{
-						position143, tokenIndex143, thunkPosition143 := position, tokenIndex, thunkPosition
-						if buffer[position] != 'f' {
-							goto l144
-						}
-						position++
-						goto l143
-					l144:
-						position, tokenIndex, thunkPosition = position143, tokenIndex143, thunkPosition143
-						if buffer[position] != 'F' {
-							goto l142
-						}
-						position++
-					}
-				l143:
-					do(20)
-					goto l132
-				l142:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if buffer[position] != '\\' {
-						goto l145
-					}
-					position++
-					{
-						position146, tokenIndex146, thunkPosition146 := position, tokenIndex, thunkPosition
-						if buffer[position] != 'n' {
-							goto l147
-						}
-						position++
-						goto l146
-					l147:
-						position, tokenIndex, thunkPosition = position146, tokenIndex146, thunkPosition146
-						if buffer[position] != 'N' {
+						position145, tokenIndex145, depth145 := position, tokenIndex, depth
+						if buffer[position] != '\\' {
 							goto l145
 						}
 						position++
+						goto l141
+					l145:
+						position, tokenIndex, depth = position145, tokenIndex145, depth145
 					}
-				l146:
-					do(21)
-					goto l132
-				l145:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if buffer[position] != '\\' {
-						goto l148
-					}
-					position++
 					{
-						position149, tokenIndex149, thunkPosition149 := position, tokenIndex, thunkPosition
-						if buffer[position] != 'r' {
-							goto l150
+						position146 := position
+						depth++
+						if !matchDot() {
+							goto l141
 						}
-						position++
-						goto l149
-					l150:
-						position, tokenIndex, thunkPosition = position149, tokenIndex149, thunkPosition149
-						if buffer[position] != 'R' {
-							goto l148
-						}
-						position++
+						depth--
+						add(RulePegText, position146)
 					}
-				l149:
-					do(22)
-					goto l132
-				l148:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if buffer[position] != '\\' {
+					{
+						add(RuleAction27, position)
+					}
+				}
+			l143:
+				depth--
+				add(RuleChar, position142)
+			}
+			return true
+		l141:
+			position, tokenIndex, depth = position141, tokenIndex141, depth141
+			return false
+		},
+		/* 17 DoubleChar <- <(Escape / (<([a-z] / [A-Z])> Action28) / (!'\\' <.> Action29))> */
+		func() bool {
+			position148, tokenIndex148, depth148 := position, tokenIndex, depth
+			{
+				position149 := position
+				depth++
+				{
+					position150, tokenIndex150, depth150 := position, tokenIndex, depth
+					if !rules[RuleEscape]() {
 						goto l151
 					}
-					position++
-					{
-						position152, tokenIndex152, thunkPosition152 := position, tokenIndex, thunkPosition
-						if buffer[position] != 't' {
-							goto l153
-						}
-						position++
-						goto l152
-					l153:
-						position, tokenIndex, thunkPosition = position152, tokenIndex152, thunkPosition152
-						if buffer[position] != 'T' {
-							goto l151
-						}
-						position++
-					}
-				l152:
-					do(23)
-					goto l132
+					goto l150
 				l151:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
+					position, tokenIndex, depth = position150, tokenIndex150, depth150
+					{
+						position153 := position
+						depth++
+						{
+							position154, tokenIndex154, depth154 := position, tokenIndex, depth
+							if c := buffer[position]; c < 'a' || c > 'z' {
+								goto l155
+							}
+							position++
+							goto l154
+						l155:
+							position, tokenIndex, depth = position154, tokenIndex154, depth154
+							if c := buffer[position]; c < 'A' || c > 'Z' {
+								goto l152
+							}
+							position++
+						}
+					l154:
+						depth--
+						add(RulePegText, position153)
+					}
+					{
+						add(RuleAction28, position)
+					}
+					goto l150
+				l152:
+					position, tokenIndex, depth = position150, tokenIndex150, depth150
+					{
+						position157, tokenIndex157, depth157 := position, tokenIndex, depth
+						if buffer[position] != '\\' {
+							goto l157
+						}
+						position++
+						goto l148
+					l157:
+						position, tokenIndex, depth = position157, tokenIndex157, depth157
+					}
+					{
+						position158 := position
+						depth++
+						if !matchDot() {
+							goto l148
+						}
+						depth--
+						add(RulePegText, position158)
+					}
+					{
+						add(RuleAction29, position)
+					}
+				}
+			l150:
+				depth--
+				add(RuleDoubleChar, position149)
+			}
+			return true
+		l148:
+			position, tokenIndex, depth = position148, tokenIndex148, depth148
+			return false
+		},
+		/* 18 Escape <- <(('\\' ('a' / 'A') Action30) / ('\\' ('b' / 'B') Action31) / ('\\' ('e' / 'E') Action32) / ('\\' ('f' / 'F') Action33) / ('\\' ('n' / 'N') Action34) / ('\\' ('r' / 'R') Action35) / ('\\' ('t' / 'T') Action36) / ('\\' ('v' / 'V') Action37) / ('\\' '\'' Action38) / ('\\' '"' Action39) / ('\\' '[' Action40) / ('\\' ']' Action41) / ('\\' '-' Action42) / ('\\' <([0-3] [0-7] [0-7])> Action43) / ('\\' <([0-7] [0-7]?)> Action44) / ('\\' '\\' Action45))> */
+		func() bool {
+			position160, tokenIndex160, depth160 := position, tokenIndex, depth
+			{
+				position161 := position
+				depth++
+				{
+					position162, tokenIndex162, depth162 := position, tokenIndex, depth
 					if buffer[position] != '\\' {
-						goto l154
+						goto l163
 					}
 					position++
 					{
-						position155, tokenIndex155, thunkPosition155 := position, tokenIndex, thunkPosition
-						if buffer[position] != 'v' {
-							goto l156
+						position164, tokenIndex164, depth164 := position, tokenIndex, depth
+						if buffer[position] != 'a' {
+							goto l165
 						}
 						position++
-						goto l155
-					l156:
-						position, tokenIndex, thunkPosition = position155, tokenIndex155, thunkPosition155
-						if buffer[position] != 'V' {
-							goto l154
+						goto l164
+					l165:
+						position, tokenIndex, depth = position164, tokenIndex164, depth164
+						if buffer[position] != 'A' {
+							goto l163
 						}
 						position++
 					}
-				l155:
-					do(24)
-					goto l132
-				l154:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
+				l164:
+					{
+						add(RuleAction30, position)
+					}
+					goto l162
+				l163:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
 					if buffer[position] != '\\' {
-						goto l157
+						goto l167
+					}
+					position++
+					{
+						position168, tokenIndex168, depth168 := position, tokenIndex, depth
+						if buffer[position] != 'b' {
+							goto l169
+						}
+						position++
+						goto l168
+					l169:
+						position, tokenIndex, depth = position168, tokenIndex168, depth168
+						if buffer[position] != 'B' {
+							goto l167
+						}
+						position++
+					}
+				l168:
+					{
+						add(RuleAction31, position)
+					}
+					goto l162
+				l167:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
+					if buffer[position] != '\\' {
+						goto l171
+					}
+					position++
+					{
+						position172, tokenIndex172, depth172 := position, tokenIndex, depth
+						if buffer[position] != 'e' {
+							goto l173
+						}
+						position++
+						goto l172
+					l173:
+						position, tokenIndex, depth = position172, tokenIndex172, depth172
+						if buffer[position] != 'E' {
+							goto l171
+						}
+						position++
+					}
+				l172:
+					{
+						add(RuleAction32, position)
+					}
+					goto l162
+				l171:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
+					if buffer[position] != '\\' {
+						goto l175
+					}
+					position++
+					{
+						position176, tokenIndex176, depth176 := position, tokenIndex, depth
+						if buffer[position] != 'f' {
+							goto l177
+						}
+						position++
+						goto l176
+					l177:
+						position, tokenIndex, depth = position176, tokenIndex176, depth176
+						if buffer[position] != 'F' {
+							goto l175
+						}
+						position++
+					}
+				l176:
+					{
+						add(RuleAction33, position)
+					}
+					goto l162
+				l175:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
+					if buffer[position] != '\\' {
+						goto l179
+					}
+					position++
+					{
+						position180, tokenIndex180, depth180 := position, tokenIndex, depth
+						if buffer[position] != 'n' {
+							goto l181
+						}
+						position++
+						goto l180
+					l181:
+						position, tokenIndex, depth = position180, tokenIndex180, depth180
+						if buffer[position] != 'N' {
+							goto l179
+						}
+						position++
+					}
+				l180:
+					{
+						add(RuleAction34, position)
+					}
+					goto l162
+				l179:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
+					if buffer[position] != '\\' {
+						goto l183
+					}
+					position++
+					{
+						position184, tokenIndex184, depth184 := position, tokenIndex, depth
+						if buffer[position] != 'r' {
+							goto l185
+						}
+						position++
+						goto l184
+					l185:
+						position, tokenIndex, depth = position184, tokenIndex184, depth184
+						if buffer[position] != 'R' {
+							goto l183
+						}
+						position++
+					}
+				l184:
+					{
+						add(RuleAction35, position)
+					}
+					goto l162
+				l183:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
+					if buffer[position] != '\\' {
+						goto l187
+					}
+					position++
+					{
+						position188, tokenIndex188, depth188 := position, tokenIndex, depth
+						if buffer[position] != 't' {
+							goto l189
+						}
+						position++
+						goto l188
+					l189:
+						position, tokenIndex, depth = position188, tokenIndex188, depth188
+						if buffer[position] != 'T' {
+							goto l187
+						}
+						position++
+					}
+				l188:
+					{
+						add(RuleAction36, position)
+					}
+					goto l162
+				l187:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
+					if buffer[position] != '\\' {
+						goto l191
+					}
+					position++
+					{
+						position192, tokenIndex192, depth192 := position, tokenIndex, depth
+						if buffer[position] != 'v' {
+							goto l193
+						}
+						position++
+						goto l192
+					l193:
+						position, tokenIndex, depth = position192, tokenIndex192, depth192
+						if buffer[position] != 'V' {
+							goto l191
+						}
+						position++
+					}
+				l192:
+					{
+						add(RuleAction37, position)
+					}
+					goto l162
+				l191:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
+					if buffer[position] != '\\' {
+						goto l195
 					}
 					position++
 					if buffer[position] != '\'' {
-						goto l157
+						goto l195
 					}
 					position++
-					do(25)
-					goto l132
-				l157:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
+					{
+						add(RuleAction38, position)
+					}
+					goto l162
+				l195:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
 					if buffer[position] != '\\' {
-						goto l158
+						goto l197
 					}
 					position++
 					if buffer[position] != '"' {
-						goto l158
+						goto l197
 					}
 					position++
-					do(26)
-					goto l132
-				l158:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
+					{
+						add(RuleAction39, position)
+					}
+					goto l162
+				l197:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
 					if buffer[position] != '\\' {
-						goto l159
+						goto l199
 					}
 					position++
 					if buffer[position] != '[' {
-						goto l159
+						goto l199
 					}
 					position++
-					do(27)
-					goto l132
-				l159:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
+					{
+						add(RuleAction40, position)
+					}
+					goto l162
+				l199:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
 					if buffer[position] != '\\' {
-						goto l160
+						goto l201
 					}
 					position++
 					if buffer[position] != ']' {
-						goto l160
+						goto l201
 					}
 					position++
-					do(28)
-					goto l132
-				l160:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
+					{
+						add(RuleAction41, position)
+					}
+					goto l162
+				l201:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
 					if buffer[position] != '\\' {
-						goto l161
+						goto l203
 					}
 					position++
 					if buffer[position] != '-' {
-						goto l161
-					}
-					position++
-					do(29)
-					goto l132
-				l161:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
-					if buffer[position] != '\\' {
-						goto l162
+						goto l203
 					}
 					position++
 					{
-						begin = position
-						begin163 := position
+						add(RuleAction42, position)
+					}
+					goto l162
+				l203:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
+					if buffer[position] != '\\' {
+						goto l205
+					}
+					position++
+					{
+						position206 := position
+						depth++
 						if c := buffer[position]; c < '0' || c > '3' {
-							goto l162
+							goto l205
 						}
 						position++
 						if c := buffer[position]; c < '0' || c > '7' {
-							goto l162
+							goto l205
 						}
 						position++
 						if c := buffer[position]; c < '0' || c > '7' {
-							goto l162
+							goto l205
 						}
 						position++
-						end = position
-						if begin163 != position {
-							p.Add(RuleEscape, begin163, position, tokenIndex)
-							tokenIndex++
-						}
+						depth--
+						add(RulePegText, position206)
 					}
-					do(30)
-					goto l132
-				l162:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
+					{
+						add(RuleAction43, position)
+					}
+					goto l162
+				l205:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
 					if buffer[position] != '\\' {
-						goto l164
+						goto l208
 					}
 					position++
 					{
-						begin = position
-						begin165 := position
+						position209 := position
+						depth++
 						if c := buffer[position]; c < '0' || c > '7' {
-							goto l164
+							goto l208
 						}
 						position++
 						{
-							position166, tokenIndex166, thunkPosition166 := position, tokenIndex, thunkPosition
+							position210, tokenIndex210, depth210 := position, tokenIndex, depth
 							if c := buffer[position]; c < '0' || c > '7' {
-								goto l166
+								goto l210
 							}
 							position++
-							goto l167
-						l166:
-							position, tokenIndex, thunkPosition = position166, tokenIndex166, thunkPosition166
+							goto l211
+						l210:
+							position, tokenIndex, depth = position210, tokenIndex210, depth210
 						}
-					l167:
-						end = position
-						if begin165 != position {
-							p.Add(RuleEscape, begin165, position, tokenIndex)
-							tokenIndex++
-						}
+					l211:
+						depth--
+						add(RulePegText, position209)
 					}
-					do(31)
-					goto l132
-				l164:
-					position, tokenIndex, thunkPosition = position132, tokenIndex132, thunkPosition132
+					{
+						add(RuleAction44, position)
+					}
+					goto l162
+				l208:
+					position, tokenIndex, depth = position162, tokenIndex162, depth162
 					if buffer[position] != '\\' {
-						goto l130
+						goto l160
 					}
 					position++
 					if buffer[position] != '\\' {
-						goto l130
+						goto l160
 					}
 					position++
-					do(32)
+					{
+						add(RuleAction45, position)
+					}
 				}
-			l132:
-				if begin131 != position {
-					p.Add(RuleEscape, begin131, position, tokenIndex)
-					tokenIndex++
-				}
+			l162:
+				depth--
+				add(RuleEscape, position161)
 			}
 			return true
-		l130:
-			position, tokenIndex, thunkPosition = position130, tokenIndex130, thunkPosition130
+		l160:
+			position, tokenIndex, depth = position160, tokenIndex160, depth160
 			return false
 		},
 		/* 19 LeftArrow <- <('<' '-' Spacing)> */
 		func() bool {
-			position168, tokenIndex168, thunkPosition168 := position, tokenIndex, thunkPosition
+			position214, tokenIndex214, depth214 := position, tokenIndex, depth
 			{
-				begin169 := position
+				position215 := position
+				depth++
 				if buffer[position] != '<' {
-					goto l168
+					goto l214
 				}
 				position++
 				if buffer[position] != '-' {
-					goto l168
+					goto l214
 				}
 				position++
-				if !rules[29]() {
-					goto l168
+				if !rules[RuleSpacing]() {
+					goto l214
 				}
-				if begin169 != position {
-					p.Add(RuleLeftArrow, begin169, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleLeftArrow, position215)
 			}
 			return true
-		l168:
-			position, tokenIndex, thunkPosition = position168, tokenIndex168, thunkPosition168
+		l214:
+			position, tokenIndex, depth = position214, tokenIndex214, depth214
 			return false
 		},
 		/* 20 Slash <- <('/' Spacing)> */
 		func() bool {
-			position170, tokenIndex170, thunkPosition170 := position, tokenIndex, thunkPosition
+			position216, tokenIndex216, depth216 := position, tokenIndex, depth
 			{
-				begin171 := position
+				position217 := position
+				depth++
 				if buffer[position] != '/' {
-					goto l170
+					goto l216
 				}
 				position++
-				if !rules[29]() {
-					goto l170
+				if !rules[RuleSpacing]() {
+					goto l216
 				}
-				if begin171 != position {
-					p.Add(RuleSlash, begin171, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleSlash, position217)
 			}
 			return true
-		l170:
-			position, tokenIndex, thunkPosition = position170, tokenIndex170, thunkPosition170
+		l216:
+			position, tokenIndex, depth = position216, tokenIndex216, depth216
 			return false
 		},
 		/* 21 And <- <('&' Spacing)> */
 		func() bool {
-			position172, tokenIndex172, thunkPosition172 := position, tokenIndex, thunkPosition
+			position218, tokenIndex218, depth218 := position, tokenIndex, depth
 			{
-				begin173 := position
+				position219 := position
+				depth++
 				if buffer[position] != '&' {
-					goto l172
+					goto l218
 				}
 				position++
-				if !rules[29]() {
-					goto l172
+				if !rules[RuleSpacing]() {
+					goto l218
 				}
-				if begin173 != position {
-					p.Add(RuleAnd, begin173, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleAnd, position219)
 			}
 			return true
-		l172:
-			position, tokenIndex, thunkPosition = position172, tokenIndex172, thunkPosition172
+		l218:
+			position, tokenIndex, depth = position218, tokenIndex218, depth218
 			return false
 		},
 		/* 22 Not <- <('!' Spacing)> */
@@ -2478,87 +2563,84 @@ func (p *Peg) Init() {
 		/* 29 Spacing <- <(Space / Comment)*> */
 		func() bool {
 			{
-				begin182 := position
-			l183:
+				position228 := position
+				depth++
+			l229:
 				{
-					position184, tokenIndex184, thunkPosition184 := position, tokenIndex, thunkPosition
+					position230, tokenIndex230, depth230 := position, tokenIndex, depth
 					{
-						position185, tokenIndex185, thunkPosition185 := position, tokenIndex, thunkPosition
+						position231, tokenIndex231, depth231 := position, tokenIndex, depth
 						{
-							begin187 := position
+							position233 := position
+							depth++
 							{
 								switch buffer[position] {
 								case '\t':
 									if buffer[position] != '\t' {
-										goto l186
+										goto l232
 									}
 									position++
 									break
 								case ' ':
 									if buffer[position] != ' ' {
-										goto l186
+										goto l232
 									}
 									position++
 									break
 								default:
-									if !rules[32]() {
-										goto l186
+									if !rules[RuleEndOfLine]() {
+										goto l232
 									}
 									break
 								}
 							}
 
-							if begin187 != position {
-								p.Add(RuleSpace, begin187, position, tokenIndex)
-								tokenIndex++
-							}
+							depth--
+							add(RuleSpace, position233)
 						}
-						goto l185
-					l186:
-						position, tokenIndex, thunkPosition = position185, tokenIndex185, thunkPosition185
+						goto l231
+					l232:
+						position, tokenIndex, depth = position231, tokenIndex231, depth231
 						{
-							begin189 := position
+							position235 := position
+							depth++
 							if buffer[position] != '#' {
-								goto l184
+								goto l230
 							}
 							position++
-						l190:
+						l236:
 							{
-								position191, tokenIndex191, thunkPosition191 := position, tokenIndex, thunkPosition
+								position237, tokenIndex237, depth237 := position, tokenIndex, depth
 								{
-									position192, tokenIndex192, thunkPosition192 := position, tokenIndex, thunkPosition
-									if !rules[32]() {
-										goto l192
+									position238, tokenIndex238, depth238 := position, tokenIndex, depth
+									if !rules[RuleEndOfLine]() {
+										goto l238
 									}
-									goto l191
-								l192:
-									position, tokenIndex, thunkPosition = position192, tokenIndex192, thunkPosition192
+									goto l237
+								l238:
+									position, tokenIndex, depth = position238, tokenIndex238, depth238
 								}
 								if !matchDot() {
-									goto l191
+									goto l237
 								}
-								goto l190
-							l191:
-								position, tokenIndex, thunkPosition = position191, tokenIndex191, thunkPosition191
+								goto l236
+							l237:
+								position, tokenIndex, depth = position237, tokenIndex237, depth237
 							}
-							if !rules[32]() {
-								goto l184
+							if !rules[RuleEndOfLine]() {
+								goto l230
 							}
-							if begin189 != position {
-								p.Add(RuleComment, begin189, position, tokenIndex)
-								tokenIndex++
-							}
+							depth--
+							add(RuleComment, position235)
 						}
 					}
-				l185:
-					goto l183
-				l184:
-					position, tokenIndex, thunkPosition = position184, tokenIndex184, thunkPosition184
+				l231:
+					goto l229
+				l230:
+					position, tokenIndex, depth = position230, tokenIndex230, depth230
 				}
-				if begin182 != position {
-					p.Add(RuleSpacing, begin182, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleSpacing, position228)
 			}
 			return true
 		},
@@ -2568,105 +2650,193 @@ func (p *Peg) Init() {
 		nil,
 		/* 32 EndOfLine <- <(('\r' '\n') / '\n' / '\r')> */
 		func() bool {
-			position195, tokenIndex195, thunkPosition195 := position, tokenIndex, thunkPosition
+			position241, tokenIndex241, depth241 := position, tokenIndex, depth
 			{
-				begin196 := position
+				position242 := position
+				depth++
 				{
-					position197, tokenIndex197, thunkPosition197 := position, tokenIndex, thunkPosition
+					position243, tokenIndex243, depth243 := position, tokenIndex, depth
 					if buffer[position] != '\r' {
-						goto l198
+						goto l244
 					}
 					position++
 					if buffer[position] != '\n' {
-						goto l198
+						goto l244
 					}
 					position++
-					goto l197
-				l198:
-					position, tokenIndex, thunkPosition = position197, tokenIndex197, thunkPosition197
+					goto l243
+				l244:
+					position, tokenIndex, depth = position243, tokenIndex243, depth243
 					if buffer[position] != '\n' {
-						goto l199
+						goto l245
 					}
 					position++
-					goto l197
-				l199:
-					position, tokenIndex, thunkPosition = position197, tokenIndex197, thunkPosition197
+					goto l243
+				l245:
+					position, tokenIndex, depth = position243, tokenIndex243, depth243
 					if buffer[position] != '\r' {
-						goto l195
+						goto l241
 					}
 					position++
 				}
-			l197:
-				if begin196 != position {
-					p.Add(RuleEndOfLine, begin196, position, tokenIndex)
-					tokenIndex++
-				}
+			l243:
+				depth--
+				add(RuleEndOfLine, position242)
 			}
 			return true
-		l195:
-			position, tokenIndex, thunkPosition = position195, tokenIndex195, thunkPosition195
+		l241:
+			position, tokenIndex, depth = position241, tokenIndex241, depth241
 			return false
 		},
 		/* 33 EndOfFile <- <!.> */
 		nil,
 		/* 34 Action <- <('{' <(!'}' .)*> '}' Spacing)> */
 		func() bool {
-			position201, tokenIndex201, thunkPosition201 := position, tokenIndex, thunkPosition
+			position247, tokenIndex247, depth247 := position, tokenIndex, depth
 			{
-				begin202 := position
+				position248 := position
+				depth++
 				if buffer[position] != '{' {
-					goto l201
+					goto l247
 				}
 				position++
 				{
-					begin = position
-					begin203 := position
-				l204:
+					position249 := position
+					depth++
+				l250:
 					{
-						position205, tokenIndex205, thunkPosition205 := position, tokenIndex, thunkPosition
+						position251, tokenIndex251, depth251 := position, tokenIndex, depth
 						{
-							position206, tokenIndex206, thunkPosition206 := position, tokenIndex, thunkPosition
+							position252, tokenIndex252, depth252 := position, tokenIndex, depth
 							if buffer[position] != '}' {
-								goto l206
+								goto l252
 							}
 							position++
-							goto l205
-						l206:
-							position, tokenIndex, thunkPosition = position206, tokenIndex206, thunkPosition206
+							goto l251
+						l252:
+							position, tokenIndex, depth = position252, tokenIndex252, depth252
 						}
 						if !matchDot() {
-							goto l205
+							goto l251
 						}
-						goto l204
-					l205:
-						position, tokenIndex, thunkPosition = position205, tokenIndex205, thunkPosition205
+						goto l250
+					l251:
+						position, tokenIndex, depth = position251, tokenIndex251, depth251
 					}
-					end = position
-					if begin203 != position {
-						p.Add(RuleAction, begin203, position, tokenIndex)
-						tokenIndex++
-					}
+					depth--
+					add(RulePegText, position249)
 				}
 				if buffer[position] != '}' {
-					goto l201
+					goto l247
 				}
 				position++
-				if !rules[29]() {
-					goto l201
+				if !rules[RuleSpacing]() {
+					goto l247
 				}
-				if begin202 != position {
-					p.Add(RuleAction, begin202, position, tokenIndex)
-					tokenIndex++
-				}
+				depth--
+				add(RuleAction, position248)
 			}
 			return true
-		l201:
-			position, tokenIndex, thunkPosition = position201, tokenIndex201, thunkPosition201
+		l247:
+			position, tokenIndex, depth = position247, tokenIndex247, depth247
 			return false
 		},
 		/* 35 Begin <- <('<' Spacing)> */
 		nil,
 		/* 36 End <- <('>' Spacing)> */
+		nil,
+		/* 38 Action0 <- <{ p.AddPackage(buffer[begin:end]) }> */
+		nil,
+		/* 39 Action1 <- <{ p.AddPeg(buffer[begin:end]) }> */
+		nil,
+		/* 40 Action2 <- <{ p.AddState(buffer[begin:end]) }> */
+		nil,
+		/* 41 Action3 <- <{ p.AddRule(buffer[begin:end]) }> */
+		nil,
+		/* 42 Action4 <- <{ p.AddExpression() }> */
+		nil,
+		/* 43 Action5 <- <{ p.AddAlternate() }> */
+		nil,
+		/* 44 Action6 <- <{ p.AddNil(); p.AddAlternate() }> */
+		nil,
+		/* 45 Action7 <- <{ p.AddNil() }> */
+		nil,
+		/* 46 Action8 <- <{ p.AddSequence() }> */
+		nil,
+		/* 47 Action9 <- <{ p.AddPredicate(buffer[begin:end]) }> */
+		nil,
+		/* 48 Action10 <- <{ p.AddPeekFor() }> */
+		nil,
+		/* 49 Action11 <- <{ p.AddPeekNot() }> */
+		nil,
+		/* 50 Action12 <- <{ p.AddQuery() }> */
+		nil,
+		/* 51 Action13 <- <{ p.AddStar() }> */
+		nil,
+		/* 52 Action14 <- <{ p.AddPlus() }> */
+		nil,
+		/* 53 Action15 <- <{ p.AddName(buffer[begin:end]) }> */
+		nil,
+		/* 54 Action16 <- <{ p.AddDot() }> */
+		nil,
+		/* 55 Action17 <- <{ p.AddAction(buffer[begin:end]) }> */
+		nil,
+		/* 56 Action18 <- <{ p.AddPush() }> */
+		nil,
+		nil,
+		/* 58 Action19 <- <{ p.AddSequence() }> */
+		nil,
+		/* 59 Action20 <- <{ p.AddSequence() }> */
+		nil,
+		/* 60 Action21 <- <{ p.AddPeekNot(); p.AddDot(); p.AddSequence() }> */
+		nil,
+		/* 61 Action22 <- <{ p.AddPeekNot(); p.AddDot(); p.AddSequence() }> */
+		nil,
+		/* 62 Action23 <- <{ p.AddAlternate() }> */
+		nil,
+		/* 63 Action24 <- <{ p.AddAlternate() }> */
+		nil,
+		/* 64 Action25 <- <{ p.AddRange() }> */
+		nil,
+		/* 65 Action26 <- <{ p.AddDoubleRange() }> */
+		nil,
+		/* 66 Action27 <- <{ p.AddCharacter(buffer[begin:end]) }> */
+		nil,
+		/* 67 Action28 <- <{ p.AddDoubleCharacter(buffer[begin:end]) }> */
+		nil,
+		/* 68 Action29 <- <{ p.AddCharacter(buffer[begin:end]) }> */
+		nil,
+		/* 69 Action30 <- <{ p.AddCharacter("\a") }> */
+		nil,
+		/* 70 Action31 <- <{ p.AddCharacter("\b") }> */
+		nil,
+		/* 71 Action32 <- <{ p.AddCharacter("\x1B") }> */
+		nil,
+		/* 72 Action33 <- <{ p.AddCharacter("\f") }> */
+		nil,
+		/* 73 Action34 <- <{ p.AddCharacter("\n") }> */
+		nil,
+		/* 74 Action35 <- <{ p.AddCharacter("\r") }> */
+		nil,
+		/* 75 Action36 <- <{ p.AddCharacter("\t") }> */
+		nil,
+		/* 76 Action37 <- <{ p.AddCharacter("\v") }> */
+		nil,
+		/* 77 Action38 <- <{ p.AddCharacter("'") }> */
+		nil,
+		/* 78 Action39 <- <{ p.AddCharacter("\"") }> */
+		nil,
+		/* 79 Action40 <- <{ p.AddCharacter("[") }> */
+		nil,
+		/* 80 Action41 <- <{ p.AddCharacter("]") }> */
+		nil,
+		/* 81 Action42 <- <{ p.AddCharacter("-") }> */
+		nil,
+		/* 82 Action43 <- <{ p.AddOctalCharacter(buffer[begin:end]) }> */
+		nil,
+		/* 83 Action44 <- <{ p.AddOctalCharacter(buffer[begin:end]) }> */
+		nil,
+		/* 84 Action45 <- <{ p.AddCharacter("\\") }> */
 		nil,
 	}
 	p.rules = rules

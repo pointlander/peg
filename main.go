@@ -56,6 +56,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	p.Execute()
+
 	if *print {
 		p.Print()
 	}

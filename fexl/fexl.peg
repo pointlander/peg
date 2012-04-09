@@ -24,7 +24,9 @@ Symbol <- (String / (![ \t\n\r\\()"~;=] .)+) ws
 
 String <- '"' (!'"' .)* '"' / Complex
 
-Complex <- '~' '@' (!'@' .)* '@'
+Complex <- tilde '@' (!'@' .)* '@'
+
+tilde <- '~'
 
 open <- '(' ws
 

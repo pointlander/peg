@@ -24,5 +24,6 @@ func main() {
 	if err := calc.Parse(); err != nil {
 		log.Fatal(err)
 	}
+	calc.Execute()
 	fmt.Printf("= %v\n", calc.Evaluate())
 }

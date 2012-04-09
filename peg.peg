@@ -20,10 +20,9 @@ type Peg Peg {
 Grammar		<- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
                            'type' Spacing Identifier         { p.AddPeg(buffer[begin:end]) }
                            'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
-                           commit
                            Definition+ EndOfFile
 Definition	<- Identifier 			{ p.AddRule(buffer[begin:end]) }
-		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.) commit
+		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.)
 Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }
 			    )* (Slash           { p.AddNil(); p.AddAlternate() }
                                )?
@@ -38,8 +37,7 @@ Suffix          <- Primary (Question            { p.AddQuery() }
                            / Star               { p.AddStar() }
                            / Plus               { p.AddPlus() }
                            )?
-Primary	        <- 'commit' Spacing             { p.AddCommit() }
-                 / Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
+Primary	        <- Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
                  / Open Expression Close
                  / Literal
                  / Class

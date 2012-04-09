@@ -21,5 +21,5 @@ func main() {
 	if err := fexl.Parse(); err != nil {
 		log.Fatal(err)
 	}
-	fexl.PrintSyntaxTree()
+	fexl.Highlighter()
 }
