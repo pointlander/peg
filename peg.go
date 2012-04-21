@@ -523,6 +523,7 @@ type Node interface {
 	Front() *node
 	Next() *node
 	PushFront(value *node)
+	PopFront() *node
 	PushBack(value *node)
 	Len() int
 	Copy() *node
@@ -590,6 +591,22 @@ func (n *node) PushFront(value *node) {
 	n.length++
 }
 
+func (n *node) PopFront() *node {
+	front := n.front
+
+	switch true {
+	case front == nil:
+		panic("tree is empty")
+	case front == n.back:
+		n.front, n.back = nil, nil
+	default:
+		n.front, front.next = front.next, nil
+	}
+
+	n.length--
+	return front
+}
+
 func (n *node) PushBack(value *node) {
 	if n.front == nil {
 		n.front = value
@@ -655,8 +672,6 @@ type Tree struct {
 	Rules		map[string]Node
 	rulesCount	map[string]uint
 	node
-	stack           [1024]*node
-	top             int
 	inline, _switch bool
 
 	RuleNames	[]Node
@@ -684,64 +699,48 @@ func New(inline, _switch bool) *Tree {
                      _switch: _switch}
 }
 
-func (t *Tree) push(n *node) {
-	t.top++
-	t.stack[t.top] = n
-}
-
-func (t *Tree) pop() *node {
-	n := t.stack[t.top]
-	t.top--
-	return n
-}
-
-func (t *Tree) currentRule() *node {
-	return t.stack[1]
-}
-
 func (t *Tree) AddRule(name string) {
-	t.push(&node{Type: TypeRule, string: name, id: t.RulesCount})
+	t.PushFront(&node{Type: TypeRule, string: name, id: t.RulesCount})
 	t.RulesCount++
 }
 
 func (t *Tree) AddExpression() {
-	expression := t.pop()
-	rule := t.pop()
+	expression := t.PopFront()
+	rule := t.PopFront()
 	rule.PushBack(expression)
 	t.PushBack(rule)
 }
 
 func (t *Tree) AddName(text string) {
-	t.push(&node{Type: TypeName, string: text})
+	t.PushFront(&node{Type: TypeName, string: text})
 }
 
-func (t *Tree) AddDot() { t.push(&node{Type: TypeDot, string: "."}) }
+func (t *Tree) AddDot() { t.PushFront(&node{Type: TypeDot, string: "."}) }
 func (t *Tree) AddCharacter(text string) {
-	t.push(&node{Type: TypeCharacter, string: text})
+	t.PushFront(&node{Type: TypeCharacter, string: text})
 }
 func (t *Tree) AddDoubleCharacter(text string) {
-	t.push(&node{Type: TypeCharacter, string: strings.ToLower(text)})
-	t.push(&node{Type: TypeCharacter, string: strings.ToUpper(text)})
+	t.PushFront(&node{Type: TypeCharacter, string: strings.ToLower(text)})
+	t.PushFront(&node{Type: TypeCharacter, string: strings.ToUpper(text)})
 	t.AddAlternate()
 }
 func (t *Tree) AddOctalCharacter(text string) {
 	octal, _ := strconv.ParseInt(text, 8, 8)
-	t.push(&node{Type: TypeCharacter, string: string(octal)})
+	t.PushFront(&node{Type: TypeCharacter, string: string(octal)})
 }
-func (t *Tree) AddPredicate(text string) { t.push(&node{Type: TypePredicate, string: text}) }
-func (t *Tree) AddCommit() { t.push(&node{Type: TypeCommit, string: "commit"}) }
-func (t *Tree) AddNil() { t.push(&node{Type: TypeNil, string: "<nil>"}) }
-func (t *Tree) AddAction(text string) { t.push(&node{Type: TypeAction, string: text}) }
+func (t *Tree) AddPredicate(text string) { t.PushFront(&node{Type: TypePredicate, string: text}) }
+func (t *Tree) AddNil() { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
+func (t *Tree) AddAction(text string) { t.PushFront(&node{Type: TypeAction, string: text}) }
 func (t *Tree) AddPackage(text string) { t.PushBack(&node{Type: TypePackage, string: text}) }
 func (t *Tree) AddState(text string) {
-	peg := t.pop()
+	peg := t.PopFront()
 	peg.PushBack(&node{Type: TypeState, string: text})
 	t.PushBack(peg)
 }
 
 func (t *Tree) addList(listType Type) {
-	a := t.pop()
-	b := t.pop()
+	a := t.PopFront()
+	b := t.PopFront()
 	var l *node
 	if b.GetType() == listType {
 		l = b
@@ -750,14 +749,14 @@ func (t *Tree) addList(listType Type) {
 		l.PushBack(b)
 	}
 	l.PushBack(a)
-	t.push(l)
+	t.PushFront(l)
 }
 func (t *Tree) AddAlternate() { t.addList(TypeAlternate) }
 func (t *Tree) AddSequence() { t.addList(TypeSequence) }
 func (t *Tree) AddRange()    { t.addList(TypeRange) }
 func (t *Tree) AddDoubleRange()    {
-	a := t.pop()
-	b := t.pop()
+	a := t.PopFront()
+	b := t.PopFront()
 
 	t.AddCharacter(strings.ToLower(b.String()))
 	t.AddCharacter(strings.ToLower(a.String()))
@@ -772,8 +771,8 @@ func (t *Tree) AddDoubleRange()    {
 
 func (t *Tree) addFix(fixType Type) {
 	n := &node{Type: fixType}
-	n.PushBack(t.pop())
-	t.push(n)
+	n.PushBack(t.PopFront())
+	t.PushFront(n)
 }
 func (t *Tree) AddPeekFor()        { t.addFix(TypePeekFor) }
 func (t *Tree) AddPeekNot()        { t.addFix(TypePeekNot) }
@@ -782,7 +781,7 @@ func (t *Tree) AddStar()           { t.addFix(TypeStar) }
 func (t *Tree) AddPlus()           { t.addFix(TypePlus) }
 func (t *Tree) AddPush()	   { t.addFix(TypePush) }
 
-func (t *Tree) AddPeg(text string) { t.push(&node{Type: TypePeg, string: text}) }
+func (t *Tree) AddPeg(text string) { t.PushFront(&node{Type: TypePeg, string: text}) }
 
 func join(tasks []func()) {
 	length := len(tasks)
