@@ -6,7 +6,7 @@ calculator: calculator.peg.go calculator.go main.go
 	go build
 
 calculator.peg.go: calculator.peg
-	../peg -switch -inline calculator.peg
+	peg -switch -inline calculator.peg
 
 clean:
 	rm -f calculator calculator.peg.go

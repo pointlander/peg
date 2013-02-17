@@ -19,11 +19,6 @@ main.go: bootstrap main
 peg.peg: peg in its own language
 
 
-Building
-
-gomake
-
-
 Testing
 
 There should be no differences between the bootstrap and self compiled:
@@ -31,11 +26,15 @@ There should be no differences between the bootstrap and self compiled:
 ./peg -inline -switch peg.peg
 diff bootstrap.peg.go peg.peg.go
 
-"-inline" tells the parser generator to inline parser rules. "-switch"
-reduces the number of rules that have to be tried for some pegs.
+
+Usage
+
+-inline
+ Tells the parser generator to inline parser rules.
+-switch
+ Reduces the number of rules that have to be tried for some pegs.
 
 
 Author
 
-Andrew J Snodgrass
-andy@pointlander.info
+Andrew Snodgrass
