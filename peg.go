@@ -503,12 +503,40 @@ const (
 	TypeLast
 )
 
+var TypeMap = [...]string {
+	"TypeUnknown",
+	"TypeRule",
+	"TypeName",
+	"TypeDot",
+	"TypeCharacter",
+	"TypeRange",
+	"TypeString",
+	"TypePredicate",
+	"TypeCommit",
+	"TypeAction",
+	"TypePackage",
+	"TypeState",
+	"TypeAlternate",
+	"TypeUnorderedAlternate",
+	"TypeSequence",
+	"TypePeekFor",
+	"TypePeekNot",
+	"TypeQuery",
+	"TypeStar",
+	"TypePlus",
+	"TypePeg",
+	"TypePush",
+	"TypeImplicitPush",
+	"TypeNil",
+	"TypeLast"}
+
 func (t Type) GetType() Type {
 	return t
 }
 
 type Node interface {
 	fmt.Stringer
+	debug()
 
 	Escaped() string
 	SetString(s string)
@@ -545,6 +573,14 @@ type node struct {
 
 func (n *node) String() string {
 	return n.string
+}
+
+func (n *node) debug() {
+	if len(n.string) == 1 {
+		fmt.Printf("%v %v '%v' %d\n", n.id, TypeMap[n.Type], n.string, n.string[0])
+	} else {
+		fmt.Printf("%v %v '%v'\n", n.id, TypeMap[n.Type], n.string)
+	}
 }
 
 func (n *node) Escaped() string {
@@ -995,6 +1031,7 @@ func (t *Tree) Compile(file string) {
 			class *characterClass
 		}, t.RulesCount)
 		optimizeAlternates = func(n Node) (consumes, peek bool, class *characterClass) {
+			/*n.debug()*/
 			switch n.GetType() {
 			case TypeRule:
 				cache := &cache[n.GetId()]
@@ -1002,6 +1039,7 @@ func (t *Tree) Compile(file string) {
 					consumes, peek, class = cache.consumes, cache.peek, cache.class
 					return
 				}
+
 				cache.reached = true
 				consumes, peek, class = optimizeAlternates(n.Front())
 				cache.consumes, cache.peek, cache.class = consumes, peek, class
@@ -1026,19 +1064,26 @@ func (t *Tree) Compile(file string) {
 				}
 			case TypeAlternate:
 				consumes, peek, class = true, true, new(characterClass)
-				mconsumes, mpeek, properties, c :=
+				mconsumes, mpeek, properties, c, recursive :=
 					consumes, peek, make([]struct {
 						intersects bool
 						class      *characterClass
-					}, n.Len()), 0
+					}, n.Len()), 0, false
 				for _, element := range n.Slice() {
 					mconsumes, mpeek, properties[c].class = optimizeAlternates(element)
 					consumes, peek = consumes && mconsumes, peek && mpeek
-					if properties[c].class != nil {
+					if properties[c].class == nil {
+						/* recursive definition, so class has yet to be completed */
+						recursive = true
+					} else {
 						class.union(properties[c].class)
 					}
 					c++
 				}
+				if recursive {
+					break
+				}
+
 				intersections := 2
 			compare:
 				for ai, a := range properties[0 : len(properties)-1] {
@@ -1052,52 +1097,54 @@ func (t *Tree) Compile(file string) {
 						}
 					}
 				}
-				if intersections < len(properties) {
-					c, unordered, ordered, max :=
-						0, &node{Type: TypeUnorderedAlternate}, &node{Type: TypeAlternate}, 0
-					for _, element := range n.Slice() {
-						if properties[c].intersects {
-							ordered.PushBack(element.Copy())
-						} else {
-							class := &node{Type: TypeUnorderedAlternate}
-							for d := 0; d < 256; d++ {
-								if properties[c].class.has(uint8(d)) {
-									class.PushBack(&node{Type: TypeCharacter, string: string(d)})
-								}
-							}
+				if intersections >= len(properties) {
+					break
+				}
 
-							sequence, predicate, length :=
-								&node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[c].class.len()
-							if length == 0 {
-								class.PushBack(&node{Type: TypeNil, string: "<nil>"})
-							}
-							predicate.PushBack(class)
-							sequence.PushBack(predicate)
-							sequence.PushBack(element.Copy())
-
-							if element.GetType() == TypeNil {
-								unordered.PushBack(sequence)
-							} else if length > max {
-								unordered.PushBack(sequence)
-								max = length
-							} else {
-								unordered.PushFront(sequence)
-							}
-						}
-						c++
-					}
-					n.Init()
-					if ordered.Front() == nil {
-						n.SetType(TypeUnorderedAlternate)
-						for _, element := range unordered.Slice() {
-							n.PushBack(element.Copy())
-						}
+				c, unordered, ordered, max :=
+					0, &node{Type: TypeUnorderedAlternate}, &node{Type: TypeAlternate}, 0
+				for _, element := range n.Slice() {
+					if properties[c].intersects {
+						ordered.PushBack(element.Copy())
 					} else {
-						for _, element := range ordered.Slice() {
-							n.PushBack(element.Copy())
+						class := &node{Type: TypeUnorderedAlternate}
+						for d := 0; d < 256; d++ {
+							if properties[c].class.has(uint8(d)) {
+								class.PushBack(&node{Type: TypeCharacter, string: string(d)})
+							}
 						}
-						n.PushBack(unordered)
+
+						sequence, predicate, length :=
+							&node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[c].class.len()
+						if length == 0 {
+							class.PushBack(&node{Type: TypeNil, string: "<nil>"})
+						}
+						predicate.PushBack(class)
+						sequence.PushBack(predicate)
+						sequence.PushBack(element.Copy())
+
+						if element.GetType() == TypeNil {
+							unordered.PushBack(sequence)
+						} else if length > max {
+							unordered.PushBack(sequence)
+							max = length
+						} else {
+							unordered.PushFront(sequence)
+						}
 					}
+					c++
+				}
+				n.Init()
+				if ordered.Front() == nil {
+					n.SetType(TypeUnorderedAlternate)
+					for _, element := range unordered.Slice() {
+						n.PushBack(element.Copy())
+					}
+				} else {
+					for _, element := range ordered.Slice() {
+						n.PushBack(element.Copy())
+					}
+					n.PushBack(unordered)
 				}
 			case TypeSequence:
 				classes, elements :=
