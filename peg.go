@@ -669,40 +669,6 @@ func (n *node) Slice() []*node {
 	return s
 }
 
-/* Used to represent character classes. */
-type characterClass [32]uint8
-
-func (c *characterClass) copy() (class *characterClass) {
-	class = new(characterClass)
-	copy(class[0:], c[0:])
-	return
-}
-func (c *characterClass) add(character uint8)      { c[character>>3] |= (1 << (character & 7)) }
-func (c *characterClass) has(character uint8) bool { return c[character>>3]&(1<<(character&7)) != 0 }
-func (c *characterClass) complement() {
-	for i := range *c {
-		c[i] = ^c[i]
-	}
-}
-func (c *characterClass) union(class *characterClass) {
-	for index, value := range *class {
-		c[index] |= value
-	}
-}
-func (c *characterClass) intersection(class *characterClass) {
-	for index, value := range *class {
-		c[index] &= value
-	}
-}
-func (c *characterClass) len() (length int) {
-	for character := 0; character < 256; character++ {
-		if c.has(uint8(character)) {
-			length++
-		}
-	}
-	return
-}
-
 /* A tree data structure into which a PEG can be parsed. */
 type Tree struct {
 	Rules		map[string]Node
@@ -1025,62 +991,62 @@ func (t *Tree) Compile(file string) {
 		}})
 
 	if t._switch {
-		var optimizeAlternates func(node Node) (consumes, peek bool, class *characterClass)
-		cache := make([]struct {
-			reached, consumes, peek bool
-			class *characterClass
-		}, t.RulesCount)
-		optimizeAlternates = func(n Node) (consumes, peek bool, class *characterClass) {
+		var optimizeAlternates func(node Node) (consumes bool, s *set)
+		cache, firstPass := make([]struct {
+			reached, consumes bool
+			s *set
+		}, t.RulesCount), true
+		optimizeAlternates = func(n Node) (consumes bool, s *set) {
 			/*n.debug()*/
 			switch n.GetType() {
 			case TypeRule:
 				cache := &cache[n.GetId()]
 				if cache.reached {
-					consumes, peek, class = cache.consumes, cache.peek, cache.class
+					consumes, s = cache.consumes, cache.s
 					return
 				}
 
 				cache.reached = true
-				consumes, peek, class = optimizeAlternates(n.Front())
-				cache.consumes, cache.peek, cache.class = consumes, peek, class
+				consumes, s = optimizeAlternates(n.Front())
+				cache.consumes, cache.s = consumes,  s
 			case TypeName:
-				consumes, peek, class = optimizeAlternates(t.Rules[n.String()])
+				consumes, s = optimizeAlternates(t.Rules[n.String()])
 			case TypeDot:
-				consumes, class = true, new(characterClass)
-				/* TypeDot class doesn't include the EndSymbol */
-				class.add(t.EndSymbol)
-				class.complement()
+				consumes, s = true, &set{}
+				/* TypeDot set doesn't include the EndSymbol */
+				s.add(t.EndSymbol)
+				s.complement()
 			case TypeString, TypeCharacter:
-				consumes, class = true, new(characterClass)
-				class.add(n.String()[0])
+				consumes, s = true, &set{}
+				s.add(n.String()[0])
 			case TypeRange:
-				consumes, class = true, new(characterClass)
+				consumes, s = true, &set{}
 				element := n.Front()
 				lower := element.String()[0]
 				element = element.Next()
 				upper := element.String()[0]
 				for c := lower; c <= upper; c++ {
-					class.add(c)
+					s.add(c)
 				}
 			case TypeAlternate:
-				consumes, peek, class = true, true, new(characterClass)
-				mconsumes, mpeek, properties, c, recursive :=
-					consumes, peek, make([]struct {
+				consumes, s = true, &set{}
+				mconsumes, properties, c :=
+					consumes, make([]struct {
 						intersects bool
-						class      *characterClass
-					}, n.Len()), 0, false
+						s *set
+					}, n.Len()), 0
 				for _, element := range n.Slice() {
-					mconsumes, mpeek, properties[c].class = optimizeAlternates(element)
-					consumes, peek = consumes && mconsumes, peek && mpeek
-					if properties[c].class == nil {
-						/* recursive definition, so class has yet to be completed */
-						recursive = true
+					mconsumes, properties[c].s = optimizeAlternates(element)
+					consumes = consumes && mconsumes
+					if properties[c].s == nil {
+						/* recursive definition, so set has yet to be completed */
 					} else {
-						class.union(properties[c].class)
+						s.union(properties[c].s)
 					}
 					c++
 				}
-				if recursive {
+
+				if firstPass {
 					break
 				}
 
@@ -1088,12 +1054,10 @@ func (t *Tree) Compile(file string) {
 			compare:
 				for ai, a := range properties[0 : len(properties)-1] {
 					for _, b := range properties[ai+1:] {
-						for i, v := range *a.class {
-							if (b.class[i] & v) != 0 {
-								intersections++
-								properties[ai].intersects = true
-								continue compare
-							}
+						if a.s.intersects(b.s) {
+							intersections++
+							properties[ai].intersects = true
+							continue compare
 						}
 					}
 				}
@@ -1109,13 +1073,13 @@ func (t *Tree) Compile(file string) {
 					} else {
 						class := &node{Type: TypeUnorderedAlternate}
 						for d := 0; d < 256; d++ {
-							if properties[c].class.has(uint8(d)) {
+							if properties[c].s.has(uint8(d)) {
 								class.PushBack(&node{Type: TypeCharacter, string: string(d)})
 							}
 						}
 
 						sequence, predicate, length :=
-							&node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[c].class.len()
+							&node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[c].s.len()
 						if length == 0 {
 							class.PushBack(&node{Type: TypeNil, string: "<nil>"})
 						}
@@ -1149,50 +1113,50 @@ func (t *Tree) Compile(file string) {
 			case TypeSequence:
 				classes, elements :=
 					make([]struct {
-						peek  bool
-						class *characterClass
+						s *set
 					}, n.Len()), n.Slice()
 
 				for c, element := range elements {
-					consumes, classes[c].peek, classes[c].class = optimizeAlternates(element)
-					peek = peek || classes[c].peek
+					consumes, classes[c].s = optimizeAlternates(element)
 					if consumes {
 						elements, classes = elements[c + 1:], classes[:c + 1]
 						break
 					}
 				}
 
-				peek, class = !consumes && peek, new(characterClass)
+				s = &set{}
 				for c := len(classes) - 1; c >= 0; c-- {
-					if classes[c].class != nil {
-						if classes[c].peek {
-							class.intersection(classes[c].class)
-						} else {
-							class.union(classes[c].class)
-						}
+					if classes[c].s != nil {
+						s.union(classes[c].s)
 					}
 				}
 
 				for _, element := range elements {
 					optimizeAlternates(element)
 				}
-			case TypePeekNot:
-				peek = true
-				_, _, class = optimizeAlternates(n.Front())
-				class = class.copy()
-				class.complement()
-			case TypePeekFor:
-				peek = true
-				fallthrough
+			case TypePeekNot, TypePeekFor:
+				optimizeAlternates(n.Front())
+				s = &set{}
 			case TypeQuery, TypeStar:
-				_, _, class = optimizeAlternates(n.Front())
+				_, s = optimizeAlternates(n.Front())
 			case TypePlus, TypePush, TypeImplicitPush:
-				consumes, peek, class = optimizeAlternates(n.Front())
+				consumes, s = optimizeAlternates(n.Front())
 			case TypeAction, TypeNil:
-				class = new(characterClass)
+				s = &set{}
 			}
 			return
 		}
+		for _, element := range t.Slice() {
+			if element.GetType() == TypeRule {
+				optimizeAlternates(element)
+				break
+			}
+		}
+
+		for i, _ := range cache {
+			cache[i].reached = false
+		}
+		firstPass = false
 		for _, element := range t.Slice() {
 			if element.GetType() == TypeRule {
 				optimizeAlternates(element)

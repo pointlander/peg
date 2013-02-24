@@ -6,7 +6,7 @@ fexl: fexl.peg.go main.go
 	go build
 
 fexl.peg.go: fexl.peg
-	peg -switch -inline fexl.peg
+	../../peg -switch -inline fexl.peg
 
 clean:
 	rm -f fexl fexl.peg.go
