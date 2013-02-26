@@ -1,0 +1,676 @@
+#===========================================================================
+#
+#  Parsing Expression Grammar of C for Mouse 1.1 - 1.5.
+#  Based on standard ISO/IEC 9899.1999:TC2, without preprocessor.
+#  Requires semantics class to process Typedefs.
+#
+#---------------------------------------------------------------------------
+#
+#  Copyright (C) 2007, 2009, 2010 by Roman R Redziejowski (www.romanredz.se).
+#
+#  The author gives unlimited permission to copy and distribute
+#  this file, with or without modifications, as long as this notice
+#  is preserved, and any changes are properly documented.
+#
+#  This file is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+#---------------------------------------------------------------------------
+#
+#  Latest update 2010-11-19
+#
+#---------------------------------------------------------------------------
+#
+#  Modifications to the standard grammar:
+#
+#    Defined # as start of line comment.
+#    Added FunctionSpecifier "_stdcall".
+#    Added TypeQualifier "__declspec()".
+#    Added TypeSpecifier "__attribute__()".
+#    The scope of TypedefNames is not implemented.
+#
+#---------------------------------------------------------------------------
+#
+#  Implementation of typedefs.
+#
+#  A TypedefName is an Identifier that has been declared as such
+#  by a previous typedef declaration. It can be used as TypeSpecifier
+#  in DeclarationSpecifiers and SpecifierQualifierList.
+#  Recognizing it as such is essential for correct parsing.
+#  In other contexts, TypedefName is treated as an ordinary Identifier.
+#
+#  According to 6.7.2, comment 2, of the Standard, TypedefName can appear
+#  in DeclarationSpecifiers or SpecifierQualifierList at most once,
+#  and then as the only TypeSpecifier. To make sure that an Identifer
+#  is recognized as TypedefName only in these contexts, definitions
+#  of these items are changed as follows:
+#
+#  - TypedefName is removed as an alternative of TypeSpecifier.
+#
+#  - DeclarationSpecifiers and SpecifierQualifierList are redefined
+#    to allow either single TypedefName or one or more TypeSpecifiers.
+#
+#  The semantics class, via semantic actions, maintains a table of TypedefNames.
+#
+#  The rule defining TypedefName as Identifier has a semantic action
+#  that returns true iff the Identifier is in the table.
+#  That means TypedefName is accepted iff it is in the table.
+#
+#  According to 6.7.7, comment 3, of the Standard,
+#  in a Declaration whose StorageClassSpecifier is TYPEDEF,
+#  each Declarator defines an Identifier to be a TypedefName.
+#  These Identifiers are entered into the table as follows.
+#
+#  - Each Identifier has itself as semantic value.
+#
+#  - Each DirectDeclarator starts with either Identifier
+#    or Declarator in parentheses.
+#    Its semantic value is either that Identifier,
+#    or the Identifier obtained as semantic value of that Declarator.
+#
+#  - Each Declarator has as semantic value the Identifier
+#    appearing in its DirectDeclarator,
+#
+#  - Each InitDeclarator has as semantic value the Identifier
+#    appearing in its Declarator.
+#
+#  - InitDeclaratorList has as semantic value
+#    the list of Identifiers appearing in its InitDeclarators.
+#
+#  - DeclarationSpecifiers has semantic value "typedef"
+#    if any of the specifiers is "typedef" or null otherwise.
+#
+#  - Declaration has a semantic action that enters Identifiers
+#    delivered by InitDeclaratorList into typedef table
+#    if DeclarationSpecifiers indicate "typedef".
+#
+#
+#---------------------------------------------------------------------------
+#
+#  Change log
+#    2009-07-13 Posted on Internet.
+#    2010-11-19 Removed superfluous '?' after 'Spacing'.
+#
+#
+#---------------------------------------------------------------------------
+#
+#    2013-02-21 Modified to work with github.com/pointlander/peg
+#
+#===========================================================================
+
+
+#-------------------------------------------------------------------------
+#  A.2.4  External definitions
+#-------------------------------------------------------------------------
+
+package main
+
+type C Peg {
+
+}
+
+TranslationUnit <- Spacing ExternalDeclaration+ EOT
+
+ExternalDeclaration <- FunctionDefinition / Declaration
+
+FunctionDefinition <- DeclarationSpecifiers Declarator DeclarationList? CompoundStatement
+
+DeclarationList <- Declaration+
+
+
+#-------------------------------------------------------------------------
+#  A.2.2  Declarations
+#-------------------------------------------------------------------------
+
+Declaration <- DeclarationSpecifiers InitDeclaratorList? SEMI #{}
+
+DeclarationSpecifiers
+   <- (( StorageClassSpecifier
+       / TypeQualifier
+       / FunctionSpecifier
+       )*
+       TypedefName
+       ( StorageClassSpecifier
+       / TypeQualifier
+       / FunctionSpecifier
+       )*
+      )     #{DeclarationSpecifiers}
+    / ( StorageClassSpecifier
+      / TypeSpecifier
+      / TypeQualifier
+      / FunctionSpecifier
+      )+    #{DeclarationSpecifiers}
+
+InitDeclaratorList <- InitDeclarator (COMMA InitDeclarator)* #{}
+
+InitDeclarator <- Declarator (EQU Initializer)? #{}
+
+StorageClassSpecifier
+   <- TYPEDEF
+    / EXTERN
+    / STATIC
+    / AUTO
+    / REGISTER
+    / ATTRIBUTE LPAR LPAR (!RPAR .)* RPAR RPAR
+
+TypeSpecifier
+   <- VOID
+    / CHAR
+    / SHORT
+    / INT
+    / LONG
+    / FLOAT
+    / DOUBLE
+    / SIGNED
+    / UNSIGNED
+    / BOOL
+    / COMPLEX
+    / StructOrUnionSpecifier
+    / EnumSpecifier
+
+StructOrUnionSpecifier
+   <- StructOrUnion
+      ( Identifier? LWING StructDeclaration+ RWING
+      / Identifier
+      )
+
+StructOrUnion <- STRUCT / UNION
+
+StructDeclaration <- SpecifierQualifierList StructDeclaratorList SEMI
+
+SpecifierQualifierList
+   <- ( TypeQualifier*
+        TypedefName
+        TypeQualifier*
+      )
+    / ( TypeSpecifier
+      / TypeQualifier
+      )+
+
+StructDeclaratorList <- StructDeclarator (COMMA StructDeclarator)*
+
+StructDeclarator
+   <- Declarator? COLON ConstantExpression
+    / Declarator
+
+EnumSpecifier
+    <- ENUM
+      ( Identifier? LWING EnumeratorList COMMA? RWING
+      / Identifier
+      )
+
+EnumeratorList <- Enumerator (COMMA Enumerator)*
+
+Enumerator <- EnumerationConstant (EQU ConstantExpression)?
+
+TypeQualifier
+   <- CONST
+    / RESTRICT
+    / VOLATILE
+    / DECLSPEC LPAR Identifier RPAR
+
+FunctionSpecifier <- INLINE / STDCALL
+
+Declarator <- Pointer? DirectDeclarator #{}
+
+DirectDeclarator
+   <- ( Identifier
+      / LPAR Declarator RPAR
+      )
+      ( LBRK TypeQualifier* AssignmentExpression? RBRK
+      / LBRK STATIC TypeQualifier* AssignmentExpression RBRK
+      / LBRK TypeQualifier+ STATIC AssignmentExpression RBRK
+      / LBRK TypeQualifier* STAR RBRK
+      / LPAR ParameterTypeList RPAR
+      / LPAR IdentifierList? RPAR
+      )* #{}
+
+Pointer <- ( STAR TypeQualifier* )+
+
+ParameterTypeList <- ParameterList (COMMA ELLIPSIS)?
+
+ParameterList <- ParameterDeclaration (COMMA ParameterDeclaration)*
+
+ParameterDeclaration
+   <- DeclarationSpecifiers
+      ( Declarator
+      / AbstractDeclarator
+      )?
+
+IdentifierList <- Identifier (COMMA Identifier)*
+
+TypeName <- SpecifierQualifierList AbstractDeclarator?
+
+AbstractDeclarator
+   <- Pointer? DirectAbstractDeclarator
+    / Pointer
+
+DirectAbstractDeclarator
+   <- ( LPAR AbstractDeclarator RPAR
+      / LBRK (AssignmentExpression / STAR)? RBRK
+      / LPAR ParameterTypeList? RPAR
+      )
+      ( LBRK (AssignmentExpression / STAR)? RBRK
+      / LPAR ParameterTypeList? RPAR
+      )*
+
+TypedefName <-Identifier #{&TypedefName}
+
+Initializer
+   <- AssignmentExpression
+    / LWING InitializerList COMMA? RWING
+
+InitializerList <- Designation? Initializer (COMMA Designation? Initializer)*
+
+Designation <- Designator+ EQU
+
+Designator
+   <- LBRK ConstantExpression RBRK
+    / DOT Identifier
+
+
+#-------------------------------------------------------------------------
+#  A.2.3  Statements
+#-------------------------------------------------------------------------
+
+Statement
+   <- LabeledStatement
+    / CompoundStatement
+    / ExpressionStatement
+    / SelectionStatement
+    / IterationStatement
+    / JumpStatement
+
+LabeledStatement
+   <- Identifier COLON Statement
+    / CASE ConstantExpression COLON Statement
+    / DEFAULT COLON Statement
+
+CompoundStatement <- LWING ( Declaration / Statement )* RWING
+
+ExpressionStatement <- Expression? SEMI
+
+SelectionStatement
+   <- IF LPAR Expression RPAR Statement (ELSE Statement)?
+    / SWITCH LPAR Expression RPAR Statement
+
+IterationStatement
+   <- WHILE LPAR Expression RPAR Statement
+    / DO Statement WHILE LPAR Expression RPAR SEMI
+    / FOR LPAR Expression? SEMI Expression? SEMI Expression? RPAR Statement
+    / FOR LPAR Declaration Expression? SEMI Expression? RPAR Statement
+
+JumpStatement
+   <- GOTO Identifier SEMI
+    / CONTINUE SEMI
+    / BREAK SEMI
+    / RETURN Expression? SEMI
+
+
+#-------------------------------------------------------------------------
+#  A.2.1  Expressions
+#-------------------------------------------------------------------------
+
+PrimaryExpression
+   <- Identifier
+    / Constant
+    / StringLiteral
+    / LPAR Expression RPAR
+
+PostfixExpression
+   <- ( PrimaryExpression
+      / LPAR TypeName RPAR LWING InitializerList COMMA? RWING
+      )
+      ( LBRK Expression RBRK
+      / LPAR ArgumentExpressionList? RPAR
+      / DOT Identifier
+      / PTR Identifier
+      / INC
+      / DEC
+      )*
+
+ArgumentExpressionList <- AssignmentExpression (COMMA AssignmentExpression)*
+
+UnaryExpression
+   <- PostfixExpression
+    / INC UnaryExpression
+    / DEC UnaryExpression
+    / UnaryOperator CastExpression
+    / SIZEOF (UnaryExpression / LPAR TypeName RPAR )
+
+UnaryOperator
+   <- AND
+    / STAR
+    / PLUS
+    / MINUS
+    / TILDA
+    / BANG
+
+CastExpression <- (LPAR TypeName RPAR)* UnaryExpression
+
+MultiplicativeExpression <- CastExpression ((STAR / DIV / MOD) CastExpression)*
+
+AdditiveExpression <- MultiplicativeExpression ((PLUS / MINUS) MultiplicativeExpression)*
+
+ShiftExpression <- AdditiveExpression ((LEFT / RIGHT) AdditiveExpression)*
+
+RelationalExpression <- ShiftExpression ((LE / GE / LT / GT) ShiftExpression)*
+
+EqualityExpression <- RelationalExpression ((EQUEQU / BANGEQU) RelationalExpression)*
+
+ANDExpression <- EqualityExpression (AND EqualityExpression)*
+
+ExclusiveORExpression <- ANDExpression (HAT ANDExpression)*
+
+InclusiveORExpression <- ExclusiveORExpression (OR ExclusiveORExpression)*
+
+LogicalANDExpression <- InclusiveORExpression (ANDAND InclusiveORExpression)*
+
+LogicalORExpression <- LogicalANDExpression (OROR LogicalANDExpression)*
+
+ConditionalExpression <- LogicalORExpression (QUERY Expression COLON LogicalORExpression)*
+
+AssignmentExpression
+   <- UnaryExpression AssignmentOperator AssignmentExpression
+    / ConditionalExpression
+
+AssignmentOperator
+   <- EQU
+    / STAREQU
+    / DIVEQU
+    / MODEQU
+    / PLUSEQU
+    / MINUSEQU
+    / LEFTEQU
+    / RIGHTEQU
+    / ANDEQU
+    / HATEQU
+    / OREQU
+
+Expression <- AssignmentExpression (COMMA AssignmentExpression)*
+
+ConstantExpression <- ConditionalExpression
+
+
+#-------------------------------------------------------------------------
+#  A.1.1  Lexical elements
+#  Tokens are: Keyword, Identifier, Constant, StringLiteral, Punctuator.
+#  Tokens are separated by Spacing.
+#-------------------------------------------------------------------------
+
+Spacing
+   <- ( WhiteSpace
+      / LongComment
+      / LineComment
+      / Pragma
+      )*
+
+WhiteSpace  <- [ \n\r\t]             # 7.4.1.10 [\u000B\u000C]
+
+LongComment <- '/*' (!'*/'.)* '*/'   # 6.4.9
+
+LineComment <- '//' (!'\n' .)*       # 6.4.9
+
+Pragma      <- '#'  (!'\n' .)*       # Treat pragma as comment
+
+
+#-------------------------------------------------------------------------
+#  A.1.2  Keywords
+#-------------------------------------------------------------------------
+
+AUTO      <- 'auto'      !IdChar Spacing
+BREAK     <- 'break'     !IdChar Spacing
+CASE      <- 'case'      !IdChar Spacing
+CHAR      <- 'char'      !IdChar Spacing
+CONST     <- 'const'     !IdChar Spacing
+CONTINUE  <- 'continue'  !IdChar Spacing
+DEFAULT   <- 'default'   !IdChar Spacing
+DOUBLE    <- 'double'    !IdChar Spacing
+DO        <- 'do'        !IdChar Spacing
+ELSE      <- 'else'      !IdChar Spacing
+ENUM      <- 'enum'      !IdChar Spacing
+EXTERN    <- 'extern'    !IdChar Spacing
+FLOAT     <- 'float'     !IdChar Spacing
+FOR       <- 'for'       !IdChar Spacing
+GOTO      <- 'goto'      !IdChar Spacing
+IF        <- 'if'        !IdChar Spacing
+INT       <- 'int'       !IdChar Spacing
+INLINE    <- 'inline'    !IdChar Spacing
+LONG      <- 'long'      !IdChar Spacing
+REGISTER  <- 'register'  !IdChar Spacing
+RESTRICT  <- 'restrict'  !IdChar Spacing
+RETURN    <- 'return'    !IdChar Spacing
+SHORT     <- 'short'     !IdChar Spacing
+SIGNED    <- 'signed'    !IdChar Spacing
+SIZEOF    <- 'sizeof'    !IdChar Spacing
+STATIC    <- 'static'    !IdChar Spacing
+STRUCT    <- 'struct'    !IdChar Spacing
+SWITCH    <- 'switch'    !IdChar Spacing
+TYPEDEF   <- 'typedef'   !IdChar Spacing
+UNION     <- 'union'     !IdChar Spacing
+UNSIGNED  <- 'unsigned'  !IdChar Spacing
+VOID      <- 'void'      !IdChar Spacing
+VOLATILE  <- 'volatile'  !IdChar Spacing
+WHILE     <- 'while'     !IdChar Spacing
+BOOL      <- '_Bool'     !IdChar Spacing
+COMPLEX   <- '_Complex'  !IdChar Spacing
+STDCALL   <- '_stdcall'  !IdChar Spacing
+DECLSPEC  <- '__declspec' !IdChar Spacing
+ATTRIBUTE <- '__attribute__' !IdChar Spacing
+
+Keyword
+   <- ( 'auto'
+      / 'break'
+      / 'case'
+      / 'char'
+      / 'const'
+      / 'continue'
+      / 'default'
+      / 'double'
+      / 'do'
+      / 'else'
+      / 'enum'
+      / 'extern'
+      / 'float'
+      / 'for'
+      / 'goto'
+      / 'if'
+      / 'int'
+      / 'inline'
+      / 'long'
+      / 'register'
+      / 'restrict'
+      / 'return'
+      / 'short'
+      / 'signed'
+      / 'sizeof'
+      / 'static'
+      / 'struct'
+      / 'switch'
+      / 'typedef'
+      / 'union'
+      / 'unsigned'
+      / 'void'
+      / 'volatile'
+      / 'while'
+      / '_Bool'
+      / '_Complex'
+      / '_Imaginary'
+      / '_stdcall'
+      / '__declspec'
+      / '__attribute__'
+      )
+    !IdChar
+
+
+#-------------------------------------------------------------------------
+#  A.1.3  Identifiers
+#  The standard does not explicitly state that identifiers must be
+#  distinct from keywords, but it seems so.
+#-------------------------------------------------------------------------
+
+Identifier <- !Keyword IdNondigit IdChar* Spacing #{}
+
+IdNondigit
+   <- [a-z] / [A-Z] / [_]
+    / UniversalCharacter
+
+IdChar
+   <- [a-z] / [A-Z] / [0-9] / [_]
+    / UniversalCharacter
+
+
+#-------------------------------------------------------------------------
+#  A.1.4  Universal character names
+#-------------------------------------------------------------------------
+
+UniversalCharacter
+   <- '\\u' HexQuad
+    / '\\U' HexQuad HexQuad
+
+HexQuad <- HexDigit HexDigit HexDigit HexDigit
+
+
+#-------------------------------------------------------------------------
+#  A.1.5  Constants
+#-------------------------------------------------------------------------
+
+Constant
+   <- FloatConstant
+    / IntegerConstant       # Note: can be a prefix of Float Constant!
+    / EnumerationConstant
+    / CharacterConstant
+
+IntegerConstant
+   <- ( DecimalConstant
+      / HexConstant
+      / OctalConstant
+      )
+    IntegerSuffix? Spacing
+
+DecimalConstant <- [1-9][0-9]*
+
+OctalConstant   <- '0' [0-7]*
+
+HexConstant     <- HexPrefix HexDigit+
+
+HexPrefix       <- '0x' / '0X'
+
+HexDigit        <- [a-f] / [A-F] / [0-9]
+
+IntegerSuffix
+   <- [uU] Lsuffix?
+    / Lsuffix [uU]?
+
+Lsuffix
+   <- 'll'
+    / 'LL'
+    / [lL]
+
+FloatConstant
+   <- ( DecimalFloatConstant
+      / HexFloatConstant
+      )
+    FloatSuffix? Spacing
+
+DecimalFloatConstant
+   <- Fraction Exponent?
+    / [0-9]+ Exponent
+
+HexFloatConstant
+   <- HexPrefix HexFraction BinaryExponent?
+    / HexPrefix HexDigit+ BinaryExponent
+
+Fraction
+   <- [0-9]* '.' [0-9]+
+    / [0-9]+ '.'
+
+HexFraction
+   <- HexDigit* '.' HexDigit+
+    / HexDigit+ '.'
+
+Exponent <- [eE][+\-]? [0-9]+
+
+BinaryExponent <- [pP][+\-]? [0-9]+
+
+FloatSuffix <- [flFL]
+
+EnumerationConstant <- Identifier
+
+CharacterConstant <- 'L'? ['] Char* ['] Spacing
+
+Char <- Escape / !['\n\\] .
+
+Escape
+   <- SimpleEscape
+    / OctalEscape
+    / HexEscape
+    / UniversalCharacter
+
+SimpleEscape <- '\\' ['\"?\\abfnrtv]
+OctalEscape  <- '\\' [0-7][0-7]?[0-7]?
+HexEscape    <- '\\x' HexDigit+
+
+
+#-------------------------------------------------------------------------
+#  A.1.6  String Literals
+#-------------------------------------------------------------------------
+
+StringLiteral <- 'L'? (["] StringChar* ["] Spacing)+
+
+StringChar <- Escape / ![\"\n\\] .
+
+
+#-------------------------------------------------------------------------
+#  A.1.7  Punctuators
+#-------------------------------------------------------------------------
+
+LBRK      <-  '['         Spacing
+RBRK      <-  ']'         Spacing
+LPAR      <-  '('         Spacing
+RPAR      <-  ')'         Spacing
+LWING     <-  '{'         Spacing
+RWING     <-  '}'         Spacing
+DOT       <-  '.'         Spacing
+PTR       <-  '->'        Spacing
+INC       <-  '++'        Spacing
+DEC       <-  '--'        Spacing
+AND       <-  '&'  ![&]   Spacing
+STAR      <-  '*'  ![=]   Spacing
+PLUS      <-  '+'  ![+=]  Spacing
+MINUS     <-  '-'  ![\-=>] Spacing
+TILDA     <-  '~'         Spacing
+BANG      <-  '!'  ![=]   Spacing
+DIV       <-  '/'  ![=]   Spacing
+MOD       <-  '%'  ![=>]  Spacing
+LEFT      <-  '<<' ![=]   Spacing
+RIGHT     <-  '>>' ![=]   Spacing
+LT        <-  '<'  ![=]   Spacing
+GT        <-  '>'  ![=]   Spacing
+LE        <-  '<='        Spacing
+GE        <-  '>='        Spacing
+EQUEQU    <-  '=='        Spacing
+BANGEQU   <-  '!='        Spacing
+HAT       <-  '^'  ![=]   Spacing
+OR        <-  '|'  ![=]   Spacing
+ANDAND    <-  '&&'        Spacing
+OROR      <-  '||'        Spacing
+QUERY     <-  '?'         Spacing
+COLON     <-  ':'  ![>]   Spacing
+SEMI      <-  ';'         Spacing
+ELLIPSIS  <-  '...'       Spacing
+EQU       <-  '='  !"="   Spacing
+STAREQU   <-  '*='        Spacing
+DIVEQU    <-  '/='        Spacing
+MODEQU    <-  '%='        Spacing
+PLUSEQU   <-  '+='        Spacing
+MINUSEQU  <-  '-='        Spacing
+LEFTEQU   <-  '<<='       Spacing
+RIGHTEQU  <-  '>>='       Spacing
+ANDEQU    <-  '&='        Spacing
+HATEQU    <-  '^='        Spacing
+OREQU     <-  '|='        Spacing
+COMMA     <-  ','         Spacing
+
+EOT       <-  !.
