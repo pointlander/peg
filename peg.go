@@ -8,16 +8,15 @@ import (
 	"bytes"
 	"fmt"
 	"go/parser"
-        "go/printer"
-        "go/token"
+	"go/printer"
+	"go/token"
 	"os"
 	"strconv"
 	"strings"
 	"text/template"
 )
 
-const PEG_HEADER_TEMPLATE =
-`package {{.PackageName}}
+const PEG_HEADER_TEMPLATE = `package {{.PackageName}}
 
 import (
 	/*"bytes"*/
@@ -475,6 +474,7 @@ func (p *{{.StructName}}) Init() {
 		nil,`
 
 type Type uint8
+
 const (
 	TypeUnknown Type = iota
 	TypeRule
@@ -503,7 +503,7 @@ const (
 	TypeLast
 )
 
-var TypeMap = [...]string {
+var TypeMap = [...]string{
 	"TypeUnknown",
 	"TypeRule",
 	"TypeName",
@@ -563,8 +563,8 @@ type node struct {
 	string
 	id int
 
-	front *node
-	back *node
+	front  *node
+	back   *node
 	length int
 
 	/* use hash table here instead of Copy? */
@@ -663,7 +663,7 @@ func (n *node) Copy() *node {
 
 func (n *node) Slice() []*node {
 	s := make([]*node, n.length)
-	for element, i := n.Front(), 0; element != nil; element, i = element.Next(), i + 1 {
+	for element, i := n.Front(), 0; element != nil; element, i = element.Next(), i+1 {
 		s[i] = element
 	}
 	return s
@@ -671,20 +671,20 @@ func (n *node) Slice() []*node {
 
 /* A tree data structure into which a PEG can be parsed. */
 type Tree struct {
-	Rules		map[string]Node
-	rulesCount	map[string]uint
+	Rules      map[string]Node
+	rulesCount map[string]uint
 	node
 	inline, _switch bool
 
-	RuleNames	[]Node
-	Sizes		[2]int
+	RuleNames       []Node
+	Sizes           [2]int
 	PackageName     string
-	EndSymbol	byte
+	EndSymbol       byte
 	StructName      string
 	StructVariables string
 	RulesCount      int
 	Bits            int
-	HasActions	bool
+	HasActions      bool
 	Actions         []Node
 	HasCommit       bool
 	HasDot          bool
@@ -695,10 +695,10 @@ type Tree struct {
 
 func New(inline, _switch bool) *Tree {
 	return &Tree{Rules: make(map[string]Node),
-                     Sizes: [2]int{16, 32},
-                     rulesCount: make(map[string]uint),
-                     inline: inline,
-                     _switch: _switch}
+		Sizes:      [2]int{16, 32},
+		rulesCount: make(map[string]uint),
+		inline:     inline,
+		_switch:    _switch}
 }
 
 func (t *Tree) AddRule(name string) {
@@ -731,9 +731,9 @@ func (t *Tree) AddOctalCharacter(text string) {
 	t.PushFront(&node{Type: TypeCharacter, string: string(octal)})
 }
 func (t *Tree) AddPredicate(text string) { t.PushFront(&node{Type: TypePredicate, string: text}) }
-func (t *Tree) AddNil() { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
-func (t *Tree) AddAction(text string) { t.PushFront(&node{Type: TypeAction, string: text}) }
-func (t *Tree) AddPackage(text string) { t.PushBack(&node{Type: TypePackage, string: text}) }
+func (t *Tree) AddNil()                  { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
+func (t *Tree) AddAction(text string)    { t.PushFront(&node{Type: TypeAction, string: text}) }
+func (t *Tree) AddPackage(text string)   { t.PushBack(&node{Type: TypePackage, string: text}) }
 func (t *Tree) AddState(text string) {
 	peg := t.PopFront()
 	peg.PushBack(&node{Type: TypeState, string: text})
@@ -754,9 +754,9 @@ func (t *Tree) addList(listType Type) {
 	t.PushFront(l)
 }
 func (t *Tree) AddAlternate() { t.addList(TypeAlternate) }
-func (t *Tree) AddSequence() { t.addList(TypeSequence) }
-func (t *Tree) AddRange()    { t.addList(TypeRange) }
-func (t *Tree) AddDoubleRange()    {
+func (t *Tree) AddSequence()  { t.addList(TypeSequence) }
+func (t *Tree) AddRange()     { t.addList(TypeRange) }
+func (t *Tree) AddDoubleRange() {
 	a := t.PopFront()
 	b := t.PopFront()
 
@@ -776,12 +776,12 @@ func (t *Tree) addFix(fixType Type) {
 	n.PushBack(t.PopFront())
 	t.PushFront(n)
 }
-func (t *Tree) AddPeekFor()        { t.addFix(TypePeekFor) }
-func (t *Tree) AddPeekNot()        { t.addFix(TypePeekNot) }
-func (t *Tree) AddQuery()          { t.addFix(TypeQuery) }
-func (t *Tree) AddStar()           { t.addFix(TypeStar) }
-func (t *Tree) AddPlus()           { t.addFix(TypePlus) }
-func (t *Tree) AddPush()	   { t.addFix(TypePush) }
+func (t *Tree) AddPeekFor() { t.addFix(TypePeekFor) }
+func (t *Tree) AddPeekNot() { t.addFix(TypePeekNot) }
+func (t *Tree) AddQuery()   { t.addFix(TypeQuery) }
+func (t *Tree) AddStar()    { t.addFix(TypeStar) }
+func (t *Tree) AddPlus()    { t.addFix(TypePlus) }
+func (t *Tree) AddPush()    { t.addFix(TypePush) }
 
 func (t *Tree) AddPeg(text string) { t.PushFront(&node{Type: TypePeg, string: text}) }
 
@@ -803,7 +803,7 @@ func escape(c string) string {
 		return "\""
 	default:
 		c = strconv.Quote(c)
-		return c[1:len(c) - 1]
+		return c[1 : len(c)-1]
 	}
 	return ""
 }
@@ -846,7 +846,7 @@ func (t *Tree) Compile(file string) {
 					emptyRule := &node{Type: TypeRule, string: name, id: t.RulesCount}
 					implicitPush := &node{Type: TypeImplicitPush}
 					emptyRule.PushBack(implicitPush)
-					implicitPush.PushBack(&node{Type:TypeNil, string: "<nil>"})
+					implicitPush.PushBack(&node{Type: TypeNil, string: "<nil>"})
 					implicitPush.PushBack(emptyRule.Copy())
 					t.PushBack(emptyRule)
 					t.RulesCount++
@@ -859,7 +859,7 @@ func (t *Tree) Compile(file string) {
 				copy.SetString(name)
 				if _, ok := t.Rules[name]; !ok {
 					emptyRule := &node{Type: TypeRule, string: name, id: t.RulesCount}
-					emptyRule.PushBack(&node{Type:TypeNil, string: "<nil>"})
+					emptyRule.PushBack(&node{Type: TypeNil, string: "<nil>"})
 					t.PushBack(emptyRule)
 					t.RulesCount++
 
@@ -871,7 +871,7 @@ func (t *Tree) Compile(file string) {
 			case TypeImplicitPush:
 				link(n.Front())
 			case TypeRule, TypeAlternate, TypeUnorderedAlternate, TypeSequence,
-		     	     TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
+				TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
 				for _, node := range n.Slice() {
 					link(node)
 				}
@@ -994,7 +994,7 @@ func (t *Tree) Compile(file string) {
 		var optimizeAlternates func(node Node) (consumes bool, s *set)
 		cache, firstPass := make([]struct {
 			reached, consumes bool
-			s *set
+			s                 *set
 		}, t.RulesCount), true
 		optimizeAlternates = func(n Node) (consumes bool, s *set) {
 			/*n.debug()*/
@@ -1008,7 +1008,7 @@ func (t *Tree) Compile(file string) {
 
 				cache.reached = true
 				consumes, s = optimizeAlternates(n.Front())
-				cache.consumes, cache.s = consumes,  s
+				cache.consumes, cache.s = consumes, s
 			case TypeName:
 				consumes, s = optimizeAlternates(t.Rules[n.String()])
 			case TypeDot:
@@ -1033,7 +1033,7 @@ func (t *Tree) Compile(file string) {
 				mconsumes, properties, c :=
 					consumes, make([]struct {
 						intersects bool
-						s *set
+						s          *set
 					}, n.Len()), 0
 				for _, element := range n.Slice() {
 					mconsumes, properties[c].s = optimizeAlternates(element)
@@ -1119,7 +1119,7 @@ func (t *Tree) Compile(file string) {
 				for c, element := range elements {
 					consumes, classes[c].s = optimizeAlternates(element)
 					if consumes {
-						elements, classes = elements[c + 1:], classes[:c + 1]
+						elements, classes = elements[c+1:], classes[:c+1]
 						break
 					}
 				}
@@ -1181,7 +1181,7 @@ func (t *Tree) Compile(file string) {
 			fmt.Printf("%v: %v\n", file, error)
 			return
 		}
-		formatter := printer.Config{printer.TabIndent | printer.UseSpaces, 8}
+		formatter := printer.Config{printer.TabIndent | printer.UseSpaces, 8, 0}
 		error = formatter.Fprint(out, fileSet, code)
 		if error != nil {
 			buffer.WriteTo(out)
@@ -1194,7 +1194,11 @@ func (t *Tree) Compile(file string) {
 	print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { print("\n   position%d, tokenIndex%d, depth%d := position, tokenIndex, depth", n, n, n) }
 	printRestore := func(n uint) { print("   position, tokenIndex, depth = position%d, tokenIndex%d, depth%d", n, n, n) }
-	printTemplate := func(s string) { if error := template.Must(template.New("peg").Parse(s)).Execute(&buffer, t); error != nil { panic(error) } }
+	printTemplate := func(s string) {
+		if error := template.Must(template.New("peg").Parse(s)).Execute(&buffer, t); error != nil {
+			panic(error)
+		}
+	}
 
 	t.HasActions = counts[TypeAction] > 0
 	t.HasCommit = counts[TypeCommit] > 0
@@ -1232,7 +1236,7 @@ func (t *Tree) Compile(file string) {
 			print("'%v'", escape(n.String()))
 		case TypeString:
 			s := escape(n.String())
-			print("'%v'", s[1:len(s) - 1])
+			print("'%v'", s[1:len(s)-1])
 		case TypeRange:
 			element := n.Front()
 			lower := element
@@ -1363,7 +1367,7 @@ func (t *Tree) Compile(file string) {
 			printBegin()
 			elements := n.Slice()
 			printSave(ok)
-			for _, element := range elements[:len(elements) - 1] {
+			for _, element := range elements[:len(elements)-1] {
 				next := label
 				label++
 				compile(element, next)
@@ -1371,7 +1375,7 @@ func (t *Tree) Compile(file string) {
 				printLabel(next)
 				printRestore(ok)
 			}
-			compile(elements[len(elements) - 1], ko)
+			compile(elements[len(elements)-1], ko)
 			printEnd()
 			printLabel(ok)
 		case TypeUnorderedAlternate:
@@ -1380,7 +1384,7 @@ func (t *Tree) Compile(file string) {
 			printBegin()
 			print("\n   switch buffer[position] {")
 			elements := n.Slice()
-			elements, last := elements[:len(elements) - 1], elements[len(elements) - 1].Front().Next()
+			elements, last := elements[:len(elements)-1], elements[len(elements)-1].Front().Next()
 			for _, element := range elements {
 				sequence := element.Front()
 				class := sequence.Front()

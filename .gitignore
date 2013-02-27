@@ -1,4 +1,5 @@
 *.peg.go
+*.exe
 *.6
 peg
 calculator/calculator
