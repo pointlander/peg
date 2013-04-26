@@ -1181,7 +1181,7 @@ func (t *Tree) Compile(file string) {
 			fmt.Printf("%v: %v\n", file, error)
 			return
 		}
-		formatter := printer.Config{printer.TabIndent | printer.UseSpaces, 8, 0}
+		formatter := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}
 		error = formatter.Fprint(out, fileSet, code)
 		if error != nil {
 			buffer.WriteTo(out)
