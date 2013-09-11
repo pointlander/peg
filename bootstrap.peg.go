@@ -872,7 +872,9 @@ func (p *Peg) Execute() {
 }
 
 func (p *Peg) Init() {
-	if p.Buffer[len(p.Buffer)-1] != END_SYMBOL {
+	if len(p.Buffer) == 0 {
+		p.Buffer = string(END_SYMBOL)
+	} else if p.Buffer[len(p.Buffer)-1] != END_SYMBOL {
 		p.Buffer = p.Buffer + string(END_SYMBOL)
 	}
 
