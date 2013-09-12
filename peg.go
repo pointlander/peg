@@ -429,9 +429,10 @@ func (p *{{.StructName}}) Init() {
 	}
 
 	{{if .HasDot}}
+    length := len(buffer)
 	matchDot := func() bool {
 		position++
-		return position < len(buffer)
+		return position < length
 	}
 	{{end}}
 
