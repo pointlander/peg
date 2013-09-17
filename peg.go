@@ -26,7 +26,7 @@ import (
 	"strconv"
 )
 
-const END_SYMBOL byte = {{.EndSymbol}}
+const END_SYMBOL rune = {{.EndSymbol}}
 
 /* The rule types inferred from the grammar are below. */
 type Rule uint8
@@ -317,6 +317,7 @@ func (t *tokens32) Expand(index int) TokenTree {
 type {{.StructName}} struct {
 	{{.StructVariables}}
 	Buffer		string
+	buffer		[]rune
 	rules		[{{.RulesCount}}]func() bool
 	Parse		func(rule ...int) error
 	Reset		func()
@@ -393,14 +394,13 @@ func (p *{{.StructName}}) Execute() {
 {{end}}
 
 func (p *{{.StructName}}) Init() {
-	if len(p.Buffer) == 0 {
-		p.Buffer = string(END_SYMBOL)
-	} else if p.Buffer[len(p.Buffer) - 1] != END_SYMBOL {
-		p.Buffer = p.Buffer + string(END_SYMBOL)
+	p.buffer = []rune(p.Buffer)
+	if len(p.buffer) == 0 || p.buffer[len(p.buffer) - 1] != END_SYMBOL {
+		p.buffer = append(p.buffer, END_SYMBOL)
 	}
 
 	var tree TokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
-	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.Buffer, p.rules
+	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
 		r := 1
@@ -452,7 +452,7 @@ func (p *{{.StructName}}) Init() {
 	matchString := func(s string) bool {
 		i := position
 		for _, c := range s {
-			if buffer[i] != byte(c) {
+			if buffer[i] != c {
 				return false
 			}
 			i++
@@ -681,7 +681,7 @@ type Tree struct {
 	RuleNames       []Node
 	Sizes           [2]int
 	PackageName     string
-	EndSymbol       byte
+	EndSymbol       rune
 	StructName      string
 	StructVariables string
 	RulesCount      int
@@ -811,7 +811,7 @@ func escape(c string) string {
 }
 
 func (t *Tree) Compile(file string) {
-	t.EndSymbol = 0
+	t.EndSymbol = '\u0004'
 	t.RulesCount++
 
 	counts := [TypeLast]uint{}
@@ -1016,7 +1016,7 @@ func (t *Tree) Compile(file string) {
 			case TypeDot:
 				consumes, s = true, &set{}
 				/* TypeDot set doesn't include the EndSymbol */
-				s.add(t.EndSymbol)
+				s.add(byte(t.EndSymbol))
 				s.complement()
 			case TypeString, TypeCharacter:
 				consumes, s = true, &set{}
@@ -1328,12 +1328,12 @@ func (t *Tree) Compile(file string) {
 			element = element.Next()
 			upper := element
 			/*print("\n   if !matchRange('%v', '%v') {", escape(lower.String()), escape(upper.String()))*/
-			print("\n   if c := buffer[position]; c < '%v' || c > '%v' {", escape(lower.String()), escape(upper.String()))
+			print("\n   if c := buffer[position]; c < rune('%v') || c > rune('%v') {", escape(lower.String()), escape(upper.String()))
 			printJump(ko)
 			print("}\nposition++")
 		case TypeCharacter:
 			/*print("\n   if !matchChar('%v') {", escape(n.String()))*/
-			print("\n   if buffer[position] != '%v' {", escape(n.String()))
+			print("\n   if buffer[position] != rune('%v') {", escape(n.String()))
 			printJump(ko)
 			print("}\nposition++")
 		case TypeString:

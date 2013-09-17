@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-const END_SYMBOL byte = 0
+const END_SYMBOL rune = 4
 
 /* The rule types inferred from the grammar are below. */
 type Rule uint8
@@ -694,6 +694,7 @@ type Peg struct {
 	*Tree
 
 	Buffer string
+	buffer []rune
 	rules  [85]func() bool
 	Parse  func(rule ...int) error
 	Reset  func()
@@ -872,14 +873,13 @@ func (p *Peg) Execute() {
 }
 
 func (p *Peg) Init() {
-	if len(p.Buffer) == 0 {
-		p.Buffer = string(END_SYMBOL)
-	} else if p.Buffer[len(p.Buffer)-1] != END_SYMBOL {
-		p.Buffer = p.Buffer + string(END_SYMBOL)
+	p.buffer = []rune(p.Buffer)
+	if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != END_SYMBOL {
+		p.buffer = append(p.buffer, END_SYMBOL)
 	}
 
 	var tree TokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
-	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.Buffer, p.rules
+	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
 		r := 1
@@ -942,31 +942,31 @@ func (p *Peg) Init() {
 				if !rules[RuleSpacing]() {
 					goto l0
 				}
-				if buffer[position] != 'p' {
+				if buffer[position] != rune('p') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'a' {
+				if buffer[position] != rune('a') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'c' {
+				if buffer[position] != rune('c') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'k' {
+				if buffer[position] != rune('k') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'a' {
+				if buffer[position] != rune('a') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'g' {
+				if buffer[position] != rune('g') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'e' {
+				if buffer[position] != rune('e') {
 					goto l0
 				}
 				position++
@@ -979,19 +979,19 @@ func (p *Peg) Init() {
 				{
 					add(RuleAction0, position)
 				}
-				if buffer[position] != 't' {
+				if buffer[position] != rune('t') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'y' {
+				if buffer[position] != rune('y') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'p' {
+				if buffer[position] != rune('p') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'e' {
+				if buffer[position] != rune('e') {
 					goto l0
 				}
 				position++
@@ -1004,15 +1004,15 @@ func (p *Peg) Init() {
 				{
 					add(RuleAction1, position)
 				}
-				if buffer[position] != 'P' {
+				if buffer[position] != rune('P') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'e' {
+				if buffer[position] != rune('e') {
 					goto l0
 				}
 				position++
-				if buffer[position] != 'g' {
+				if buffer[position] != rune('g') {
 					goto l0
 				}
 				position++
@@ -1259,7 +1259,7 @@ func (p *Peg) Init() {
 							{
 								position46 := position
 								depth++
-								if buffer[position] != '!' {
+								if buffer[position] != rune('!') {
 									goto l40
 								}
 								position++
@@ -1320,7 +1320,7 @@ func (p *Peg) Init() {
 							{
 								position53 := position
 								depth++
-								if buffer[position] != '<' {
+								if buffer[position] != rune('<') {
 									goto l49
 								}
 								position++
@@ -1336,7 +1336,7 @@ func (p *Peg) Init() {
 							{
 								position54 := position
 								depth++
-								if buffer[position] != '>' {
+								if buffer[position] != rune('>') {
 									goto l49
 								}
 								position++
@@ -1362,7 +1362,7 @@ func (p *Peg) Init() {
 							{
 								position57 := position
 								depth++
-								if buffer[position] != '.' {
+								if buffer[position] != rune('.') {
 									goto l49
 								}
 								position++
@@ -1382,11 +1382,11 @@ func (p *Peg) Init() {
 								depth++
 								{
 									position60, tokenIndex60, depth60 := position, tokenIndex, depth
-									if buffer[position] != '[' {
+									if buffer[position] != rune('[') {
 										goto l61
 									}
 									position++
-									if buffer[position] != '[' {
+									if buffer[position] != rune('[') {
 										goto l61
 									}
 									position++
@@ -1394,7 +1394,7 @@ func (p *Peg) Init() {
 										position62, tokenIndex62, depth62 := position, tokenIndex, depth
 										{
 											position64, tokenIndex64, depth64 := position, tokenIndex, depth
-											if buffer[position] != '^' {
+											if buffer[position] != rune('^') {
 												goto l65
 											}
 											position++
@@ -1417,18 +1417,18 @@ func (p *Peg) Init() {
 										position, tokenIndex, depth = position62, tokenIndex62, depth62
 									}
 								l63:
-									if buffer[position] != ']' {
+									if buffer[position] != rune(']') {
 										goto l61
 									}
 									position++
-									if buffer[position] != ']' {
+									if buffer[position] != rune(']') {
 										goto l61
 									}
 									position++
 									goto l60
 								l61:
 									position, tokenIndex, depth = position60, tokenIndex60, depth60
-									if buffer[position] != '[' {
+									if buffer[position] != rune('[') {
 										goto l49
 									}
 									position++
@@ -1436,7 +1436,7 @@ func (p *Peg) Init() {
 										position67, tokenIndex67, depth67 := position, tokenIndex, depth
 										{
 											position69, tokenIndex69, depth69 := position, tokenIndex, depth
-											if buffer[position] != '^' {
+											if buffer[position] != rune('^') {
 												goto l70
 											}
 											position++
@@ -1459,7 +1459,7 @@ func (p *Peg) Init() {
 										position, tokenIndex, depth = position67, tokenIndex67, depth67
 									}
 								l68:
-									if buffer[position] != ']' {
+									if buffer[position] != rune(']') {
 										goto l49
 									}
 									position++
@@ -1478,7 +1478,7 @@ func (p *Peg) Init() {
 								depth++
 								{
 									position73, tokenIndex73, depth73 := position, tokenIndex, depth
-									if buffer[position] != '\'' {
+									if buffer[position] != rune('\'') {
 										goto l74
 									}
 									position++
@@ -1486,7 +1486,7 @@ func (p *Peg) Init() {
 										position75, tokenIndex75, depth75 := position, tokenIndex, depth
 										{
 											position77, tokenIndex77, depth77 := position, tokenIndex, depth
-											if buffer[position] != '\'' {
+											if buffer[position] != rune('\'') {
 												goto l77
 											}
 											position++
@@ -1507,7 +1507,7 @@ func (p *Peg) Init() {
 										position79, tokenIndex79, depth79 := position, tokenIndex, depth
 										{
 											position80, tokenIndex80, depth80 := position, tokenIndex, depth
-											if buffer[position] != '\'' {
+											if buffer[position] != rune('\'') {
 												goto l80
 											}
 											position++
@@ -1525,7 +1525,7 @@ func (p *Peg) Init() {
 									l79:
 										position, tokenIndex, depth = position79, tokenIndex79, depth79
 									}
-									if buffer[position] != '\'' {
+									if buffer[position] != rune('\'') {
 										goto l74
 									}
 									position++
@@ -1535,7 +1535,7 @@ func (p *Peg) Init() {
 									goto l73
 								l74:
 									position, tokenIndex, depth = position73, tokenIndex73, depth73
-									if buffer[position] != '"' {
+									if buffer[position] != rune('"') {
 										goto l49
 									}
 									position++
@@ -1543,7 +1543,7 @@ func (p *Peg) Init() {
 										position82, tokenIndex82, depth82 := position, tokenIndex, depth
 										{
 											position84, tokenIndex84, depth84 := position, tokenIndex, depth
-											if buffer[position] != '"' {
+											if buffer[position] != rune('"') {
 												goto l84
 											}
 											position++
@@ -1564,7 +1564,7 @@ func (p *Peg) Init() {
 										position86, tokenIndex86, depth86 := position, tokenIndex, depth
 										{
 											position87, tokenIndex87, depth87 := position, tokenIndex, depth
-											if buffer[position] != '"' {
+											if buffer[position] != rune('"') {
 												goto l87
 											}
 											position++
@@ -1582,7 +1582,7 @@ func (p *Peg) Init() {
 									l86:
 										position, tokenIndex, depth = position86, tokenIndex86, depth86
 									}
-									if buffer[position] != '"' {
+									if buffer[position] != rune('"') {
 										goto l49
 									}
 									position++
@@ -1599,7 +1599,7 @@ func (p *Peg) Init() {
 							{
 								position89 := position
 								depth++
-								if buffer[position] != '(' {
+								if buffer[position] != rune('(') {
 									goto l49
 								}
 								position++
@@ -1615,7 +1615,7 @@ func (p *Peg) Init() {
 							{
 								position90 := position
 								depth++
-								if buffer[position] != ')' {
+								if buffer[position] != rune(')') {
 									goto l49
 								}
 								position++
@@ -1657,7 +1657,7 @@ func (p *Peg) Init() {
 							{
 								position96 := position
 								depth++
-								if buffer[position] != '+' {
+								if buffer[position] != rune('+') {
 									goto l93
 								}
 								position++
@@ -1675,7 +1675,7 @@ func (p *Peg) Init() {
 							{
 								position98 := position
 								depth++
-								if buffer[position] != '*' {
+								if buffer[position] != rune('*') {
 									goto l93
 								}
 								position++
@@ -1693,7 +1693,7 @@ func (p *Peg) Init() {
 							{
 								position100 := position
 								depth++
-								if buffer[position] != '?' {
+								if buffer[position] != rune('?') {
 									goto l93
 								}
 								position++
@@ -1751,7 +1751,7 @@ func (p *Peg) Init() {
 								goto l109
 							l110:
 								position, tokenIndex, depth = position109, tokenIndex109, depth109
-								if c := buffer[position]; c < '0' || c > '9' {
+								if c := buffer[position]; c < rune('0') || c > rune('9') {
 									goto l107
 								}
 								position++
@@ -1787,19 +1787,19 @@ func (p *Peg) Init() {
 				{
 					switch buffer[position] {
 					case '_':
-						if buffer[position] != '_' {
+						if buffer[position] != rune('_') {
 							goto l111
 						}
 						position++
 						break
 					case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
-						if c := buffer[position]; c < 'A' || c > 'Z' {
+						if c := buffer[position]; c < rune('A') || c > rune('Z') {
 							goto l111
 						}
 						position++
 						break
 					default:
-						if c := buffer[position]; c < 'a' || c > 'z' {
+						if c := buffer[position]; c < rune('a') || c > rune('z') {
 							goto l111
 						}
 						position++
@@ -1829,7 +1829,7 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position119, tokenIndex119, depth119 := position, tokenIndex, depth
-					if buffer[position] != ']' {
+					if buffer[position] != rune(']') {
 						goto l119
 					}
 					position++
@@ -1845,7 +1845,7 @@ func (p *Peg) Init() {
 					position121, tokenIndex121, depth121 := position, tokenIndex, depth
 					{
 						position122, tokenIndex122, depth122 := position, tokenIndex, depth
-						if buffer[position] != ']' {
+						if buffer[position] != rune(']') {
 							goto l122
 						}
 						position++
@@ -1879,11 +1879,11 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position126, tokenIndex126, depth126 := position, tokenIndex, depth
-					if buffer[position] != ']' {
+					if buffer[position] != rune(']') {
 						goto l126
 					}
 					position++
-					if buffer[position] != ']' {
+					if buffer[position] != rune(']') {
 						goto l126
 					}
 					position++
@@ -1899,11 +1899,11 @@ func (p *Peg) Init() {
 					position128, tokenIndex128, depth128 := position, tokenIndex, depth
 					{
 						position129, tokenIndex129, depth129 := position, tokenIndex, depth
-						if buffer[position] != ']' {
+						if buffer[position] != rune(']') {
 							goto l129
 						}
 						position++
-						if buffer[position] != ']' {
+						if buffer[position] != rune(']') {
 							goto l129
 						}
 						position++
@@ -1940,7 +1940,7 @@ func (p *Peg) Init() {
 					if !rules[RuleChar]() {
 						goto l134
 					}
-					if buffer[position] != '-' {
+					if buffer[position] != rune('-') {
 						goto l134
 					}
 					position++
@@ -1977,7 +1977,7 @@ func (p *Peg) Init() {
 					if !rules[RuleChar]() {
 						goto l139
 					}
-					if buffer[position] != '-' {
+					if buffer[position] != rune('-') {
 						goto l139
 					}
 					position++
@@ -2019,7 +2019,7 @@ func (p *Peg) Init() {
 					position, tokenIndex, depth = position143, tokenIndex143, depth143
 					{
 						position145, tokenIndex145, depth145 := position, tokenIndex, depth
-						if buffer[position] != '\\' {
+						if buffer[position] != rune('\\') {
 							goto l145
 						}
 						position++
@@ -2068,14 +2068,14 @@ func (p *Peg) Init() {
 						depth++
 						{
 							position154, tokenIndex154, depth154 := position, tokenIndex, depth
-							if c := buffer[position]; c < 'a' || c > 'z' {
+							if c := buffer[position]; c < rune('a') || c > rune('z') {
 								goto l155
 							}
 							position++
 							goto l154
 						l155:
 							position, tokenIndex, depth = position154, tokenIndex154, depth154
-							if c := buffer[position]; c < 'A' || c > 'Z' {
+							if c := buffer[position]; c < rune('A') || c > rune('Z') {
 								goto l152
 							}
 							position++
@@ -2092,7 +2092,7 @@ func (p *Peg) Init() {
 					position, tokenIndex, depth = position150, tokenIndex150, depth150
 					{
 						position157, tokenIndex157, depth157 := position, tokenIndex, depth
-						if buffer[position] != '\\' {
+						if buffer[position] != rune('\\') {
 							goto l157
 						}
 						position++
@@ -2130,20 +2130,20 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position162, tokenIndex162, depth162 := position, tokenIndex, depth
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l163
 					}
 					position++
 					{
 						position164, tokenIndex164, depth164 := position, tokenIndex, depth
-						if buffer[position] != 'a' {
+						if buffer[position] != rune('a') {
 							goto l165
 						}
 						position++
 						goto l164
 					l165:
 						position, tokenIndex, depth = position164, tokenIndex164, depth164
-						if buffer[position] != 'A' {
+						if buffer[position] != rune('A') {
 							goto l163
 						}
 						position++
@@ -2155,20 +2155,20 @@ func (p *Peg) Init() {
 					goto l162
 				l163:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l167
 					}
 					position++
 					{
 						position168, tokenIndex168, depth168 := position, tokenIndex, depth
-						if buffer[position] != 'b' {
+						if buffer[position] != rune('b') {
 							goto l169
 						}
 						position++
 						goto l168
 					l169:
 						position, tokenIndex, depth = position168, tokenIndex168, depth168
-						if buffer[position] != 'B' {
+						if buffer[position] != rune('B') {
 							goto l167
 						}
 						position++
@@ -2180,20 +2180,20 @@ func (p *Peg) Init() {
 					goto l162
 				l167:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l171
 					}
 					position++
 					{
 						position172, tokenIndex172, depth172 := position, tokenIndex, depth
-						if buffer[position] != 'e' {
+						if buffer[position] != rune('e') {
 							goto l173
 						}
 						position++
 						goto l172
 					l173:
 						position, tokenIndex, depth = position172, tokenIndex172, depth172
-						if buffer[position] != 'E' {
+						if buffer[position] != rune('E') {
 							goto l171
 						}
 						position++
@@ -2205,20 +2205,20 @@ func (p *Peg) Init() {
 					goto l162
 				l171:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l175
 					}
 					position++
 					{
 						position176, tokenIndex176, depth176 := position, tokenIndex, depth
-						if buffer[position] != 'f' {
+						if buffer[position] != rune('f') {
 							goto l177
 						}
 						position++
 						goto l176
 					l177:
 						position, tokenIndex, depth = position176, tokenIndex176, depth176
-						if buffer[position] != 'F' {
+						if buffer[position] != rune('F') {
 							goto l175
 						}
 						position++
@@ -2230,20 +2230,20 @@ func (p *Peg) Init() {
 					goto l162
 				l175:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l179
 					}
 					position++
 					{
 						position180, tokenIndex180, depth180 := position, tokenIndex, depth
-						if buffer[position] != 'n' {
+						if buffer[position] != rune('n') {
 							goto l181
 						}
 						position++
 						goto l180
 					l181:
 						position, tokenIndex, depth = position180, tokenIndex180, depth180
-						if buffer[position] != 'N' {
+						if buffer[position] != rune('N') {
 							goto l179
 						}
 						position++
@@ -2255,20 +2255,20 @@ func (p *Peg) Init() {
 					goto l162
 				l179:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l183
 					}
 					position++
 					{
 						position184, tokenIndex184, depth184 := position, tokenIndex, depth
-						if buffer[position] != 'r' {
+						if buffer[position] != rune('r') {
 							goto l185
 						}
 						position++
 						goto l184
 					l185:
 						position, tokenIndex, depth = position184, tokenIndex184, depth184
-						if buffer[position] != 'R' {
+						if buffer[position] != rune('R') {
 							goto l183
 						}
 						position++
@@ -2280,20 +2280,20 @@ func (p *Peg) Init() {
 					goto l162
 				l183:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l187
 					}
 					position++
 					{
 						position188, tokenIndex188, depth188 := position, tokenIndex, depth
-						if buffer[position] != 't' {
+						if buffer[position] != rune('t') {
 							goto l189
 						}
 						position++
 						goto l188
 					l189:
 						position, tokenIndex, depth = position188, tokenIndex188, depth188
-						if buffer[position] != 'T' {
+						if buffer[position] != rune('T') {
 							goto l187
 						}
 						position++
@@ -2305,20 +2305,20 @@ func (p *Peg) Init() {
 					goto l162
 				l187:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l191
 					}
 					position++
 					{
 						position192, tokenIndex192, depth192 := position, tokenIndex, depth
-						if buffer[position] != 'v' {
+						if buffer[position] != rune('v') {
 							goto l193
 						}
 						position++
 						goto l192
 					l193:
 						position, tokenIndex, depth = position192, tokenIndex192, depth192
-						if buffer[position] != 'V' {
+						if buffer[position] != rune('V') {
 							goto l191
 						}
 						position++
@@ -2330,11 +2330,11 @@ func (p *Peg) Init() {
 					goto l162
 				l191:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l195
 					}
 					position++
-					if buffer[position] != '\'' {
+					if buffer[position] != rune('\'') {
 						goto l195
 					}
 					position++
@@ -2344,11 +2344,11 @@ func (p *Peg) Init() {
 					goto l162
 				l195:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l197
 					}
 					position++
-					if buffer[position] != '"' {
+					if buffer[position] != rune('"') {
 						goto l197
 					}
 					position++
@@ -2358,11 +2358,11 @@ func (p *Peg) Init() {
 					goto l162
 				l197:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l199
 					}
 					position++
-					if buffer[position] != '[' {
+					if buffer[position] != rune('[') {
 						goto l199
 					}
 					position++
@@ -2372,11 +2372,11 @@ func (p *Peg) Init() {
 					goto l162
 				l199:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l201
 					}
 					position++
-					if buffer[position] != ']' {
+					if buffer[position] != rune(']') {
 						goto l201
 					}
 					position++
@@ -2386,11 +2386,11 @@ func (p *Peg) Init() {
 					goto l162
 				l201:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l203
 					}
 					position++
-					if buffer[position] != '-' {
+					if buffer[position] != rune('-') {
 						goto l203
 					}
 					position++
@@ -2400,22 +2400,22 @@ func (p *Peg) Init() {
 					goto l162
 				l203:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l205
 					}
 					position++
 					{
 						position206 := position
 						depth++
-						if c := buffer[position]; c < '0' || c > '3' {
+						if c := buffer[position]; c < rune('0') || c > rune('3') {
 							goto l205
 						}
 						position++
-						if c := buffer[position]; c < '0' || c > '7' {
+						if c := buffer[position]; c < rune('0') || c > rune('7') {
 							goto l205
 						}
 						position++
-						if c := buffer[position]; c < '0' || c > '7' {
+						if c := buffer[position]; c < rune('0') || c > rune('7') {
 							goto l205
 						}
 						position++
@@ -2428,20 +2428,20 @@ func (p *Peg) Init() {
 					goto l162
 				l205:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l208
 					}
 					position++
 					{
 						position209 := position
 						depth++
-						if c := buffer[position]; c < '0' || c > '7' {
+						if c := buffer[position]; c < rune('0') || c > rune('7') {
 							goto l208
 						}
 						position++
 						{
 							position210, tokenIndex210, depth210 := position, tokenIndex, depth
-							if c := buffer[position]; c < '0' || c > '7' {
+							if c := buffer[position]; c < rune('0') || c > rune('7') {
 								goto l210
 							}
 							position++
@@ -2459,11 +2459,11 @@ func (p *Peg) Init() {
 					goto l162
 				l208:
 					position, tokenIndex, depth = position162, tokenIndex162, depth162
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l160
 					}
 					position++
-					if buffer[position] != '\\' {
+					if buffer[position] != rune('\\') {
 						goto l160
 					}
 					position++
@@ -2486,11 +2486,11 @@ func (p *Peg) Init() {
 			{
 				position215 := position
 				depth++
-				if buffer[position] != '<' {
+				if buffer[position] != rune('<') {
 					goto l214
 				}
 				position++
-				if buffer[position] != '-' {
+				if buffer[position] != rune('-') {
 					goto l214
 				}
 				position++
@@ -2511,7 +2511,7 @@ func (p *Peg) Init() {
 			{
 				position217 := position
 				depth++
-				if buffer[position] != '/' {
+				if buffer[position] != rune('/') {
 					goto l216
 				}
 				position++
@@ -2532,7 +2532,7 @@ func (p *Peg) Init() {
 			{
 				position219 := position
 				depth++
-				if buffer[position] != '&' {
+				if buffer[position] != rune('&') {
 					goto l218
 				}
 				position++
@@ -2577,13 +2577,13 @@ func (p *Peg) Init() {
 							{
 								switch buffer[position] {
 								case '\t':
-									if buffer[position] != '\t' {
+									if buffer[position] != rune('\t') {
 										goto l232
 									}
 									position++
 									break
 								case ' ':
-									if buffer[position] != ' ' {
+									if buffer[position] != rune(' ') {
 										goto l232
 									}
 									position++
@@ -2605,7 +2605,7 @@ func (p *Peg) Init() {
 						{
 							position235 := position
 							depth++
-							if buffer[position] != '#' {
+							if buffer[position] != rune('#') {
 								goto l230
 							}
 							position++
@@ -2657,25 +2657,25 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position243, tokenIndex243, depth243 := position, tokenIndex, depth
-					if buffer[position] != '\r' {
+					if buffer[position] != rune('\r') {
 						goto l244
 					}
 					position++
-					if buffer[position] != '\n' {
+					if buffer[position] != rune('\n') {
 						goto l244
 					}
 					position++
 					goto l243
 				l244:
 					position, tokenIndex, depth = position243, tokenIndex243, depth243
-					if buffer[position] != '\n' {
+					if buffer[position] != rune('\n') {
 						goto l245
 					}
 					position++
 					goto l243
 				l245:
 					position, tokenIndex, depth = position243, tokenIndex243, depth243
-					if buffer[position] != '\r' {
+					if buffer[position] != rune('\r') {
 						goto l241
 					}
 					position++
@@ -2697,7 +2697,7 @@ func (p *Peg) Init() {
 			{
 				position248 := position
 				depth++
-				if buffer[position] != '{' {
+				if buffer[position] != rune('{') {
 					goto l247
 				}
 				position++
@@ -2709,7 +2709,7 @@ func (p *Peg) Init() {
 						position251, tokenIndex251, depth251 := position, tokenIndex, depth
 						{
 							position252, tokenIndex252, depth252 := position, tokenIndex, depth
-							if buffer[position] != '}' {
+							if buffer[position] != rune('}') {
 								goto l252
 							}
 							position++
@@ -2727,7 +2727,7 @@ func (p *Peg) Init() {
 					depth--
 					add(RulePegText, position249)
 				}
-				if buffer[position] != '}' {
+				if buffer[position] != rune('}') {
 					goto l247
 				}
 				position++
