@@ -18,9 +18,13 @@ type Peg Peg {
 
 # Hierarchical syntax
 Grammar		<- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
+			   Import*
                            'type' Spacing Identifier         { p.AddPeg(buffer[begin:end]) }
                            'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
                            Definition+ EndOfFile
+
+Import		<- 'import' Spacing < ["] [a-zA-Z_/.\-]+ ["] > Spacing { p.AddImport(buffer[begin:end]) } 
+
 Definition	<- Identifier 			{ p.AddRule(buffer[begin:end]) }
 		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.)
 Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }
