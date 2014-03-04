@@ -13,7 +13,7 @@ func main() {
     t := New(true, true)
 
     /*package main
-      type Peg Peg {
+      type Leg Peg {
        *Tree
       }*/
     t.AddPackage("main")
@@ -21,12 +21,11 @@ func main() {
     t.AddState(`
  *Tree
 `)
-    t.AddDeclaration("\n//This is a declaration test\n")
 
     /* Grammar         <- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
-       'type' Spacing Identifier         { p.AddPeg(buffer[begin:end]) }
+       'type' Spacing Identifier         { p.AddLeg(buffer[begin:end]) }
        'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
-       Definition+ EndOfFile */
+       ( Declaration | Definition)+ Trailer? EndOfFile */
     t.AddRule("Grammar")
     t.AddName("Spacing")
     t.AddCharacter(`p`)
@@ -61,7 +60,7 @@ func main() {
     t.AddSequence()
     t.AddName("Identifier")
     t.AddSequence()
-    t.AddAction(" p.AddPeg(buffer[begin:end]) ")
+    t.AddAction(" p.AddLeg(buffer[begin:end]) ")
     t.AddSequence()
     t.AddCharacter(`P`)
     t.AddCharacter(`e`)
@@ -75,15 +74,55 @@ func main() {
     t.AddSequence()
     t.AddAction(" p.AddState(buffer[begin:end]) ")
     t.AddSequence()
+    t.AddName("Declaration")
     t.AddName("Definition")
+    t.AddAlternate()
     t.AddPlus()
+    t.AddSequence()
+    t.AddName("Trailer")
+    t.AddQuery()
     t.AddSequence()
     t.AddName("EndOfFile")
     t.AddSequence()
     t.AddExpression()
 
+    /* Declaration = '%{' < ( !'%}' . )* >  {  p.AddDeclaration(buffer[begin:end])  }* RPERCENT */
+    t.AddRule("Declaration")
+    t.AddCharacter("%")
+    t.AddCharacter("{")
+    t.AddSequence()
+    t.AddPush()
+    t.AddCharacter("%")
+    t.AddCharacter("}")
+    t.AddSequence()
+    t.AddPush()
+    t.AddPeekNot()
+    t.AddDot()
+    t.AddSequence()
+    t.AddStar()
+    t.AddPush()
+    t.AddSequence()
+    t.AddName("RPERCENT")
+    t.AddSequence()
+    t.AddAction("  p.AddDeclaration(buffer[begin:end])  ")
+    t.AddSequence()
+    t.AddExpression()
+
+    /* trailer =       '%%' < .* > { p.AddTrailer(buffer[begin:end]) }*/
+    t.AddRule("Trailer")
+    t.AddCharacter("%")
+    t.AddCharacter("%")
+    t.AddSequence()
+    t.AddDot()
+    t.AddStar()
+    t.AddPush()
+    t.AddAction(" p.AddTrailer(buffer[begin:end]) ")
+    t.AddSequence()
+    t.AddSequence()
+    t.AddExpression()
+
     /* Definition      <- Identifier                   { p.AddRule(buffer[begin:end]) }
-       LeftArrow Expression         { p.AddExpression() } &(Identifier LeftArrow / !.)*/
+       LeftArrow Expression         { p.AddExpression() }*/
     t.AddRule("Definition")
     t.AddName("Identifier")
     t.AddAction(" p.AddRule(buffer[begin:end]) ")
@@ -94,14 +133,14 @@ func main() {
     t.AddSequence()
     t.AddAction(" p.AddExpression() ")
     t.AddSequence()
-    t.AddName("Identifier")
-    t.AddName("LeftArrow")
-    t.AddSequence()
-    t.AddDot()
-    t.AddPeekNot()
-    t.AddAlternate()
-    t.AddPeekFor()
-    t.AddSequence()
+    // t.AddName("Identifier")
+    // t.AddName("LeftArrow")
+    // t.AddSequence()
+    // t.AddDot()
+    // t.AddPeekNot()
+    // t.AddAlternate()
+    // t.AddPeekFor()
+    // t.AddSequence()
     t.AddExpression()
 
     /* Expression      <- Sequence (Slash Sequence     { p.AddAlternate() }
@@ -581,6 +620,34 @@ func main() {
     t.AddAlternate()
     t.AddExpression()
 
+    /* Action          <- '{' < Braces* > '}' Spacing */
+    t.AddRule("Action")
+    t.AddCharacter(`{`)
+    t.AddName("Braces")
+    t.AddStar()
+    t.AddPush()
+    t.AddSequence()
+    t.AddCharacter(`}`)
+    t.AddSequence()
+    t.AddName("Spacing")
+    t.AddSequence()
+    t.AddExpression()
+
+    /* Braces <-        '{' Braces* '}' /   !'}' . */
+    t.AddRule("Braces")
+    t.AddCharacter(`{`)
+    t.AddName("Braces")
+    t.AddStar()
+    t.AddSequence()
+    t.AddCharacter(`}`)
+    t.AddSequence()
+    t.AddCharacter(`}`)
+    t.AddPeekNot()
+    t.AddDot()
+    t.AddSequence()
+    t.AddAlternate()
+    t.AddExpression()
+
     /* LeftArrow       <- '<-' Spacing */
     t.AddRule("LeftArrow")
     t.AddCharacter(`<`)
@@ -653,6 +720,15 @@ func main() {
     t.AddSequence()
     t.AddExpression()
 
+    /* RPERCENT =      '%}' Spacing */
+    t.AddRule("RPERCENT")
+    t.AddCharacter("%")
+    t.AddCharacter("}")
+    t.AddSequence()
+    t.AddName("Spacing")
+    t.AddSequence()
+    t.AddExpression()
+
     /* Spacing         <- (Space / Comment)* */
     t.AddRule("Spacing")
     t.AddName("Space")
@@ -698,22 +774,6 @@ func main() {
     t.AddRule("EndOfFile")
     t.AddDot()
     t.AddPeekNot()
-    t.AddExpression()
-
-    /* Action          <- '{' < [^}]* > '}' Spacing */
-    t.AddRule("Action")
-    t.AddCharacter(`{`)
-    t.AddCharacter(`}`)
-    t.AddPeekNot()
-    t.AddDot()
-    t.AddSequence()
-    t.AddStar()
-    t.AddPush()
-    t.AddSequence()
-    t.AddCharacter(`}`)
-    t.AddSequence()
-    t.AddName("Spacing")
-    t.AddSequence()
     t.AddExpression()
 
     /* Begin           <- '<' Spacing */

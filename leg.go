@@ -1221,7 +1221,7 @@ func (t *Tree) Compile(file string) {
     var compile func(expression Node, ko uint)
     var label uint
     labels := make(map[uint]bool)
-    printBegin := func() { print("\n   {") }
+    printBegin := func() { print("\n   {\n") }
     printEnd := func() { print("\n   }") }
     printLabel := func(n uint) {
         print("\n")
