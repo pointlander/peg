@@ -5,9 +5,13 @@
 peg: bootstrap.peg.go peg.go main.go
 	go build
 
-bootstrap.peg.go: bootstrap/main.go peg.go
-	cd bootstrap; go build
-	bootstrap/bootstrap
+bootstrap.peg.go: bootstrap/peg/main.go peg.go
+	cd bootstrap/peg; go build
+	bootstrap/peg/peg
+
+bootstrap.leg.go: bootstrap/leg/main.go leg.go
+	cd bootstrap/leg; go build
+	bootstrap/leg/leg
 
 clean:
-	rm -f bootstrap/bootstrap peg peg.peg.go
+	rm -f bootstrap/peg/peg bootstrap/leg/leg peg peg.peg.go
