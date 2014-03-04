@@ -689,6 +689,7 @@ type Tree struct {
     EndSymbol       rune
     StructName      string
     StructVariables string
+    Trailer         string
     RulesCount      int
     Bits            int
     HasActions      bool
@@ -742,6 +743,7 @@ func (t *Tree) AddNil()                  { t.PushFront(&node{Type: TypeNil, stri
 func (t *Tree) AddAction(text string)    { t.PushFront(&node{Type: TypeAction, string: text}) }
 func (t *Tree) AddPackage(text string)   { t.PushBack(&node{Type: TypePackage, string: text}) }
 func (t *Tree) AddDeclaration(text string)   { t.Declarations = append(t.Declarations, text) }
+func (t *Tree) AddTrailer(text string) { t.Trailer = text }
 func (t *Tree) AddState(text string) {
     leg := t.PopFront()
     leg.PushBack(&node{Type: TypeState, string: text})
@@ -1546,4 +1548,6 @@ func (t *Tree) Compile(file string) {
     }
     print("\n }\n p.rules = rules")
     print("\n}\n")
+    print(t.Trailer)
+    print("\n\n")
 }
