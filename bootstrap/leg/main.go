@@ -22,12 +22,12 @@ func main() {
  *Tree
 `)
 
-    /* Grammar         <- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
-       'type' Spacing Identifier         { p.AddLeg(buffer[begin:end]) }
-       'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
+    /* Grammar         <- - 'package' - Identifier      { p.AddPackage(buffer[begin:end]) }
+       'type' - Identifier         { p.AddLeg(buffer[begin:end]) }
+       'Peg' - Action              { p.AddState(buffer[begin:end]) }
        ( Declaration | Definition)+ Trailer? EndOfFile */
     t.AddRule("Grammar")
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddCharacter(`p`)
     t.AddCharacter(`a`)
     t.AddSequence()
@@ -42,7 +42,7 @@ func main() {
     t.AddCharacter(`e`)
     t.AddSequence()
     t.AddSequence()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddName("Identifier")
     t.AddSequence()
@@ -56,7 +56,7 @@ func main() {
     t.AddCharacter(`e`)
     t.AddSequence()
     t.AddSequence()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddName("Identifier")
     t.AddSequence()
@@ -68,7 +68,7 @@ func main() {
     t.AddCharacter(`g`)
     t.AddSequence()
     t.AddSequence()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddName("Action")
     t.AddSequence()
@@ -265,23 +265,25 @@ func main() {
     t.AddAlternate()
     t.AddExpression()
 
-    /* Identifier      <- < IdentStart IdentCont* > Spacing */
+    /* Identifier      <- < IdentStart IdentCont* > - */
     t.AddRule("Identifier")
     t.AddName("IdentStart")
     t.AddName("IdentCont")
     t.AddStar()
     t.AddSequence()
     t.AddPush()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* IdentStart      <- [[a-z_]] */
+    /* IdentStart      <- [[a-z_-]] */
     t.AddRule("IdentStart")
     t.AddCharacter(`a`)
     t.AddCharacter(`z`)
     t.AddDoubleRange()
     t.AddCharacter(`_`)
+    t.AddAlternate()
+    t.AddCharacter(`-`)
     t.AddAlternate()
     t.AddExpression()
 
@@ -295,9 +297,9 @@ func main() {
     t.AddExpression()
 
     /* Literal         <- ['] (!['] Char)? (!['] Char          { p.AddSequence() }
-                                           )* ['] Spacing
+                                           )* ['] -
                          / ["] (!["] DoubleChar)? (!["] DoubleChar          { p.AddSequence() }
-                                                  )* ["] Spacing */
+                                                  )* ["] - */
     t.AddRule("Literal")
     t.AddCharacter(`'`)
     t.AddCharacter(`'`)
@@ -316,7 +318,7 @@ func main() {
     t.AddSequence()
     t.AddCharacter(`'`)
     t.AddSequence()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddCharacter(`"`)
     t.AddCharacter(`"`)
@@ -335,7 +337,7 @@ func main() {
     t.AddSequence()
     t.AddCharacter(`"`)
     t.AddSequence()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddAlternate()
     t.AddExpression()
@@ -346,7 +348,7 @@ func main() {
                      / '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
                            / Ranges )?
                        ']' )
-                     Spacing */
+                     - */
     t.AddRule("Class")
     t.AddCharacter(`[`)
     t.AddCharacter(`[`)
@@ -377,7 +379,7 @@ func main() {
     t.AddCharacter(`]`)
     t.AddSequence()
     t.AddAlternate()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
@@ -620,7 +622,7 @@ func main() {
     t.AddAlternate()
     t.AddExpression()
 
-    /* Action          <- '{' < Braces* > '}' Spacing */
+    /* Action          <- '{' < Braces* > '}' - */
     t.AddRule("Action")
     t.AddCharacter(`{`)
     t.AddName("Braces")
@@ -629,7 +631,7 @@ func main() {
     t.AddSequence()
     t.AddCharacter(`}`)
     t.AddSequence()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
@@ -648,89 +650,89 @@ func main() {
     t.AddAlternate()
     t.AddExpression()
 
-    /* LeftArrow       <- '<-' Spacing */
+    /* LeftArrow       <- '<-' - */
     t.AddRule("LeftArrow")
     t.AddCharacter(`<`)
     t.AddCharacter(`-`)
     t.AddSequence()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Slash           <- '/' Spacing */
+    /* Slash           <- '/' - */
     t.AddRule("Slash")
     t.AddCharacter(`/`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* And             <- '&' Spacing */
+    /* And             <- '&' - */
     t.AddRule("And")
     t.AddCharacter(`&`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Not             <- '!' Spacing */
+    /* Not             <- '!' - */
     t.AddRule("Not")
     t.AddCharacter(`!`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Question        <- '?' Spacing */
+    /* Question        <- '?' - */
     t.AddRule("Question")
     t.AddCharacter(`?`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Star            <- '*' Spacing */
+    /* Star            <- '*' - */
     t.AddRule("Star")
     t.AddCharacter(`*`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Plus            <- '+' Spacing */
+    /* Plus            <- '+' - */
     t.AddRule("Plus")
     t.AddCharacter(`+`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Open            <- '(' Spacing */
+    /* Open            <- '(' - */
     t.AddRule("Open")
     t.AddCharacter(`(`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Close           <- ')' Spacing */
+    /* Close           <- ')' - */
     t.AddRule("Close")
     t.AddCharacter(`)`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Dot             <- '.' Spacing */
+    /* Dot             <- '.' - */
     t.AddRule("Dot")
     t.AddCharacter(`.`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* RPERCENT =      '%}' Spacing */
+    /* RPERCENT =      '%}' - */
     t.AddRule("RPERCENT")
     t.AddCharacter("%")
     t.AddCharacter("}")
     t.AddSequence()
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Spacing         <- (Space / Comment)* */
-    t.AddRule("Spacing")
+    /* -         <- (Space / Comment)* */
+    t.AddRule("-")
     t.AddName("Space")
     t.AddName("Comment")
     t.AddAlternate()
@@ -776,17 +778,17 @@ func main() {
     t.AddPeekNot()
     t.AddExpression()
 
-    /* Begin           <- '<' Spacing */
+    /* Begin           <- '<' - */
     t.AddRule("Begin")
     t.AddCharacter(`<`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* End             <- '>' Spacing */
+    /* End             <- '>' - */
     t.AddRule("End")
     t.AddCharacter(`>`)
-    t.AddName("Spacing")
+    t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 

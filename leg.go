@@ -710,6 +710,7 @@ func New(inline, _switch bool) *Tree {
 }
 
 func (t *Tree) AddRule(name string) {
+    name = strings.Replace(name, "-", "_", -1)
     t.PushFront(&node{Type: TypeRule, string: name, id: t.RulesCount})
     t.RulesCount++
 }
@@ -722,6 +723,7 @@ func (t *Tree) AddExpression() {
 }
 
 func (t *Tree) AddName(text string) {
+    text = strings.Replace(text, "-", "_", -1)
     t.PushFront(&node{Type: TypeName, string: text})
 }
 
