@@ -122,19 +122,19 @@ func main() {
     t.AddExpression()
 
     /* Definition      <- Identifier                   { p.AddRule(buffer[begin:end]) }
-       LeftArrow Expression         { p.AddExpression() }*/
+       Equal Expression         { p.AddExpression() }*/
     t.AddRule("Definition")
     t.AddName("Identifier")
     t.AddAction(" p.AddRule(buffer[begin:end]) ")
     t.AddSequence()
-    t.AddName("LeftArrow")
+    t.AddName("Equal")
     t.AddSequence()
     t.AddName("Expression")
     t.AddSequence()
     t.AddAction(" p.AddExpression() ")
     t.AddSequence()
     // t.AddName("Identifier")
-    // t.AddName("LeftArrow")
+    // t.AddName("Equal")
     // t.AddSequence()
     // t.AddDot()
     // t.AddPeekNot()
@@ -143,20 +143,20 @@ func main() {
     // t.AddSequence()
     t.AddExpression()
 
-    /* Expression      <- Sequence (Slash Sequence     { p.AddAlternate() }
-               )* (Slash           { p.AddNil(); p.AddAlternate() }
+    /* Expression      <- Sequence (Bar Sequence     { p.AddAlternate() }
+               )* (Bar           { p.AddNil(); p.AddAlternate() }
                   )?
     / { p.AddNil() } */
     t.AddRule("Expression")
     t.AddName("Sequence")
-    t.AddName("Slash")
+    t.AddName("Bar")
     t.AddName("Sequence")
     t.AddSequence()
     t.AddAction(" p.AddAlternate() ")
     t.AddSequence()
     t.AddStar()
     t.AddSequence()
-    t.AddName("Slash")
+    t.AddName("Bar")
     t.AddAction(" p.AddNil(); p.AddAlternate() ")
     t.AddSequence()
     t.AddQuery()
@@ -223,7 +223,7 @@ func main() {
     t.AddSequence()
     t.AddExpression()
 
-    /* Primary         <- Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
+    /* Primary         <- Identifier !Equal        { p.AddName(buffer[begin:end]) }
        / Open Expression Close
        / Literal
        / Class
@@ -232,7 +232,7 @@ func main() {
        / Begin Expression End         { p.AddPush() }*/
     t.AddRule("Primary")
     t.AddName("Identifier")
-    t.AddName("LeftArrow")
+    t.AddName("Equal")
     t.AddPeekNot()
     t.AddSequence()
     t.AddAction(" p.AddName(buffer[begin:end]) ")
@@ -650,18 +650,16 @@ func main() {
     t.AddAlternate()
     t.AddExpression()
 
-    /* LeftArrow       <- '<-' - */
-    t.AddRule("LeftArrow")
-    t.AddCharacter(`<`)
-    t.AddCharacter(`-`)
-    t.AddSequence()
+    /* Equal       <- '=' - */
+    t.AddRule("Equal")
+    t.AddCharacter(`=`)
     t.AddName("-")
     t.AddSequence()
     t.AddExpression()
 
-    /* Slash           <- '/' - */
-    t.AddRule("Slash")
-    t.AddCharacter(`/`)
+    /* Bar           <- '|' - */
+    t.AddRule("Bar")
+    t.AddCharacter(`|`)
     t.AddName("-")
     t.AddSequence()
     t.AddExpression()
