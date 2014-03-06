@@ -265,35 +265,32 @@ func main() {
     t.AddAlternate()
     t.AddExpression()
 
-    /* Identifier      <- < IdentStart IdentCont* > - */
+    /* Identifier  = < [-a-zA-Z_][-a-zA-Z_0-9]* > - */
     t.AddRule("Identifier")
-    t.AddName("IdentStart")
-    t.AddName("IdentCont")
+
+    t.AddCharacter(`-`)
+    t.AddCharacter(`a`)
+    t.AddCharacter(`z`)
+    t.AddDoubleRange()
+    t.AddAlternate()
+    t.AddCharacter(`_`)
+    t.AddAlternate()
+    t.AddCharacter(`-`)
+    t.AddCharacter(`a`)
+    t.AddCharacter(`z`)
+    t.AddDoubleRange()
+    t.AddAlternate()
+    t.AddCharacter(`0`)
+    t.AddCharacter(`9`)
+    t.AddRange()
+    t.AddAlternate()
+    t.AddCharacter(`_`)
+    t.AddAlternate()
     t.AddStar()
     t.AddSequence()
     t.AddPush()
     t.AddName("-")
     t.AddSequence()
-    t.AddExpression()
-
-    /* IdentStart      <- [[a-z_-]] */
-    t.AddRule("IdentStart")
-    t.AddCharacter(`a`)
-    t.AddCharacter(`z`)
-    t.AddDoubleRange()
-    t.AddCharacter(`_`)
-    t.AddAlternate()
-    t.AddCharacter(`-`)
-    t.AddAlternate()
-    t.AddExpression()
-
-    /* IdentCont       <- IdentStart / [0-9] */
-    t.AddRule("IdentCont")
-    t.AddName("IdentStart")
-    t.AddCharacter(`0`)
-    t.AddCharacter(`9`)
-    t.AddRange()
-    t.AddAlternate()
     t.AddExpression()
 
     /* Literal         <- ['] (!['] Char)? (!['] Char          { p.AddSequence() }
