@@ -14,6 +14,7 @@ import (
     "strconv"
     "strings"
     "text/template"
+    "regexp"
 )
 
 const LEG_HEADER_TEMPLATE = `package {{.PackageName}}
@@ -31,6 +32,7 @@ const END_SYMBOL rune = {{.EndSymbol}}
 {{range .Declarations}}{{.}}
 {{end}}
 
+type YYSTYPE {{.YYSType}}
 
 /* The rule types inferred from the grammar are below. */
 type Rule uint8
@@ -385,6 +387,10 @@ func (p *{{.StructName}}) Highlighter() {
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
     buffer, begin, end := p.Buffer, 0, 0
+    {{if .HasYY}}
+        var yy YYSTYPE
+        stack := make([]YYSTYPE, 0)
+    {{end}}
     for token := range p.TokenTree.Tokens() {
         switch (token.Rule) {
         case RulePegText:
@@ -492,6 +498,7 @@ const (
     TypePredicate
     TypeCommit
     TypeAction
+    TypeVariable
     TypePackage
     TypeState
     TypeAlternate
@@ -520,6 +527,7 @@ var TypeMap = [...]string{
     "TypePredicate",
     "TypeCommit",
     "TypeAction",
+    "TypeVariable",
     "TypePackage",
     "TypeState",
     "TypeAlternate",
@@ -686,6 +694,7 @@ type Tree struct {
     Sizes           [2]int
     PackageName     string
     Declarations    []string
+    YYSType         string
     EndSymbol       rune
     StructName      string
     StructVariables string
@@ -699,6 +708,7 @@ type Tree struct {
     HasCharacter    bool
     HasString       bool
     HasRange        bool
+    HasYY           bool
 }
 
 func New(inline, _switch bool) *Tree {
@@ -724,7 +734,14 @@ func (t *Tree) AddExpression() {
 
 func (t *Tree) AddName(text string) {
     text = strings.Replace(text, "-", "_", -1)
+    var v *node
+    if t.Front().GetType() == TypeVariable {
+        v = t.PopFront()
+    }
     t.PushFront(&node{Type: TypeName, string: text})
+    if v != nil {
+        t.Front().PushBack(v)
+    }
 }
 
 func (t *Tree) AddDot() { t.PushFront(&node{Type: TypeDot, string: "."}) }
@@ -743,9 +760,11 @@ func (t *Tree) AddOctalCharacter(text string) {
 func (t *Tree) AddPredicate(text string) { t.PushFront(&node{Type: TypePredicate, string: text}) }
 func (t *Tree) AddNil()                  { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
 func (t *Tree) AddAction(text string)    { t.PushFront(&node{Type: TypeAction, string: text}) }
+func (t *Tree) AddVariable(text string) { t.PushFront(&node{Type: TypeVariable, string: text}) }
 func (t *Tree) AddPackage(text string)   { t.PushBack(&node{Type: TypePackage, string: text}) }
 func (t *Tree) AddDeclaration(text string)   { t.Declarations = append(t.Declarations, text) }
 func (t *Tree) AddTrailer(text string) { t.Trailer = text }
+func (t *Tree) AddYYSType(text string) { t.YYSType = text }
 func (t *Tree) AddState(text string) {
     leg := t.PopFront()
     leg.PushBack(&node{Type: TypeState, string: text})
@@ -827,7 +846,121 @@ func (t *Tree) Compile(file string) {
     counts := [TypeLast]uint{}
     {
         var rule *node
+        var traverse func(node Node) int
         var link func(node Node)
+        hasYY := false
+
+        // Modify actions which use named semantic variables
+        // Use DFS traversal to find TypeVariable and TypeAction
+        var_stack := make([]string, 0)
+        traverse = func(n Node) int {
+            variableCount := 0
+            next_level_count := 0
+            leaf := n.Front()
+            if leaf == nil {
+                return 0
+            }
+            for {
+                // fmt.Println(TypeMap[leaf.GetType()])
+                switch leaf.GetType() {
+                case TypeName:
+                    if leaf.Front()!=nil && leaf.Front().GetType()==TypeVariable {
+                        variableCount++
+                        var_stack = append(var_stack, leaf.Front().String())
+                    }
+                case TypeAction:
+                    // Use regular expression to extract every variable and replace them
+                    re := regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_]*")
+                    str := leaf.String()
+                    if strings.Contains(str, "$$") {
+                        hasYY = true
+                        str = strings.Replace(str,"$$","yy",-1)
+                    }
+                    tempStr := make([]string, 0)
+                    lastIndex := 0
+                    for _, element := range re.FindAllStringIndex(str, -1) {
+                        varname := str[element[0]:element[1]]
+                        tempStr = append(tempStr, str[lastIndex:element[0]])
+                        lastIndex = element[1]
+                        hasReplaced := false
+                        for i, var_element := range var_stack {
+                            if var_element == varname {
+                                tempStr = append(tempStr,fmt.Sprintf("stack[len(stack)-%d]", i+1))
+                                hasReplaced = true
+                                break
+                            }
+                        }
+                        if !hasReplaced {
+                            tempStr = append(tempStr, str[element[0]:element[1]])
+                        }
+                    }
+                    tempStr = append(tempStr, str[lastIndex:])
+                    leaf.SetString(strings.Join(tempStr,""))
+                    rule = leaf
+
+                // List types
+                case TypeSequence:
+                    next_level_count = traverse(leaf)
+                    if n.GetType()==TypeAlternate && next_level_count > 0{
+                        // fmt.Println(next_level_count,":",var_stack)
+                        // tempStr := []string { rule.String(), ";stack = stack[0:(len(stack)-",
+                        //     strconv.Itoa(next_level_count), ")]"}
+                        // rule.SetString(strings.Join(tempStr,""))
+                        var_stack = var_stack[0:(len(var_stack)-next_level_count)]
+                    }
+                case TypeAlternate:
+                    next_level_count = traverse(leaf)
+
+                // Fix types
+                case TypePeekFor:
+                    fallthrough
+                case TypePeekNot:
+                    fallthrough
+                case TypeQuery:
+                    fallthrough
+                case TypeStar:
+                    fallthrough
+                case TypePlus:
+                    fallthrough
+                case TypePush:
+                    variableCount += traverse(leaf)
+                }
+
+                if leaf.Next()==nil {
+                    break
+                }
+                leaf = leaf.Next()
+            }
+            // fmt.Println("Return ", variableCount, ", Has ", len(var_stack))
+            return variableCount + next_level_count
+        }
+
+        traverse_node := t.Front()
+        for {
+            hasYY = false
+            var_stack = make([]string, 0)
+            stackCount := traverse(traverse_node)
+            if traverse_node.Front() != nil && rule != nil && hasYY {
+                t.HasYY = true
+                if traverse_node.Front().GetType() != TypeSequence {
+                    expression := traverse_node.PopFront()
+                    sequence := &node{Type: TypeSequence}
+                    sequence.PushBack(expression)
+                    traverse_node.PushBack(sequence)
+                }
+                tempStr := []string {"stack = stack[0:(len(stack)-",
+                    strconv.Itoa(stackCount), ")]; stack = append(stack, yy)"}
+                traverse_node.Front().PushBack(&node{Type: TypeAction, string: strings.Join(tempStr,"")})
+                // fmt.Println(TypeMap[traverse_node.Front().GetType()])
+                // fmt.Println(tempStr)
+            }
+            rule = nil
+            if traverse_node.Next() == nil {
+                break
+            }
+            traverse_node = traverse_node.Next()
+        }
+
         link = func(n Node) {
             nodeType := n.GetType()
             id := counts[nodeType]

@@ -21,8 +21,10 @@ func main() {
     t.AddState(`
  *Tree
 `)
+    t.AddYYSType("int")
 
     /* Grammar         <- - 'package' - Identifier      { p.AddPackage(buffer[begin:end]) }
+       'type' - 'YYSTYPE' - Identifier { p.AddYYSType(buffer[begin:end]) } 
        'type' - Identifier         { p.AddLeg(buffer[begin:end]) }
        'Peg' - Action              { p.AddState(buffer[begin:end]) }
        ( Declaration | Definition)+ Trailer? EndOfFile */
@@ -47,6 +49,26 @@ func main() {
     t.AddName("Identifier")
     t.AddSequence()
     t.AddAction(" p.AddPackage(buffer[begin:end]) ")
+    t.AddSequence()
+    t.AddCharacter(`Y`)
+    t.AddCharacter(`Y`)
+    t.AddSequence()
+    t.AddCharacter(`S`)
+    t.AddSequence()
+    t.AddCharacter(`T`)
+    t.AddSequence()
+    t.AddCharacter(`Y`)
+    t.AddSequence()
+    t.AddCharacter(`P`)
+    t.AddSequence()
+    t.AddCharacter(`E`)
+    t.AddSequence()
+    t.AddSequence()
+    t.AddName("-")
+    t.AddSequence()
+    t.AddName("Identifier")
+    t.AddSequence()
+    t.AddAction(" p.AddYYSType(buffer[begin:end]) ")
     t.AddSequence()
     t.AddCharacter(`t`)
     t.AddCharacter(`y`)
@@ -223,7 +245,8 @@ func main() {
     t.AddSequence()
     t.AddExpression()
 
-    /* Primary         <- Identifier !Equal        { p.AddName(buffer[begin:end]) }
+    /* Primary         = Identifier { p.AddVariable(buffer[begin:end]) } Colon Identifier !EQUAL { p.AddName(buffer[begin:end]) }
+       / Identifier !Equal        { p.AddName(buffer[begin:end]) }
        / Open Expression Close
        / Literal
        / Class
@@ -232,11 +255,24 @@ func main() {
        / Begin Expression End         { p.AddPush() }*/
     t.AddRule("Primary")
     t.AddName("Identifier")
+    t.AddAction(" p.AddVariable(buffer[begin:end]) ")
+    t.AddSequence()
+    t.AddName("Colon")
+    t.AddSequence()
+    t.AddName("Identifier")
+    t.AddSequence()
     t.AddName("Equal")
     t.AddPeekNot()
     t.AddSequence()
     t.AddAction(" p.AddName(buffer[begin:end]) ")
     t.AddSequence()
+    t.AddName("Identifier")
+    t.AddName("Equal")
+    t.AddPeekNot()
+    t.AddSequence()
+    t.AddAction(" p.AddName(buffer[begin:end]) ")
+    t.AddSequence()
+    t.AddAlternate()
     t.AddName("Open")
     t.AddName("Expression")
     t.AddSequence()
@@ -650,6 +686,13 @@ func main() {
     /* Equal       <- '=' - */
     t.AddRule("Equal")
     t.AddCharacter(`=`)
+    t.AddName("-")
+    t.AddSequence()
+    t.AddExpression()
+
+    /* Colon      <- ':' - */
+    t.AddRule("Colon")
+    t.AddCharacter(`:`)
     t.AddName("-")
     t.AddSequence()
     t.AddExpression()
