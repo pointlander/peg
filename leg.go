@@ -41,6 +41,8 @@ const (
     RuleUnknown Rule = iota
     {{range .RuleNames}}Rule{{.String}}
     {{end}}
+    RuleActionPush
+    RuleActionPop
     RulePre_
     Rule_In_
     Rule_Suf
@@ -50,6 +52,8 @@ var Rul3s = [...]string {
     "Unknown",
     {{range .RuleNames}}"{{.String}}",
     {{end}}
+    "RuleActionPush",
+    "RuleActionPop",
     "Pre_",
     "_In_",
     "_Suf",
@@ -387,7 +391,7 @@ func (p *{{.StructName}}) Highlighter() {
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
     buffer, begin, end := p.Buffer, 0, 0
-    {{if .HasYY}}
+    {{if .HasVariable}}
         var yy YYSTYPE
         stack := make([]YYSTYPE, 0)
     {{end}}
@@ -397,6 +401,12 @@ func (p *{{.StructName}}) Execute() {
             begin, end = int(token.begin), int(token.end)
         {{range .Actions}}case RuleAction{{.GetId}}:
             {{.String}}
+        {{end}}
+        {{if .HasVariable}}
+            case RuleActionPush:
+                stack = append(stack, yy)
+            case RuleActionPop:
+                stack = stack[0:len(stack)-1]
         {{end}}
         }
     }
@@ -561,6 +571,9 @@ type Node interface {
     GetId() int
     SetId(id int)
 
+    HasVariable() bool
+    HasYY() bool
+
     Init()
     Front() *node
     Next() *node
@@ -576,6 +589,8 @@ type node struct {
     Type
     string
     id int
+    hasVariable bool
+    hasYY bool
 
     front  *node
     back   *node
@@ -615,6 +630,14 @@ func (n *node) GetId() int {
 
 func (n *node) SetId(id int) {
     n.id = id
+}
+
+func (n *node) HasVariable() bool {
+    return n.hasVariable
+}
+
+func (n *node) HasYY() bool {
+    return n.hasYY
 }
 
 func (n *node) Init() {
@@ -708,7 +731,7 @@ type Tree struct {
     HasCharacter    bool
     HasString       bool
     HasRange        bool
-    HasYY           bool
+    HasVariable     bool
 }
 
 func New(inline, _switch bool) *Tree {
@@ -843,12 +866,14 @@ func (t *Tree) Compile(file string) {
     t.EndSymbol = '\u0004'
     t.RulesCount++
 
+    hasVariable := false
+    hasYY := false
     counts := [TypeLast]uint{}
     {
         var rule *node
         var traverse func(node Node) int
         var link func(node Node)
-        hasYY := false
+
 
         // Modify actions which use named semantic variables
         // Use DFS traversal to find TypeVariable and TypeAction
@@ -861,10 +886,10 @@ func (t *Tree) Compile(file string) {
                 return 0
             }
             for {
-                // fmt.Println(TypeMap[leaf.GetType()])
                 switch leaf.GetType() {
                 case TypeName:
                     if leaf.Front()!=nil && leaf.Front().GetType()==TypeVariable {
+                        hasVariable = true
                         variableCount++
                         var_stack = append(var_stack, leaf.Front().String())
                     }
@@ -885,7 +910,7 @@ func (t *Tree) Compile(file string) {
                         hasReplaced := false
                         for i, var_element := range var_stack {
                             if var_element == varname {
-                                tempStr = append(tempStr,fmt.Sprintf("stack[len(stack)-%d]", i+1))
+                                tempStr = append(tempStr,fmt.Sprintf("stack[len(stack)-%d]", len(var_stack)-i))
                                 hasReplaced = true
                                 break
                             }
@@ -902,14 +927,10 @@ func (t *Tree) Compile(file string) {
                 case TypeSequence:
                     next_level_count = traverse(leaf)
                     if n.GetType()==TypeAlternate && next_level_count > 0{
-                        // fmt.Println(next_level_count,":",var_stack)
-                        // tempStr := []string { rule.String(), ";stack = stack[0:(len(stack)-",
-                        //     strconv.Itoa(next_level_count), ")]"}
-                        // rule.SetString(strings.Join(tempStr,""))
                         var_stack = var_stack[0:(len(var_stack)-next_level_count)]
                     }
                 case TypeAlternate:
-                    next_level_count = traverse(leaf)
+                    traverse(leaf)
 
                 // Fix types
                 case TypePeekFor:
@@ -937,22 +958,16 @@ func (t *Tree) Compile(file string) {
 
         traverse_node := t.Front()
         for {
+            hasVariable = false
             hasYY = false
             var_stack = make([]string, 0)
-            stackCount := traverse(traverse_node)
-            if traverse_node.Front() != nil && rule != nil && hasYY {
-                t.HasYY = true
-                if traverse_node.Front().GetType() != TypeSequence {
-                    expression := traverse_node.PopFront()
-                    sequence := &node{Type: TypeSequence}
-                    sequence.PushBack(expression)
-                    traverse_node.PushBack(sequence)
-                }
-                tempStr := []string {"stack = stack[0:(len(stack)-",
-                    strconv.Itoa(stackCount), ")]; stack = append(stack, yy)"}
-                traverse_node.Front().PushBack(&node{Type: TypeAction, string: strings.Join(tempStr,"")})
-                // fmt.Println(TypeMap[traverse_node.Front().GetType()])
-                // fmt.Println(tempStr)
+            traverse(traverse_node)
+            if hasVariable {
+                traverse_node.hasVariable = true
+                t.HasVariable = true
+            }
+            if hasYY {
+                traverse_node.hasYY = true
             }
             rule = nil
             if traverse_node.Next() == nil {
@@ -1445,6 +1460,11 @@ func (t *Tree) Compile(file string) {
             fmt.Fprintf(os.Stderr, "illegal node type: %v\n", n.GetType())
         }
     }
+    printClearStack := func(n Node) {
+        print("\n   for i:=0; i<variableCount; i++ {")
+        print("\n      add(RuleActionPop, position)")
+        print("\n   }")
+    }
     compile = func(n Node, ko uint) {
         switch n.GetType() {
         case TypeRule:
@@ -1465,6 +1485,9 @@ func (t *Tree) Compile(file string) {
             print("\n   if !rules[Rule%v]() {", name /*rule.GetId()*/)
             printJump(ko)
             print("}")
+            if n.Front() != nil && n.Front().GetType() == TypeVariable {
+                print("\n   variableCount++")
+            }
         case TypeRange:
             element := n.Front()
             lower := element
@@ -1512,15 +1535,28 @@ func (t *Tree) Compile(file string) {
             printBegin()
             elements := n.Slice()
             printSave(ok)
+            if hasVariable {
+                print("\nvariableCountBefore%v := variableCount", ok)
+            }
             for _, element := range elements[:len(elements)-1] {
                 next := label
                 label++
                 compile(element, next)
+                if hasVariable {
+                    print("\nvariableCount = variableCount - variableCountBefore%v", ok)
+                    printClearStack(n)
+                    print("\nvariableCount = variableCountBefore%v", ok)
+                }
                 printJump(ok)
                 printLabel(next)
                 printRestore(ok)
             }
             compile(elements[len(elements)-1], ko)
+            if hasVariable {
+                print("\nvariableCount = variableCount - variableCountBefore%v", ok)
+                printClearStack(n)
+                print("\nvariableCount = variableCountBefore%v", ok)
+            }
             printEnd()
             printLabel(ok)
         case TypeUnorderedAlternate:
@@ -1646,6 +1682,7 @@ func (t *Tree) Compile(file string) {
     /* now for the real compile pass */
     printTemplate(LEG_HEADER_TEMPLATE)
     for _, element := range t.Slice() {
+        hasVariable = false
         if element.GetType() != TypeRule {
             continue
         }
@@ -1672,7 +1709,17 @@ func (t *Tree) Compile(file string) {
         if labels[ko] {
             printSave(ko)
         }
+        if element.HasVariable() {
+            print("\n   variableCount := 0")
+            hasVariable = true            
+        }
         compile(expression, ko)
+        if element.HasVariable() {
+            printClearStack(element)
+        }
+        if element.HasYY() {
+            print("\n   add(RuleActionPush, position)") 
+        }
         print("\n   return true")
         if labels[ko] {
             printLabel(ko)
