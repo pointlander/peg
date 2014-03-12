@@ -18,12 +18,11 @@ func main() {
 		os.Exit(1)
 	}
 	expression := os.Args[1]
-	calc := &Calculator{Buffer: expression}
+	calc := &Calc{Buffer: expression}
 	calc.Init()
-	calc.Expression.Init(expression)
 	if err := calc.Parse(); err != nil {
 		log.Fatal(err)
 	}
+	// calc.PrintSyntaxTree()
 	calc.Execute()
-	fmt.Printf("= %v\n", calc.Evaluate())
 }

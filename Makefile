@@ -2,16 +2,28 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-peg: bootstrap.peg.go peg.go main.go
-	go build
+all: dirbin peg leg
 
-bootstrap.peg.go: bootstrap/peg/main.go peg.go
-	cd bootstrap/peg; go build
-	bootstrap/peg/peg
+dirbin:
+	mkdir -p bin
 
-bootstrap.leg.go: bootstrap/leg/main.go leg.go
-	cd bootstrap/leg; go build
-	bootstrap/leg/leg
+peg: src/peg/bootstrap.peg.go src/peg/peg.go src/peg/main.go
+	cd src/peg/; go build
+	mv src/peg/peg bin/
+
+leg: src/leg/bootstrap.leg.go src/leg/leg.go src/leg/main.go
+	cd src/leg/; go build
+	mv src/leg/leg bin/
+
+bootstrap.peg.go: src/bootstrap/peg/main.go src/peg/peg.go
+	cd src/bootstrap/peg; go build
+	src/bootstrap/peg/peg
+	mv src/bootstrap/peg/bootstrap.peg.go ./
+
+bootstrap.leg.go: src/bootstrap/leg/main.go src/leg/leg.go
+	cd src/bootstrap/leg; go build
+	src/bootstrap/leg/leg
+	mv src/bootstrap/leg/bootstrap.leg.go ./
 
 clean:
-	rm -f bootstrap/peg/peg bootstrap/leg/leg peg peg.peg.go
+	rm -f src/bootstrap/peg/peg src/bootstrap/leg/leg bin/peg bin/leg

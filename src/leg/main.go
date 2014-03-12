@@ -18,7 +18,7 @@ var (
 	_switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
 	syntax = flag.Bool("syntax", false, "print out the syntax tree")
 	highlight = flag.Bool("highlight", false, "test the syntax highlighter")
-	test = flag.Bool("test", false, "test the PEG parser performance")
+	test = flag.Bool("test", false, "test the LEG parser performance")
 	print = flag.Bool("print", false, "directly dump the syntax tree")
 )
 
@@ -28,7 +28,7 @@ func main() {
 
 	if flag.NArg() != 1 {
 		flag.Usage()
-		log.Fatalf("FILE: the peg file to compile")
+		log.Fatalf("FILE: the leg file to compile")
 	}
 	file := flag.Arg(0)
 
@@ -38,7 +38,7 @@ func main() {
 	}
 
 	if *test {
-		iterations, p := 1000, &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
+		iterations, p := 1000, &Leg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
 		p.Init()
 		start := time.Now()
 		for i := 0; i < iterations; i++ {
@@ -50,7 +50,7 @@ func main() {
 		return
 	}
 
-	p := &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
+	p := &Leg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
 	p.Init()
 	if err := p.Parse(); err != nil {
 		log.Fatal(err)

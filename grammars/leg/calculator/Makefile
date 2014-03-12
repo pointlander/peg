@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-long_test: long.peg.go main.go
+calculator: calculator.leg.go main.go
 	go build
 
-long.peg.go: long.peg
-	peg -switch -inline long.peg
+calculator.leg.go: calculator.leg
+	../../../bin/leg calculator.leg
 
 clean:
-	rm -f long_test long.peg.go
+	rm -f calculator calculator.leg.go

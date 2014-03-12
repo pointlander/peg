@@ -1,0 +1,40 @@
+
+package main
+
+YYSTYPE int
+
+type Calc Peg {
+}
+
+Stmt    = - e:Expr EOL          { fmt.Println("ans: ", e)}
+    | ( !EOL . )* EOL        { fmt.Println("ERROR")}
+
+Expr    = i:ID ASSIGN s:Sum     {  }
+    | s:Sum             { $$= s; }
+
+Sum = l:Product
+        ( PLUS  r:Product   { l += r; }
+        | MINUS r:Product   { l -= r; }
+        )*          { $$= l; }
+
+Product = l:Value
+        ( TIMES  r:Value    { l *= r; }
+        | DIVIDE r:Value    { l /= r; }
+        )*          { $$= l; }
+
+Value   = i:NUMBER          { temp, _ := strconv.Atoi(buffer[begin:end]); $$ = YYSTYPE(temp) }
+    | i:ID !ASSIGN          { }
+    | OPEN i:Expr CLOSE     { $$= i; }
+
+NUMBER  = < [0-9]+ >    -       { temp, _ := strconv.Atoi(buffer[begin:end]); $$ = YYSTYPE(temp) }
+ID  = < [a-z]  >    -       {}
+ASSIGN  = '='       -
+PLUS    = '+'       -
+MINUS   = '-'       -
+TIMES   = '*'       -
+DIVIDE  = '/'       -
+OPEN    = '('       -
+CLOSE   = ')'       -
+
+-   = [ \t]*
+EOL = '\n' | '\r\n' | '\r' | ';' | !.

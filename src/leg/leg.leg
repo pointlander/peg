@@ -1,0 +1,117 @@
+# PE Grammar for PE Grammars
+# 
+# Adapted from [1] by Ian Piumarta <first-name at last-name point com>.
+# 
+# Best viewed using 140 columns monospaced with tabs every 8.
+# 
+# [1] Bryan Ford.  "Parsing Expression Grammars: A Recognition-Based Syntactic
+#     Foundation."  Symposium on Principles of Programming Languages,
+#     January 14--16, 2004, Venice, Italy.
+
+package main
+
+# parser declaration
+
+YYSTYPE uint8
+
+type Leg Peg {
+ *Tree
+}
+
+# Hierarchical syntax
+Grammar   =  -  'package'  -  Identifier      { p.AddPackage(buffer[begin:end]) }
+                           'YYSTYPE' - Identifier { p.AddYYSType(buffer[begin:end]) }
+                           'type'  -  Identifier         { p.AddLeg(buffer[begin:end]) }
+                           'Peg'  -  Action              { p.AddState(buffer[begin:end]) }
+                           (Declaration | Definition)+ Trailer?  EndOfFile
+
+Declaration = '%{' < ( !'%}' . )* >  RPERCENT {  p.AddDeclaration(buffer[begin:end])  }
+Trailer =       '%%' < .* > { p.AddTrailer(buffer[begin:end]) }
+
+Definition  = Identifier       { p.AddRule(buffer[begin:end]) }
+         Equal Expression   { p.AddExpression() } 
+Expression  = Sequence (Bar Sequence { p.AddAlternate() }
+          )* (Bar           { p.AddNil(); p.AddAlternate() }
+                               )?
+                 |        { p.AddNil() }
+Sequence  = Prefix (Prefix   { p.AddSequence() }
+        )*
+Prefix    = And Action     { p.AddPredicate(buffer[begin:end]) }
+     | And Suffix     { p.AddPeekFor() }
+     | Not Suffix     { p.AddPeekNot() }
+     |     Suffix
+Suffix          = Primary (Question            { p.AddQuery() }
+                           | Star               { p.AddStar() }
+                           | Plus               { p.AddPlus() }
+                           )?
+Primary         = Identifier !Equal        { p.AddName(buffer[begin:end]) }
+                 | Open Expression Close
+                 | Literal
+                 | Class
+                 | Dot                          { p.AddDot() }
+                 | Action                       { p.AddAction(buffer[begin:end]) }
+                 | Begin Expression End         { p.AddPush() }
+
+# Lexical syntax
+#PrivateIdentifier = < [a-z_] IdentCont* >  - 
+Identifier  = < [-a-zA-Z_][-a-zA-Z_0-9]* > -
+Literal   = ['] (!['] Char)? (!['] Char                { p.AddSequence() }
+                                    )* [']  - 
+     | ["] (!["] DoubleChar)? (!["] DoubleChar    { p.AddSequence() }
+                                          )* ["]  - 
+Class   = ( '[[' ( '^' DoubleRanges              { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
+                          | DoubleRanges )?
+                     ']]'
+                   | '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
+                         | Ranges )?
+                     ']' )
+                    - 
+Ranges    = !']' Range (!']' Range  { p.AddAlternate() }
+                              )*
+DoubleRanges  = !']]' DoubleRange (!']]' DoubleRange  { p.AddAlternate() }
+                                     )*
+Range   = Char '-' Char              { p.AddRange() }
+                 | Char
+DoubleRange = Char '-' Char              { p.AddDoubleRange() }
+                 | DoubleChar
+Char            = Escape
+                 | !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
+DoubleChar  = Escape
+     | <[a-zA-Z]>                 { p.AddDoubleCharacter(buffer[begin:end]) }
+                 | !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
+Escape          = "\\a"                      { p.AddCharacter("\a") }   # bell
+                 | "\\b"                      { p.AddCharacter("\b") }   # bs
+                 | "\\e"                      { p.AddCharacter("\x1B") } # esc
+                 | "\\f"                      { p.AddCharacter("\f") }   # ff
+                 | "\\n"                      { p.AddCharacter("\n") }   # nl
+                 | "\\r"                      { p.AddCharacter("\r") }   # cr
+                 | "\\t"                      { p.AddCharacter("\t") }   # ht
+                 | "\\v"                      { p.AddCharacter("\v") }   # vt
+                 | "\\'"          { p.AddCharacter("'") }
+                 | '\\"'          { p.AddCharacter("\"") }
+                 | '\\['                      { p.AddCharacter("[") }
+                 | '\\]'                      { p.AddCharacter("]") }
+                 | '\\-'                      { p.AddCharacter("-") }
+                 | '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
+                 | '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
+                 | '\\\\'                     { p.AddCharacter("\\") }
+Action    = '{' < Braces* > '}'  -  
+Braces =        '{' Braces* '}' |               !'}' .
+Equal = '='  - 
+Bar   = '|'  - 
+And   = '&'  - 
+Not   = '!'  - 
+Question  = '?'  - 
+Star    = '*'  - 
+Plus    = '+'  - 
+Open    = '('  - 
+Close   = ')'  - 
+Dot   = '.'  - 
+RPERCENT =      '%}'  - 
+ -    = (Space | Comment)*
+Comment   = '#' (!EndOfLine .)* EndOfLine
+Space   = ' ' | '\t' | EndOfLine
+EndOfLine = '\r\n' | '\n' | '\r'
+EndOfFile = !.
+Begin   = '<'  - 
+End   = '>'  - 
