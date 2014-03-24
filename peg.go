@@ -24,6 +24,8 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	{{range .Imports}}{{.}}
+	{{end}}
 )
 
 const END_SYMBOL rune = {{.EndSymbol}}
@@ -489,6 +491,7 @@ const (
 	TypeCommit
 	TypeAction
 	TypePackage
+	TypeImport
 	TypeState
 	TypeAlternate
 	TypeUnorderedAlternate
@@ -517,6 +520,7 @@ var TypeMap = [...]string{
 	"TypeCommit",
 	"TypeAction",
 	"TypePackage",
+	"TypeImport",
 	"TypeState",
 	"TypeAlternate",
 	"TypeUnorderedAlternate",
@@ -681,6 +685,7 @@ type Tree struct {
 	RuleNames       []Node
 	Sizes           [2]int
 	PackageName     string
+	Imports		[]string
 	EndSymbol       rune
 	StructName      string
 	StructVariables string
@@ -736,6 +741,7 @@ func (t *Tree) AddPredicate(text string) { t.PushFront(&node{Type: TypePredicate
 func (t *Tree) AddNil()                  { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
 func (t *Tree) AddAction(text string)    { t.PushFront(&node{Type: TypeAction, string: text}) }
 func (t *Tree) AddPackage(text string)   { t.PushBack(&node{Type: TypePackage, string: text}) }
+func (t *Tree) AddImport(text string)	 { t.PushBack(&node{Type: TypeImport, string: text}) }
 func (t *Tree) AddState(text string) {
 	peg := t.PopFront()
 	peg.PushBack(&node{Type: TypeState, string: text})
@@ -884,6 +890,8 @@ func (t *Tree) Compile(file string) {
 			switch node.GetType() {
 			case TypePackage:
 				t.PackageName = node.String()
+			case TypeImport:
+				t.Imports = append(t.Imports, node.String())
 			case TypePeg:
 				t.StructName = node.String()
 				t.StructVariables = node.Front().String()
