@@ -1,9 +1,9 @@
 # PE Grammar for PE Grammars
-# 
+#
 # Adapted from [1] by Ian Piumarta <first-name at last-name point com>.
-# 
+#
 # Best viewed using 140 columns monospaced with tabs every 8.
-# 
+#
 # [1] Bryan Ford.  "Parsing Expression Grammars: A Recognition-Based Syntactic
 #     Foundation."  Symposium on Principles of Programming Languages,
 #     January 14--16, 2004, Venice, Italy.
@@ -23,7 +23,7 @@ Grammar		<- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begi
                            'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
                            Definition+ EndOfFile
 
-Import		<- 'import' Spacing < ["] [a-zA-Z_/.\-]+ ["] > Spacing { p.AddImport(buffer[begin:end]) } 
+Import		<- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(buffer[begin:end]) }
 
 Definition	<- Identifier 			{ p.AddRule(buffer[begin:end]) }
 		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.)

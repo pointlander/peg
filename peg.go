@@ -19,12 +19,7 @@ import (
 const PEG_HEADER_TEMPLATE = `package {{.PackageName}}
 
 import (
-	/*"bytes"*/
-	"fmt"
-	"math"
-	"sort"
-	"strconv"
-	{{range .Imports}}{{.}}
+	{{range .Imports}}"{{.}}"
 	{{end}}
 )
 
@@ -817,6 +812,10 @@ func escape(c string) string {
 }
 
 func (t *Tree) Compile(file string) {
+	t.AddImport("fmt")
+	t.AddImport("math")
+	t.AddImport("sort")
+	t.AddImport("strconv")
 	t.EndSymbol = '\u0004'
 	t.RulesCount++
 
