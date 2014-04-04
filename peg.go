@@ -53,8 +53,36 @@ type TokenTree interface {
 	Add(rule Rule, begin, end, next, depth int)
 	Expand(index int) TokenTree
 	Tokens() <-chan token32
+	AST() *Node32
 	Error() []token32
 	trim(length int)
+}
+
+type Node32 struct {
+	token32
+	up, next *Node32
+}
+
+func (node *Node32) print(depth int, buffer string) {
+	for node != nil {
+		for c := 0; c < depth; c++ {
+			fmt.Printf(" ")
+		}
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", Rul3s[node.Rule], strconv.Quote(buffer[node.begin:node.end]))
+		if node.up != nil {
+			node.up.print(depth + 1, buffer)
+		}
+		node = node.next
+	}
+}
+
+func (ast *Node32) Print(buffer string) {
+	ast.print(0, buffer)
+}
+
+type element struct {
+	node *Node32
+	down *element
 }
 
 {{range .Sizes}}
@@ -135,6 +163,24 @@ type State{{.}} struct {
 	token{{.}}
 	depths []int{{.}}
 	leaf bool
+}
+
+func (t *tokens{{.}}) AST() *Node32 {
+	tokens := t.Tokens()
+	stack := &element{node: &Node32{token32:<-tokens}}
+	for token := range tokens {
+		if token.begin == token.end {
+			continue
+		}
+		node := &Node32{token32: token}
+		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
+			stack.node.next = node.up
+			node.up = stack.node
+			stack = stack.down
+		}
+		stack = &element{node: node, down: stack}
+	}
+	return stack.node
 }
 
 func (t *tokens{{.}}) PreOrder() (<-chan State{{.}}, [][]token{{.}}) {

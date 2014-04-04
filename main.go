@@ -18,6 +18,7 @@ var (
 	_switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
 	syntax = flag.Bool("syntax", false, "print out the syntax tree")
 	highlight = flag.Bool("highlight", false, "test the syntax highlighter")
+	ast = flag.Bool("ast", false, "generate an AST")
 	test = flag.Bool("test", false, "test the PEG parser performance")
 	print = flag.Bool("print", false, "directly dump the syntax tree")
 )
@@ -58,6 +59,9 @@ func main() {
 
 	p.Execute()
 
+	if *ast {
+		p.TokenTree.AST().Print(p.Buffer)
+	}
 	if *print {
 		p.Print()
 	}
