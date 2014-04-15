@@ -954,6 +954,16 @@ func (t *Tree) Compile(file string) {
 
             for {
                 switch leaf.GetType() {
+                case TypeName:
+                    // Store relative stack index of variable for later use
+                    if leaf.Front()!=nil && leaf.Front().GetType()==TypeVariable {
+                        for i, var_element := range var_stack {
+                            if var_element == leaf.Front().String() {
+                                leaf.Front().hasVariable = len(var_stack)-i-1
+                                break
+                            }
+                        }
+                    }
                 case TypeAction:
                     // Use regular expression to extract every variable and replace them
                     re := regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_]*")
@@ -1535,21 +1545,23 @@ func (t *Tree) Compile(file string) {
                 compile(rule.Front(), ko)
                 return
             }
-            if n.Front() != nil && n.Front().GetType() == TypeVariable {
-                print("\n   variableCount++")
-            }
+            // if n.Front() != nil && n.Front().GetType() == TypeVariable {
+            //     print("\n   variableCount++")
+            // }
             print("\n   if !rules[Rule%v]() {", name /*rule.GetId()*/)
             printJump(ko)
             print("}")
             if n.Front() != nil && n.Front().GetType() == TypeVariable {
                 // Rewind stack index to this variable
-                print("\n   for i:=0; i < variableTotal - variableCount ; i++ {")
+                print("\n   variableIdx = ")
+                print(strconv.Itoa(n.Front().HasVariable()))
+                print("\n   for i:=0; i < variableIdx ; i++ {")
                 print("\n       add(RuleActionPop, position)")
                 print("\n   }")
-                // Set this variable as yy
+                // Set yy at this position in stack
                 print("\n   add(RuleActionSet, position)")
                 // Rewind stack index back to top of stack
-                print("\n   for i:=0; i < variableTotal - variableCount ; i++ {")
+                print("\n   for i:=0; i < variableIdx ; i++ {")
                 print("\n       add(RuleActionPush, position)")
                 print("\n   }")
             }
@@ -1775,7 +1787,7 @@ func (t *Tree) Compile(file string) {
             printSave(ko)
         }
         if element.HasVariable()>0 {
-            print("\n   variableCount := 0")
+            print("\n   variableIdx := 0")
             print("\n   variableTotal := ")
             print(strconv.Itoa(element.HasVariable()))
             // Preserve enough stack space for the rule
