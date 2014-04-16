@@ -32,8 +32,6 @@ const END_SYMBOL rune = {{.EndSymbol}}
 {{range .Declarations}}{{.}}
 {{end}}
 
-type YYSTYPE {{.YYSType}}
-
 /* The rule types inferred from the grammar are below. */
 type Rule uint8
 
@@ -394,8 +392,8 @@ func (p *{{.StructName}}) Highlighter() {
 func (p *{{.StructName}}) Execute() {
     buffer, begin, end := p.Buffer, 0, 0
     {{if .HasVariable}}
-        var yy YYSTYPE
-        stack := make([]YYSTYPE, 1024)
+        var yy {{.YYSType}}
+        stack := make([]{{.YYSType}}, 1024)
         stack_idx := 0
     {{end}}
     for token := range p.TokenTree.Tokens() {
@@ -916,6 +914,7 @@ func (t *Tree) Compile(file string) {
                         hasYY = true
                         leaf.SetString(strings.Replace(leaf.String(),"$$","yy",-1))
                     }
+                    leaf.SetString(strings.Replace(leaf.String(), "YYSTYPE", t.YYSType,-1))
 
                 // List types
                 case TypeSequence:
