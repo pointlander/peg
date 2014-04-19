@@ -29,12 +29,12 @@ const end_symbol rune = {{.EndSymbol}}
 type pegRule uint8
 
 const (
-	RuleUnknown pegRule = iota
-	{{range .RuleNames}}Rule{{.String}}
+	ruleUnknown pegRule = iota
+	{{range .RuleNames}}rule{{.String}}
 	{{end}}
-	RulePre_
-	Rule_In_
-	Rule_Suf
+	rulePre_
+	rule_In_
+	rule_Suf
 )
 
 var Rul3s = [...]string {
@@ -94,7 +94,7 @@ type token{{.}} struct {
 }
 
 func (t *token{{.}}) isZero() bool {
-	return t.pegRule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
+	return t.pegRule == ruleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
 func (t *token{{.}}) isParentOf(u token{{.}}) bool {
@@ -131,7 +131,7 @@ func (t *tokens{{.}}) Order() [][]token{{.}} {
 
 	depths := make([]int{{.}}, 1, math.MaxInt16)
 	for i, token := range t.tree {
-		if token.pegRule == RuleUnknown {
+		if token.pegRule == ruleUnknown {
 			t.tree = t.tree[:i]
 			break
 		}
@@ -159,7 +159,7 @@ func (t *tokens{{.}}) Order() [][]token{{.}} {
 	return ordered
 }
 
-type State{{.}} struct {
+type state{{.}} struct {
 	token{{.}}
 	depths []int{{.}}
 	leaf bool
@@ -183,10 +183,10 @@ func (t *tokens{{.}}) AST() *node32 {
 	return stack.node
 }
 
-func (t *tokens{{.}}) PreOrder() (<-chan State{{.}}, [][]token{{.}}) {
-	s, ordered := make(chan State{{.}}, 6), t.Order()
+func (t *tokens{{.}}) PreOrder() (<-chan state{{.}}, [][]token{{.}}) {
+	s, ordered := make(chan state{{.}}, 6), t.Order()
 	go func() {
-		var states [8]State{{.}}
+		var states [8]state{{.}}
 		for i, _ := range states {
 			states[i].depths = make([]int{{.}}, len(ordered))
 		}
@@ -208,20 +208,20 @@ func (t *tokens{{.}}) PreOrder() (<-chan State{{.}}, [][]token{{.}}) {
 					if c, j := ordered[depth][i - 1], depths[depth - 1]; a.isParentOf(c) &&
 						(j < 2 || !ordered[depth - 1][j - 2].isParentOf(c)) {
 						if c.end != b.begin {
-							write(token{{.}} {pegRule: Rule_In_, begin: c.end, end: b.begin}, true)
+							write(token{{.}} {pegRule: rule_In_, begin: c.end, end: b.begin}, true)
 						}
 						break
 					}
 				}
 
 				if a.begin < b.begin {
-					write(token{{.}} {pegRule: RulePre_, begin: a.begin, end: b.begin}, true)
+					write(token{{.}} {pegRule: rulePre_, begin: a.begin, end: b.begin}, true)
 				}
 				break
 			}
 
 			next := depth + 1
-			if c := ordered[next][depths[next]]; c.pegRule != RuleUnknown && b.isParentOf(c) {
+			if c := ordered[next][depths[next]]; c.pegRule != ruleUnknown && b.isParentOf(c) {
 				write(b, false)
 				depths[depth]++
 				depth, a, b = next, b, c
@@ -232,11 +232,11 @@ func (t *tokens{{.}}) PreOrder() (<-chan State{{.}}, [][]token{{.}}) {
 			depths[depth]++
 			c, parent := ordered[depth][depths[depth]], true
 			for {
-				if c.pegRule != RuleUnknown && a.isParentOf(c) {
+				if c.pegRule != ruleUnknown && a.isParentOf(c) {
 					b = c
 					continue depthFirstSearch
 				} else if parent && b.end != a.end {
-					write(token{{.}} {pegRule: Rule_Suf, begin: b.end, end: a.end}, true)
+					write(token{{.}} {pegRule: rule_Suf, begin: b.end, end: a.end}, true)
 				}
 
 				depth--
@@ -426,9 +426,9 @@ func (p *{{.StructName}}) Execute() {
 	buffer, begin, end := p.Buffer, 0, 0
 	for token := range p.tokenTree.Tokens() {
 		switch (token.pegRule) {
-		case RulePegText:
+		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
-		{{range .Actions}}case RuleAction{{.GetId}}:
+		{{range .Actions}}case ruleAction{{.GetId}}:
 			{{.String}}
 		{{end}}
 		}
@@ -1372,7 +1372,7 @@ func (t *Tree) Compile(file string) {
 				compile(rule.Front(), ko)
 				return
 			}
-			print("\n   if !rules[Rule%v]() {", name /*rule.GetId()*/)
+			print("\n   if !rules[rule%v]() {", name /*rule.GetId()*/)
 			printJump(ko)
 			print("}")
 		case TypeRange:
@@ -1407,13 +1407,13 @@ func (t *Tree) Compile(file string) {
 			nodeType, rule := element.GetType(), element.Next()
 			printBegin()
 			if nodeType == TypeAction {
-				print("\nadd(Rule%v, position)", rule)
+				print("\nadd(rule%v, position)", rule)
 			} else {
 				print("\nposition%d := position", ok)
 				print("\ndepth++")
 				compile(element, ko)
 				print("\ndepth--")
-				print("\nadd(Rule%v, position%d)", rule, ok)
+				print("\nadd(rule%v, position%d)", rule, ok)
 			}
 			printEnd()
 		case TypeAlternate:
