@@ -53,17 +53,17 @@ type tokenTree interface {
 	Add(rule Rule, begin, end, next, depth int)
 	Expand(index int) tokenTree
 	Tokens() <-chan token32
-	AST() *Node32
+	AST() *node32
 	Error() []token32
 	trim(length int)
 }
 
-type Node32 struct {
+type node32 struct {
 	token32
-	up, next *Node32
+	up, next *node32
 }
 
-func (node *Node32) print(depth int, buffer string) {
+func (node *node32) print(depth int, buffer string) {
 	for node != nil {
 		for c := 0; c < depth; c++ {
 			fmt.Printf(" ")
@@ -76,12 +76,12 @@ func (node *Node32) print(depth int, buffer string) {
 	}
 }
 
-func (ast *Node32) Print(buffer string) {
+func (ast *node32) Print(buffer string) {
 	ast.print(0, buffer)
 }
 
 type element struct {
-	node *Node32
+	node *node32
 	down *element
 }
 
@@ -101,7 +101,7 @@ func (t *token{{.}}) isParentOf(u token{{.}}) bool {
 	return t.begin <= u.begin && t.end >= u.end && t.next > u.next
 }
 
-func (t *token{{.}}) GetToken32() token32 {
+func (t *token{{.}}) getToken32() token32 {
 	return token32{Rule: t.Rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
 }
 
@@ -165,14 +165,14 @@ type State{{.}} struct {
 	leaf bool
 }
 
-func (t *tokens{{.}}) AST() *Node32 {
+func (t *tokens{{.}}) AST() *node32 {
 	tokens := t.Tokens()
-	stack := &element{node: &Node32{token32:<-tokens}}
+	stack := &element{node: &node32{token32:<-tokens}}
 	for token := range tokens {
 		if token.begin == token.end {
 			continue
 		}
-		node := &Node32{token32: token}
+		node := &node32{token32: token}
 		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
 			stack.node.next = node.up
 			node.up = stack.node
@@ -314,7 +314,7 @@ func (t *tokens{{.}}) Tokens() <-chan token32 {
 	s := make(chan token32, 16)
 	go func() {
 		for _, v := range t.tree {
-			s <- v.GetToken32()
+			s <- v.getToken32()
 		}
 		close(s)
 	}()
@@ -328,7 +328,7 @@ func (t *tokens{{.}}) Error() []token32 {
 	for i, _ := range tokens {
 		o := ordered[length - i]
 		if len(o) > 1 {
-			tokens[i] = o[len(o) - 2].GetToken32()
+			tokens[i] = o[len(o) - 2].getToken32()
 		}
 	}
 	return tokens
@@ -340,7 +340,7 @@ func (t *tokens16) Expand(index int) tokenTree {
 	if index >= len(tree) {
 		expanded := make([]token32, 2 * len(tree))
 		for i, v := range tree {
-			expanded[i] = v.GetToken32()
+			expanded[i] = v.getToken32()
 		}
 		return &tokens32{tree: expanded}
 	}
