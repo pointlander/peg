@@ -23,7 +23,7 @@ import (
 	{{end}}
 )
 
-const END_SYMBOL rune = {{.EndSymbol}}
+const end_symbol rune = {{.EndSymbol}}
 
 /* The rule types inferred from the grammar are below. */
 type Rule uint8
@@ -438,8 +438,8 @@ func (p *{{.StructName}}) Execute() {
 
 func (p *{{.StructName}}) Init() {
 	p.buffer = []rune(p.Buffer)
-	if len(p.buffer) == 0 || p.buffer[len(p.buffer) - 1] != END_SYMBOL {
-		p.buffer = append(p.buffer, END_SYMBOL)
+	if len(p.buffer) == 0 || p.buffer[len(p.buffer) - 1] != end_symbol {
+		p.buffer = append(p.buffer, end_symbol)
 	}
 
 	var tree TokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
@@ -473,7 +473,7 @@ func (p *{{.StructName}}) Init() {
 
 	{{if .HasDot}}
 	matchDot := func() bool {
-		if buffer[position] != END_SYMBOL {
+		if buffer[position] != end_symbol {
 			position++
 			return true
 		}
@@ -1361,7 +1361,7 @@ func (t *Tree) Compile(file string) {
 			fmt.Fprintf(os.Stderr, "internal error #1 (%v)\n", n)
 		case TypeDot:
 			print("\n   if !matchDot() {")
-			/*print("\n   if buffer[position] == END_SYMBOL {")*/
+			/*print("\n   if buffer[position] == end_symbol {")*/
 			printJump(ko)
 			/*print("}\nposition++")*/
 			print("}")
