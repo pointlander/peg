@@ -60,7 +60,7 @@ func main() {
 	p.Execute()
 
 	if *ast {
-		p.TokenTree.AST().Print(p.Buffer)
+		p.tokenTree.AST().Print(p.Buffer)
 	}
 	if *print {
 		p.Print()

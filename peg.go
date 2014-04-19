@@ -46,12 +46,12 @@ var Rul3s = [...]string {
 	"_Suf",
 }
 
-type TokenTree interface {
+type tokenTree interface {
 	Print()
 	PrintSyntax()
 	PrintSyntaxTree(buffer string)
 	Add(rule Rule, begin, end, next, depth int)
-	Expand(index int) TokenTree
+	Expand(index int) tokenTree
 	Tokens() <-chan token32
 	AST() *Node32
 	Error() []token32
@@ -335,7 +335,7 @@ func (t *tokens{{.}}) Error() []token32 {
 }
 {{end}}
 
-func (t *tokens16) Expand(index int) TokenTree {
+func (t *tokens16) Expand(index int) tokenTree {
 	tree := t.tree
 	if index >= len(tree) {
 		expanded := make([]token32, 2 * len(tree))
@@ -347,7 +347,7 @@ func (t *tokens16) Expand(index int) TokenTree {
 	return nil
 }
 
-func (t *tokens32) Expand(index int) TokenTree {
+func (t *tokens32) Expand(index int) tokenTree {
 	tree := t.tree
 	if index >= len(tree) {
 		expanded := make([]token32, 2 * len(tree))
@@ -364,7 +364,7 @@ type {{.StructName}} struct {
 	rules		[{{.RulesCount}}]func() bool
 	Parse		func(rule ...int) error
 	Reset		func()
-	TokenTree
+	tokenTree
 }
 
 type textPosition struct {
@@ -394,7 +394,7 @@ type parseError struct {
 }
 
 func (e *parseError) Error() string {
-	tokens, error := e.p.TokenTree.Error(), "\n"
+	tokens, error := e.p.tokenTree.Error(), "\n"
 	positions, p := make([]int, 2 * len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p + 1
@@ -414,17 +414,17 @@ func (e *parseError) Error() string {
 }
 
 func (p *{{.StructName}}) PrintSyntaxTree() {
-	p.TokenTree.PrintSyntaxTree(p.Buffer)
+	p.tokenTree.PrintSyntaxTree(p.Buffer)
 }
 
 func (p *{{.StructName}}) Highlighter() {
-	p.TokenTree.PrintSyntax()
+	p.tokenTree.PrintSyntax()
 }
 
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
 	buffer, begin, end := p.Buffer, 0, 0
-	for token := range p.TokenTree.Tokens() {
+	for token := range p.tokenTree.Tokens() {
 		switch (token.Rule) {
 		case RulePegText:
 			begin, end = int(token.begin), int(token.end)
@@ -442,7 +442,7 @@ func (p *{{.StructName}}) Init() {
 		p.buffer = append(p.buffer, end_symbol)
 	}
 
-	var tree TokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
+	var tree tokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
 	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
@@ -451,9 +451,9 @@ func (p *{{.StructName}}) Init() {
 			r = rule[0]
 		}
 		matches := p.rules[r]()
-		p.TokenTree = tree
+		p.tokenTree = tree
 		if matches {
-			p.TokenTree.trim(tokenIndex)
+			p.tokenTree.trim(tokenIndex)
 			return nil
 		}
 		return &parseError{p}
