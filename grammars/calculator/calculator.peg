@@ -8,7 +8,7 @@ type Calculator Peg {
  Expression
 }
 
-e <- s e1 !.
+e <- sp e1 !.
 e1 <- e2 ( add e2 { p.AddOperator(TypeAdd) }
          / minus e2 { p.AddOperator(TypeSubtract) }
          )*
@@ -20,14 +20,14 @@ e3 <- e4 ( exponentiation e4 { p.AddOperator(TypeExponentiation) }
          )*
 e4 <- minus value { p.AddOperator(TypeNegation) }
     / value
-value <- < [0-9]+ > s { p.AddValue(buffer[begin:end]) }
+value <- < [0-9]+ > sp { p.AddValue(buffer[begin:end]) }
        / open e1 close
-add <- '+' s
-minus <- '-' s
-multiply <- '*' s
-divide <- '/' s
-modulus <- '%' s
-exponentiation <- '^' s
-open <- '(' s
-close <- ')' s
-s <- ( ' ' / '\t' )*
+add <- '+' sp
+minus <- '-' sp
+multiply <- '*' sp
+divide <- '/' sp
+modulus <- '%' sp
+exponentiation <- '^' sp
+open <- '(' sp
+close <- ')' sp
+sp <- ( ' ' / '\t' )*
