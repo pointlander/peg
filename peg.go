@@ -1195,7 +1195,7 @@ func (t *Tree) Compile(file string) {
 
 	print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { print("\n   position%d, tokenIndex%d, depth%d := position, tokenIndex, depth", n, n, n) }
-	printRestore := func(n uint) { print("   position, tokenIndex, depth = position%d, tokenIndex%d, depth%d", n, n, n) }
+	printRestore := func(n uint) { print("\n   position, tokenIndex, depth = position%d, tokenIndex%d, depth%d", n, n, n) }
 	printTemplate := func(s string) {
 		if error := template.Must(template.New("peg").Parse(s)).Execute(&buffer, t); error != nil {
 			panic(error)
