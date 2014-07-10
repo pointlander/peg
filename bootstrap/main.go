@@ -13,6 +13,12 @@ func main() {
 	t := New(true, true)
 
 	/*package main
+
+	  import "fmt"
+	  import "math"
+	  import "sort"
+	  import "strconv"
+
 	  type Peg Peg {
 	   *Tree
 	  }*/
@@ -23,6 +29,7 @@ func main() {
 `)
 
 	/* Grammar         <- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
+	   Import*
 	   'type' Spacing Identifier         { p.AddPeg(buffer[begin:end]) }
 	   'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
 	   Definition+ EndOfFile */
@@ -47,6 +54,9 @@ func main() {
 	t.AddName("Identifier")
 	t.AddSequence()
 	t.AddAction(" p.AddPackage(buffer[begin:end]) ")
+	t.AddSequence()
+	t.AddName("Import")
+	t.AddStar()
 	t.AddSequence()
 	t.AddCharacter(`t`)
 	t.AddCharacter(`y`)
@@ -78,6 +88,49 @@ func main() {
 	t.AddPlus()
 	t.AddSequence()
 	t.AddName("EndOfFile")
+	t.AddSequence()
+	t.AddExpression()
+
+	/* Import          <- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(buffer[begin:end]) } */
+	t.AddRule("Import")
+	t.AddCharacter(`i`)
+	t.AddCharacter(`m`)
+	t.AddSequence()
+	t.AddCharacter(`p`)
+	t.AddSequence()
+	t.AddCharacter(`o`)
+	t.AddSequence()
+	t.AddCharacter(`r`)
+	t.AddSequence()
+	t.AddCharacter(`t`)
+	t.AddSequence()
+	t.AddName("Spacing")
+	t.AddSequence()
+	t.AddCharacter(`"`)
+	t.AddSequence()
+	t.AddCharacter(`a`)
+	t.AddCharacter(`z`)
+	t.AddRange()
+	t.AddCharacter(`A`)
+	t.AddCharacter(`Z`)
+	t.AddRange()
+	t.AddAlternate()
+	t.AddCharacter(`_`)
+	t.AddAlternate()
+	t.AddCharacter(`/`)
+	t.AddAlternate()
+	t.AddCharacter(`.`)
+	t.AddAlternate()
+	t.AddCharacter(`-`)
+	t.AddAlternate()
+	t.AddPlus()
+	t.AddPush()
+	t.AddSequence()
+	t.AddCharacter(`"`)
+	t.AddSequence()
+	t.AddName("Spacing")
+	t.AddSequence()
+	t.AddAction(" p.AddImport(buffer[begin:end]) ")
 	t.AddSequence()
 	t.AddExpression()
 
