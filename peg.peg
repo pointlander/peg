@@ -92,6 +92,7 @@ Escape          <- "\\a"                      { p.AddCharacter("\a") }   # bell
                  / '\\['                      { p.AddCharacter("[") }
                  / '\\]'                      { p.AddCharacter("]") }
                  / '\\-'                      { p.AddCharacter("-") }
+                 / '\\' "0x"<[0-9a-fA-F]+>     { p.AddHexaCharacter(buffer[begin:end]) }
                  / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
                  / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
                  / '\\\\'                     { p.AddCharacter("\\") }

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+    "log"
 )
 
 const PEG_HEADER_TEMPLATE = `package {{.PackageName}}
@@ -773,6 +774,13 @@ func (t *Tree) AddDoubleCharacter(text string) {
 	t.PushFront(&node{Type: TypeCharacter, string: strings.ToLower(text)})
 	t.PushFront(&node{Type: TypeCharacter, string: strings.ToUpper(text)})
 	t.AddAlternate()
+}
+func (t *Tree) AddHexaCharacter(text string) {
+	hexa, err := strconv.ParseInt(text, 16, 32)
+    if err != nil {
+        log.Println(err)
+    }
+	t.PushFront(&node{Type: TypeCharacter, string: string(hexa)})
 }
 func (t *Tree) AddOctalCharacter(text string) {
 	octal, _ := strconv.ParseInt(text, 8, 8)
