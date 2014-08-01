@@ -774,6 +774,10 @@ func (t *Tree) AddDoubleCharacter(text string) {
 	t.PushFront(&node{Type: TypeCharacter, string: strings.ToUpper(text)})
 	t.AddAlternate()
 }
+func (t *Tree) AddHexaCharacter(text string) {
+	hexa, _ := strconv.ParseInt(text, 16, 32)
+	t.PushFront(&node{Type: TypeCharacter, string: string(hexa)})
+}
 func (t *Tree) AddOctalCharacter(text string) {
 	octal, _ := strconv.ParseInt(text, 8, 8)
 	t.PushFront(&node{Type: TypeCharacter, string: string(octal)})
