@@ -17,9 +17,9 @@ type Peg Peg {
 }
 
 # Hierarchical syntax
-Grammar		<- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
+Grammar		<- Spacing 'package' MustSpacing Identifier      { p.AddPackage(buffer[begin:end]) }
 			   Import*
-                           'type' Spacing Identifier         { p.AddPeg(buffer[begin:end]) }
+                           'type' MustSpacing Identifier         { p.AddPeg(buffer[begin:end]) }
                            'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
                            Definition+ EndOfFile
 
@@ -106,7 +106,9 @@ Plus		<- '+' Spacing
 Open		<- '(' Spacing
 Close		<- ')' Spacing
 Dot		<- '.' Spacing
-Spacing		<- (Space / Comment)*
+SpaceComment	<- (Space / Comment)
+Spacing		<- SpaceComment*
+MustSpacing	<- SpaceComment+
 Comment		<- '#' (!EndOfLine .)* EndOfLine
 Space		<- ' ' / '\t' / EndOfLine
 EndOfLine	<- '\r\n' / '\n' / '\r'
