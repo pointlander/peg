@@ -513,6 +513,7 @@ func main() {
                               / '\\['                      { p.AddCharacter("[") }
                               / '\\]'                      { p.AddCharacter("]") }
                               / '\\-'                      { p.AddCharacter("-") }
+			      / '\\' "0x"<[0-9a-fA-F]+>    { p.AddHexaCharacter(buffer[begin:end]) }
                               / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
                               / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
                               / '\\\\'                     { p.AddCharacter("\\") } */
@@ -592,6 +593,28 @@ func main() {
 	t.AddCharacter(`-`)
 	t.AddSequence()
 	t.AddAction(` p.AddCharacter("-") `)
+	t.AddSequence()
+	t.AddAlternate()
+	t.AddCharacter("\\")
+	t.AddCharacter(`0`)
+	t.AddDoubleCharacter(`x`)
+	t.AddSequence()
+	t.AddSequence()
+	t.AddCharacter(`0`)
+	t.AddCharacter(`9`)
+	t.AddRange()
+	t.AddCharacter(`a`)
+	t.AddCharacter(`f`)
+	t.AddRange()
+	t.AddAlternate()
+	t.AddCharacter(`A`)
+	t.AddCharacter(`F`)
+	t.AddRange()
+	t.AddAlternate()
+	t.AddPlus()
+	t.AddPush()
+	t.AddSequence()
+	t.AddAction(` p.AddHexaCharacter(buffer[begin:end]) `)
 	t.AddSequence()
 	t.AddAlternate()
 	t.AddCharacter("\\")
