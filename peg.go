@@ -10,6 +10,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -26,7 +27,7 @@ import (
 const end_symbol rune = {{.EndSymbol}}
 
 /* The rule types inferred from the grammar are below. */
-type pegRule uint8
+type pegRule {{.PegRuleType}}
 
 const (
 	ruleUnknown pegRule = iota
@@ -728,6 +729,7 @@ type Tree struct {
 	PackageName     string
 	Imports		[]string
 	EndSymbol       rune
+	PegRuleType	string
 	StructName      string
 	StructVariables string
 	RulesCount      int
@@ -1558,6 +1560,14 @@ func (t *Tree) Compile(file string) {
 	print, label = printTemp, 0
 
 	/* now for the real compile pass */
+	t.PegRuleType = "uint8"
+	if length := t.Len(); length > math.MaxUint32 {
+		t.PegRuleType = "uint64"
+	} else if length > math.MaxUint16 {
+		t.PegRuleType = "uint32"
+	} else if length > math.MaxUint8 {
+		t.PegRuleType = "uint16"
+	}
 	printTemplate(PEG_HEADER_TEMPLATE)
 	for _, element := range t.Slice() {
 		if element.GetType() != TypeRule {
