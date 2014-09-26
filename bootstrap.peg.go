@@ -952,7 +952,7 @@ func (p *Peg) Init() {
 	}
 
 	var tree tokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
-	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.buffer, p.rules
+	position, depth, tokenIndex, buffer, _rules := 0, 0, 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
 		r := 1
@@ -1004,7 +1004,7 @@ func (p *Peg) Init() {
 		return false
 	}*/
 
-	rules = [...]func() bool{
+	_rules = [...]func() bool{
 		nil,
 		/* 0 Grammar <- <(Spacing ('p' 'a' 'c' 'k' 'a' 'g' 'e') Spacing Identifier Action0 Import* ('t' 'y' 'p' 'e') Spacing Identifier Action1 ('P' 'e' 'g') Spacing Action Action2 Definition+ EndOfFile)> */
 		func() bool {
@@ -1012,7 +1012,7 @@ func (p *Peg) Init() {
 			{
 				position1 := position
 				depth++
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l0
 				}
 				if buffer[position] != rune('p') {
@@ -1043,10 +1043,10 @@ func (p *Peg) Init() {
 					goto l0
 				}
 				position++
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l0
 				}
-				if !rules[ruleIdentifier]() {
+				if !_rules[ruleIdentifier]() {
 					goto l0
 				}
 				{
@@ -1082,7 +1082,7 @@ func (p *Peg) Init() {
 							goto l4
 						}
 						position++
-						if !rules[ruleSpacing]() {
+						if !_rules[ruleSpacing]() {
 							goto l4
 						}
 						if buffer[position] != rune('"') {
@@ -1188,7 +1188,7 @@ func (p *Peg) Init() {
 							goto l4
 						}
 						position++
-						if !rules[ruleSpacing]() {
+						if !_rules[ruleSpacing]() {
 							goto l4
 						}
 						{
@@ -1217,10 +1217,10 @@ func (p *Peg) Init() {
 					goto l0
 				}
 				position++
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l0
 				}
-				if !rules[ruleIdentifier]() {
+				if !_rules[ruleIdentifier]() {
 					goto l0
 				}
 				{
@@ -1238,10 +1238,10 @@ func (p *Peg) Init() {
 					goto l0
 				}
 				position++
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l0
 				}
-				if !rules[ruleAction]() {
+				if !_rules[ruleAction]() {
 					goto l0
 				}
 				{
@@ -1250,16 +1250,16 @@ func (p *Peg) Init() {
 				{
 					position16 := position
 					depth++
-					if !rules[ruleIdentifier]() {
+					if !_rules[ruleIdentifier]() {
 						goto l0
 					}
 					{
 						add(ruleAction4, position)
 					}
-					if !rules[ruleLeftArrow]() {
+					if !_rules[ruleLeftArrow]() {
 						goto l0
 					}
-					if !rules[ruleExpression]() {
+					if !_rules[ruleExpression]() {
 						goto l0
 					}
 					{
@@ -1269,10 +1269,10 @@ func (p *Peg) Init() {
 						position19, tokenIndex19, depth19 := position, tokenIndex, depth
 						{
 							position20, tokenIndex20, depth20 := position, tokenIndex, depth
-							if !rules[ruleIdentifier]() {
+							if !_rules[ruleIdentifier]() {
 								goto l21
 							}
-							if !rules[ruleLeftArrow]() {
+							if !_rules[ruleLeftArrow]() {
 								goto l21
 							}
 							goto l20
@@ -1300,16 +1300,16 @@ func (p *Peg) Init() {
 					{
 						position23 := position
 						depth++
-						if !rules[ruleIdentifier]() {
+						if !_rules[ruleIdentifier]() {
 							goto l15
 						}
 						{
 							add(ruleAction4, position)
 						}
-						if !rules[ruleLeftArrow]() {
+						if !_rules[ruleLeftArrow]() {
 							goto l15
 						}
-						if !rules[ruleExpression]() {
+						if !_rules[ruleExpression]() {
 							goto l15
 						}
 						{
@@ -1319,10 +1319,10 @@ func (p *Peg) Init() {
 							position26, tokenIndex26, depth26 := position, tokenIndex, depth
 							{
 								position27, tokenIndex27, depth27 := position, tokenIndex, depth
-								if !rules[ruleIdentifier]() {
+								if !_rules[ruleIdentifier]() {
 									goto l28
 								}
-								if !rules[ruleLeftArrow]() {
+								if !_rules[ruleLeftArrow]() {
 									goto l28
 								}
 								goto l27
@@ -1382,16 +1382,16 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position36, tokenIndex36, depth36 := position, tokenIndex, depth
-					if !rules[ruleSequence]() {
+					if !_rules[ruleSequence]() {
 						goto l37
 					}
 				l38:
 					{
 						position39, tokenIndex39, depth39 := position, tokenIndex, depth
-						if !rules[ruleSlash]() {
+						if !_rules[ruleSlash]() {
 							goto l39
 						}
-						if !rules[ruleSequence]() {
+						if !_rules[ruleSequence]() {
 							goto l39
 						}
 						{
@@ -1403,7 +1403,7 @@ func (p *Peg) Init() {
 					}
 					{
 						position41, tokenIndex41, depth41 := position, tokenIndex, depth
-						if !rules[ruleSlash]() {
+						if !_rules[ruleSlash]() {
 							goto l41
 						}
 						{
@@ -1433,13 +1433,13 @@ func (p *Peg) Init() {
 			{
 				position46 := position
 				depth++
-				if !rules[rulePrefix]() {
+				if !_rules[rulePrefix]() {
 					goto l45
 				}
 			l47:
 				{
 					position48, tokenIndex48, depth48 := position, tokenIndex, depth
-					if !rules[rulePrefix]() {
+					if !_rules[rulePrefix]() {
 						goto l48
 					}
 					{
@@ -1465,10 +1465,10 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position52, tokenIndex52, depth52 := position, tokenIndex, depth
-					if !rules[ruleAnd]() {
+					if !_rules[ruleAnd]() {
 						goto l53
 					}
-					if !rules[ruleAction]() {
+					if !_rules[ruleAction]() {
 						goto l53
 					}
 					{
@@ -1487,13 +1487,13 @@ func (p *Peg) Init() {
 									goto l50
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l50
 								}
 								depth--
 								add(ruleNot, position56)
 							}
-							if !rules[ruleSuffix]() {
+							if !_rules[ruleSuffix]() {
 								goto l50
 							}
 							{
@@ -1501,10 +1501,10 @@ func (p *Peg) Init() {
 							}
 							break
 						case '&':
-							if !rules[ruleAnd]() {
+							if !_rules[ruleAnd]() {
 								goto l50
 							}
-							if !rules[ruleSuffix]() {
+							if !_rules[ruleSuffix]() {
 								goto l50
 							}
 							{
@@ -1512,7 +1512,7 @@ func (p *Peg) Init() {
 							}
 							break
 						default:
-							if !rules[ruleSuffix]() {
+							if !_rules[ruleSuffix]() {
 								goto l50
 							}
 							break
@@ -1548,13 +1548,13 @@ func (p *Peg) Init() {
 									goto l59
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l59
 								}
 								depth--
 								add(ruleBegin, position63)
 							}
-							if !rules[ruleExpression]() {
+							if !_rules[ruleExpression]() {
 								goto l59
 							}
 							{
@@ -1564,7 +1564,7 @@ func (p *Peg) Init() {
 									goto l59
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l59
 								}
 								depth--
@@ -1575,7 +1575,7 @@ func (p *Peg) Init() {
 							}
 							break
 						case '{':
-							if !rules[ruleAction]() {
+							if !_rules[ruleAction]() {
 								goto l59
 							}
 							{
@@ -1590,7 +1590,7 @@ func (p *Peg) Init() {
 									goto l59
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l59
 								}
 								depth--
@@ -1622,7 +1622,7 @@ func (p *Peg) Init() {
 												goto l75
 											}
 											position++
-											if !rules[ruleDoubleRanges]() {
+											if !_rules[ruleDoubleRanges]() {
 												goto l75
 											}
 											{
@@ -1631,7 +1631,7 @@ func (p *Peg) Init() {
 											goto l74
 										l75:
 											position, tokenIndex, depth = position74, tokenIndex74, depth74
-											if !rules[ruleDoubleRanges]() {
+											if !_rules[ruleDoubleRanges]() {
 												goto l72
 											}
 										}
@@ -1664,7 +1664,7 @@ func (p *Peg) Init() {
 												goto l80
 											}
 											position++
-											if !rules[ruleRanges]() {
+											if !_rules[ruleRanges]() {
 												goto l80
 											}
 											{
@@ -1673,7 +1673,7 @@ func (p *Peg) Init() {
 											goto l79
 										l80:
 											position, tokenIndex, depth = position79, tokenIndex79, depth79
-											if !rules[ruleRanges]() {
+											if !_rules[ruleRanges]() {
 												goto l77
 											}
 										}
@@ -1689,7 +1689,7 @@ func (p *Peg) Init() {
 									position++
 								}
 							l70:
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l59
 								}
 								depth--
@@ -1718,7 +1718,7 @@ func (p *Peg) Init() {
 										l87:
 											position, tokenIndex, depth = position87, tokenIndex87, depth87
 										}
-										if !rules[ruleChar]() {
+										if !_rules[ruleChar]() {
 											goto l85
 										}
 										goto l86
@@ -1739,7 +1739,7 @@ func (p *Peg) Init() {
 										l90:
 											position, tokenIndex, depth = position90, tokenIndex90, depth90
 										}
-										if !rules[ruleChar]() {
+										if !_rules[ruleChar]() {
 											goto l89
 										}
 										{
@@ -1753,7 +1753,7 @@ func (p *Peg) Init() {
 										goto l84
 									}
 									position++
-									if !rules[ruleSpacing]() {
+									if !_rules[ruleSpacing]() {
 										goto l84
 									}
 									goto l83
@@ -1775,7 +1775,7 @@ func (p *Peg) Init() {
 										l94:
 											position, tokenIndex, depth = position94, tokenIndex94, depth94
 										}
-										if !rules[ruleDoubleChar]() {
+										if !_rules[ruleDoubleChar]() {
 											goto l92
 										}
 										goto l93
@@ -1796,7 +1796,7 @@ func (p *Peg) Init() {
 										l97:
 											position, tokenIndex, depth = position97, tokenIndex97, depth97
 										}
-										if !rules[ruleDoubleChar]() {
+										if !_rules[ruleDoubleChar]() {
 											goto l96
 										}
 										{
@@ -1810,7 +1810,7 @@ func (p *Peg) Init() {
 										goto l59
 									}
 									position++
-									if !rules[ruleSpacing]() {
+									if !_rules[ruleSpacing]() {
 										goto l59
 									}
 								}
@@ -1827,13 +1827,13 @@ func (p *Peg) Init() {
 									goto l59
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l59
 								}
 								depth--
 								add(ruleOpen, position99)
 							}
-							if !rules[ruleExpression]() {
+							if !_rules[ruleExpression]() {
 								goto l59
 							}
 							{
@@ -1843,7 +1843,7 @@ func (p *Peg) Init() {
 									goto l59
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l59
 								}
 								depth--
@@ -1851,12 +1851,12 @@ func (p *Peg) Init() {
 							}
 							break
 						default:
-							if !rules[ruleIdentifier]() {
+							if !_rules[ruleIdentifier]() {
 								goto l59
 							}
 							{
 								position101, tokenIndex101, depth101 := position, tokenIndex, depth
-								if !rules[ruleLeftArrow]() {
+								if !_rules[ruleLeftArrow]() {
 									goto l101
 								}
 								goto l59
@@ -1885,7 +1885,7 @@ func (p *Peg) Init() {
 									goto l103
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l103
 								}
 								depth--
@@ -1903,7 +1903,7 @@ func (p *Peg) Init() {
 									goto l103
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l103
 								}
 								depth--
@@ -1921,7 +1921,7 @@ func (p *Peg) Init() {
 									goto l103
 								}
 								position++
-								if !rules[ruleSpacing]() {
+								if !_rules[ruleSpacing]() {
 									goto l103
 								}
 								depth--
@@ -1958,7 +1958,7 @@ func (p *Peg) Init() {
 				{
 					position115 := position
 					depth++
-					if !rules[ruleIdentStart]() {
+					if !_rules[ruleIdentStart]() {
 						goto l113
 					}
 				l116:
@@ -1969,7 +1969,7 @@ func (p *Peg) Init() {
 							depth++
 							{
 								position119, tokenIndex119, depth119 := position, tokenIndex, depth
-								if !rules[ruleIdentStart]() {
+								if !_rules[ruleIdentStart]() {
 									goto l120
 								}
 								goto l119
@@ -1991,7 +1991,7 @@ func (p *Peg) Init() {
 					depth--
 					add(rulePegText, position115)
 				}
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l113
 				}
 				depth--
@@ -2061,7 +2061,7 @@ func (p *Peg) Init() {
 				l129:
 					position, tokenIndex, depth = position129, tokenIndex129, depth129
 				}
-				if !rules[ruleRange]() {
+				if !_rules[ruleRange]() {
 					goto l127
 				}
 			l130:
@@ -2077,7 +2077,7 @@ func (p *Peg) Init() {
 					l132:
 						position, tokenIndex, depth = position132, tokenIndex132, depth132
 					}
-					if !rules[ruleRange]() {
+					if !_rules[ruleRange]() {
 						goto l131
 					}
 					{
@@ -2115,7 +2115,7 @@ func (p *Peg) Init() {
 				l136:
 					position, tokenIndex, depth = position136, tokenIndex136, depth136
 				}
-				if !rules[ruleDoubleRange]() {
+				if !_rules[ruleDoubleRange]() {
 					goto l134
 				}
 			l137:
@@ -2135,7 +2135,7 @@ func (p *Peg) Init() {
 					l139:
 						position, tokenIndex, depth = position139, tokenIndex139, depth139
 					}
-					if !rules[ruleDoubleRange]() {
+					if !_rules[ruleDoubleRange]() {
 						goto l138
 					}
 					{
@@ -2161,14 +2161,14 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position143, tokenIndex143, depth143 := position, tokenIndex, depth
-					if !rules[ruleChar]() {
+					if !_rules[ruleChar]() {
 						goto l144
 					}
 					if buffer[position] != rune('-') {
 						goto l144
 					}
 					position++
-					if !rules[ruleChar]() {
+					if !_rules[ruleChar]() {
 						goto l144
 					}
 					{
@@ -2177,7 +2177,7 @@ func (p *Peg) Init() {
 					goto l143
 				l144:
 					position, tokenIndex, depth = position143, tokenIndex143, depth143
-					if !rules[ruleChar]() {
+					if !_rules[ruleChar]() {
 						goto l141
 					}
 				}
@@ -2198,14 +2198,14 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position148, tokenIndex148, depth148 := position, tokenIndex, depth
-					if !rules[ruleChar]() {
+					if !_rules[ruleChar]() {
 						goto l149
 					}
 					if buffer[position] != rune('-') {
 						goto l149
 					}
 					position++
-					if !rules[ruleChar]() {
+					if !_rules[ruleChar]() {
 						goto l149
 					}
 					{
@@ -2214,7 +2214,7 @@ func (p *Peg) Init() {
 					goto l148
 				l149:
 					position, tokenIndex, depth = position148, tokenIndex148, depth148
-					if !rules[ruleDoubleChar]() {
+					if !_rules[ruleDoubleChar]() {
 						goto l146
 					}
 				}
@@ -2235,7 +2235,7 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position153, tokenIndex153, depth153 := position, tokenIndex, depth
-					if !rules[ruleEscape]() {
+					if !_rules[ruleEscape]() {
 						goto l154
 					}
 					goto l153
@@ -2281,7 +2281,7 @@ func (p *Peg) Init() {
 				depth++
 				{
 					position160, tokenIndex160, depth160 := position, tokenIndex, depth
-					if !rules[ruleEscape]() {
+					if !_rules[ruleEscape]() {
 						goto l161
 					}
 					goto l160
@@ -2806,7 +2806,7 @@ func (p *Peg) Init() {
 					goto l233
 				}
 				position++
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l233
 				}
 				depth--
@@ -2827,7 +2827,7 @@ func (p *Peg) Init() {
 					goto l235
 				}
 				position++
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l235
 				}
 				depth--
@@ -2848,7 +2848,7 @@ func (p *Peg) Init() {
 					goto l237
 				}
 				position++
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l237
 				}
 				depth--
@@ -2901,7 +2901,7 @@ func (p *Peg) Init() {
 									position++
 									break
 								default:
-									if !rules[ruleEndOfLine]() {
+									if !_rules[ruleEndOfLine]() {
 										goto l251
 									}
 									break
@@ -2926,7 +2926,7 @@ func (p *Peg) Init() {
 								position256, tokenIndex256, depth256 := position, tokenIndex, depth
 								{
 									position257, tokenIndex257, depth257 := position, tokenIndex, depth
-									if !rules[ruleEndOfLine]() {
+									if !_rules[ruleEndOfLine]() {
 										goto l257
 									}
 									goto l256
@@ -2940,7 +2940,7 @@ func (p *Peg) Init() {
 							l256:
 								position, tokenIndex, depth = position256, tokenIndex256, depth256
 							}
-							if !rules[ruleEndOfLine]() {
+							if !_rules[ruleEndOfLine]() {
 								goto l249
 							}
 							depth--
@@ -3043,7 +3043,7 @@ func (p *Peg) Init() {
 					goto l266
 				}
 				position++
-				if !rules[ruleSpacing]() {
+				if !_rules[ruleSpacing]() {
 					goto l266
 				}
 				depth--
@@ -3156,5 +3156,5 @@ func (p *Peg) Init() {
 		/* 87 Action47 <- <{ p.AddCharacter("\\") }> */
 		nil,
 	}
-	p.rules = rules
+	p.rules = _rules
 }

@@ -444,7 +444,7 @@ func (p *{{.StructName}}) Init() {
 	}
 
 	var tree tokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
-	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.buffer, p.rules
+	position, depth, tokenIndex, buffer, _rules := 0, 0, 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
 		r := 1
@@ -516,7 +516,7 @@ func (p *{{.StructName}}) Init() {
 	}*/
 	{{end}}
 
-	rules = [...]func() bool {
+	_rules = [...]func() bool {
 		nil,`
 
 type Type uint8
@@ -1378,7 +1378,7 @@ func (t *Tree) Compile(file string) {
 				compile(rule.Front(), ko)
 				return
 			}
-			print("\n   if !rules[rule%v]() {", name /*rule.GetId()*/)
+			print("\n   if !_rules[rule%v]() {", name /*rule.GetId()*/)
 			printJump(ko)
 			print("}")
 		case TypeRange:
@@ -1605,6 +1605,6 @@ func (t *Tree) Compile(file string) {
 		}
 		print("\n  },")
 	}
-	print("\n }\n p.rules = rules")
+	print("\n }\n p.rules = _rules")
 	print("\n}\n")
 }
