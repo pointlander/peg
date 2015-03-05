@@ -28,9 +28,9 @@ func main() {
  *Tree
 `)
 
-	/* Grammar         <- Spacing 'package' Spacing Identifier      { p.AddPackage(buffer[begin:end]) }
+	/* Grammar         <- Spacing 'package' MustSpacing Identifier      { p.AddPackage(buffer[begin:end]) }
 	   Import*
-	   'type' Spacing Identifier         { p.AddPeg(buffer[begin:end]) }
+	   'type' MustSpacing Identifier         { p.AddPeg(buffer[begin:end]) }
 	   'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
 	   Definition+ EndOfFile */
 	t.AddRule("Grammar")
@@ -49,7 +49,7 @@ func main() {
 	t.AddCharacter(`e`)
 	t.AddSequence()
 	t.AddSequence()
-	t.AddName("Spacing")
+	t.AddName("MustSpacing")
 	t.AddSequence()
 	t.AddName("Identifier")
 	t.AddSequence()
@@ -66,7 +66,7 @@ func main() {
 	t.AddCharacter(`e`)
 	t.AddSequence()
 	t.AddSequence()
-	t.AddName("Spacing")
+	t.AddName("MustSpacing")
 	t.AddSequence()
 	t.AddName("Identifier")
 	t.AddSequence()
@@ -656,11 +656,13 @@ func main() {
 	t.AddAlternate()
 	t.AddExpression()
 
-	/* LeftArrow       <- '<-' Spacing */
+	/* LeftArrow       <- ('<-' / '\0x2190') Spacing */
 	t.AddRule("LeftArrow")
 	t.AddCharacter(`<`)
 	t.AddCharacter(`-`)
 	t.AddSequence()
+	t.AddHexaCharacter("2190")
+	t.AddAlternate()
 	t.AddName("Spacing")
 	t.AddSequence()
 	t.AddExpression()
@@ -728,12 +730,23 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	/* Spacing         <- (Space / Comment)* */
-	t.AddRule("Spacing")
+	/* SpaceComment         <- (Space / Comment) */
+	t.AddRule("SpaceComment")
 	t.AddName("Space")
 	t.AddName("Comment")
 	t.AddAlternate()
+	t.AddExpression()
+
+	/* Spacing         <- SpaceComment* */
+	t.AddRule("Spacing")
+	t.AddName("SpaceComment")
 	t.AddStar()
+	t.AddExpression()
+
+	/* MustSpacing     <- SpaceComment+ */
+	t.AddRule("MustSpacing")
+	t.AddName("SpaceComment")
+	t.AddPlus()
 	t.AddExpression()
 
 	/* Comment         <- '#' (!EndOfLine .)* EndOfLine */
