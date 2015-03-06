@@ -841,8 +841,10 @@ func (p *Peg) Execute() {
 	buffer, begin, end := p.Buffer, 0, 0
 	for token := range p.tokenTree.Tokens() {
 		switch token.pegRule {
+
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
+
 		case ruleAction0:
 			p.AddPackage(buffer[begin:end])
 		case ruleAction1:
@@ -947,6 +949,7 @@ func (p *Peg) Execute() {
 
 		}
 	}
+	_, _, _ = buffer, begin, end
 }
 
 func (p *Peg) Init() {

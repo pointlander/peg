@@ -427,13 +427,16 @@ func (p *{{.StructName}}) Execute() {
 	buffer, begin, end := p.Buffer, 0, 0
 	for token := range p.tokenTree.Tokens() {
 		switch (token.pegRule) {
+		{{if .HasPush}}
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
+		{{end}}
 		{{range .Actions}}case ruleAction{{.GetId}}:
 			{{.String}}
 		{{end}}
 		}
 	}
+	_, _, _ = buffer, begin, end
 }
 {{end}}
 
@@ -736,6 +739,7 @@ type Tree struct {
 	Bits            int
 	HasActions      bool
 	Actions         []Node
+	HasPush		bool
 	HasCommit       bool
 	HasDot          bool
 	HasCharacter    bool
@@ -1262,6 +1266,7 @@ func (t *Tree) Compile(file string) {
 	}
 
 	t.HasActions = counts[TypeAction] > 0
+	t.HasPush = counts[TypePush] > 0
 	t.HasCommit = counts[TypeCommit] > 0
 	t.HasDot = counts[TypeDot] > 0
 	t.HasCharacter = counts[TypeCharacter] > 0
@@ -1575,7 +1580,9 @@ func (t *Tree) Compile(file string) {
 		}
 		expression := element.Front()
 		if expression.GetType() == TypeNil {
-			fmt.Fprintf(os.Stderr, "rule '%v' used but not defined\n", element)
+			if element.String() != "PegText" {
+				fmt.Fprintf(os.Stderr, "rule '%v' used but not defined\n", element)
+			}
 			print("\n  nil,")
 			continue
 		}
