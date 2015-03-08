@@ -69,7 +69,7 @@ func (node *node32) print(depth int, buffer string) {
 		for c := 0; c < depth; c++ {
 			fmt.Printf(" ")
 		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[node.pegRule], strconv.Quote(buffer[node.begin:node.end]))
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[node.pegRule], strconv.Quote(string(([]rune(buffer)[node.begin:node.end]))))
 		if node.up != nil {
 			node.up.print(depth + 1, buffer)
 		}
@@ -303,7 +303,7 @@ func (t *tokens{{.}}) PrintSyntaxTree(buffer string) {
 		for c := 0; c < int(token.next); c++ {
 			fmt.Printf(" ")
 		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.pegRule], strconv.Quote(buffer[token.begin:token.end]))
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.pegRule], strconv.Quote(string(([]rune(buffer)[token.begin:token.end]))))
 	}
 }
 
@@ -730,16 +730,16 @@ type Tree struct {
 	RuleNames       []Node
 	Sizes           [2]int
 	PackageName     string
-	Imports		[]string
+	Imports         []string
 	EndSymbol       rune
-	PegRuleType	string
+	PegRuleType     string
 	StructName      string
 	StructVariables string
 	RulesCount      int
 	Bits            int
 	HasActions      bool
 	Actions         []Node
-	HasPush		bool
+	HasPush         bool
 	HasCommit       bool
 	HasDot          bool
 	HasCharacter    bool
@@ -792,7 +792,7 @@ func (t *Tree) AddPredicate(text string) { t.PushFront(&node{Type: TypePredicate
 func (t *Tree) AddNil()                  { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
 func (t *Tree) AddAction(text string)    { t.PushFront(&node{Type: TypeAction, string: text}) }
 func (t *Tree) AddPackage(text string)   { t.PushBack(&node{Type: TypePackage, string: text}) }
-func (t *Tree) AddImport(text string)	 { t.PushBack(&node{Type: TypeImport, string: text}) }
+func (t *Tree) AddImport(text string)    { t.PushBack(&node{Type: TypeImport, string: text}) }
 func (t *Tree) AddState(text string) {
 	peg := t.PopFront()
 	peg.PushBack(&node{Type: TypeState, string: text})
