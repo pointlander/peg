@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"io/ioutil"
+	"testing"
+)
 
 func TestCorrect(t *testing.T) {
 	buffer := `package p
@@ -39,5 +43,40 @@ Grammar <- !.
 	err := p.Parse()
 	if err == nil {
 		t.Error("typenospace was parsed without error")
+	}
+}
+
+func TestSame(t *testing.T) {
+	buffer, err := ioutil.ReadFile("peg.peg")
+	if err != nil {
+		t.Error(err)
+	}
+
+	p := &Peg{Tree: New(true, true), Buffer: string(buffer)}
+	p.Init()
+	if err := p.Parse(); err != nil {
+		t.Error(err)
+	}
+
+	p.Execute()
+
+	out := &bytes.Buffer{}
+	p.Compile("peg.peg.go", out)
+
+	bootstrap, err := ioutil.ReadFile("bootstrap.peg.go")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(out.Bytes()) != len(bootstrap) {
+		t.Error("code generated from peg.peg is not the same as bootstrap.peg.go")
+		return
+	}
+
+	for i, v := range out.Bytes() {
+		if v != bootstrap[i] {
+			t.Error("code generated from peg.peg is not the same as bootstrap.peg.go")
+			return
+		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"runtime"
 	"time"
 )
@@ -71,6 +72,13 @@ func main() {
 	if *highlight {
 		p.Highlighter()
 	}
+
 	filename := file + ".go"
-	p.Compile(filename)
+	out, error := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if error != nil {
+		fmt.Printf("%v: %v\n", filename, error)
+		return
+	}
+	defer out.Close()
+	p.Compile(filename, out)
 }

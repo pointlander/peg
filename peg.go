@@ -10,6 +10,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"io"
 	"math"
 	"os"
 	"strconv"
@@ -867,7 +868,7 @@ func escape(c string) string {
 	return ""
 }
 
-func (t *Tree) Compile(file string) {
+func (t *Tree) Compile(file string, out io.Writer) {
 	t.AddImport("fmt")
 	t.AddImport("math")
 	t.AddImport("sort")
@@ -1229,13 +1230,6 @@ func (t *Tree) Compile(file string) {
 			}
 		}
 	}
-
-	out, error := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if error != nil {
-		fmt.Printf("%v: %v\n", file, error)
-		return
-	}
-	defer out.Close()
 
 	var buffer bytes.Buffer
 	defer func() {

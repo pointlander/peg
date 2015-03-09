@@ -5,6 +5,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"runtime"
 )
 
@@ -818,5 +820,12 @@ func main() {
 	t.AddSequence()
 	t.AddExpression()
 
-	t.Compile("bootstrap.peg.go")
+	filename := "bootstrap.peg.go"
+	out, error := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if error != nil {
+		fmt.Printf("%v: %v\n", filename, error)
+		return
+	}
+	defer out.Close()
+	t.Compile(filename, out)
 }
