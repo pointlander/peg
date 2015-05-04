@@ -534,6 +534,7 @@ const (
 	TypeRange
 	TypeString
 	TypePredicate
+	TypeStateChange
 	TypeCommit
 	TypeAction
 	TypePackage
@@ -790,6 +791,7 @@ func (t *Tree) AddOctalCharacter(text string) {
 	t.PushFront(&node{Type: TypeCharacter, string: string(octal)})
 }
 func (t *Tree) AddPredicate(text string) { t.PushFront(&node{Type: TypePredicate, string: text}) }
+func (t *Tree) AddStateChange(text string) { t.PushFront(&node{Type: TypeStateChange, string: text}) }
 func (t *Tree) AddNil()                  { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
 func (t *Tree) AddAction(text string)    { t.PushFront(&node{Type: TypeAction, string: text}) }
 func (t *Tree) AddPackage(text string)   { t.PushBack(&node{Type: TypePackage, string: text}) }
@@ -1305,6 +1307,8 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			print("[%v-%v]", lower, upper)
 		case TypePredicate:
 			print("&{%v}", n)
+		case TypeStateChange:
+			print("!{%v}", n)
 		case TypeAction:
 			print("{%v}", n)
 		case TypeCommit:
@@ -1402,6 +1406,8 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			print("\n   if !(%v) {", n)
 			printJump(ko)
 			print("}")
+		case TypeStateChange:
+			print("\n   %v", n)
 		case TypeAction:
 		case TypeCommit:
 		case TypePush:
@@ -1598,6 +1604,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			printSave(ko)
 		}
 		compile(expression, ko)
+		//print("\n  fmt.Printf(\"%v\\n\")", element.String())
 		print("\n   return true")
 		if labels[ko] {
 			printLabel(ko)

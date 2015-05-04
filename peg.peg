@@ -34,6 +34,7 @@ Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }
 Sequence	<- Prefix (Prefix		{ p.AddSequence() }
 			  )*
 Prefix		<- And Action			{ p.AddPredicate(buffer[begin:end]) }
+		 / Not Action			{ p.AddStateChange(buffer[begin:end]) }
 		 / And Suffix			{ p.AddPeekFor() }
 		 / Not Suffix			{ p.AddPeekNot() }
 		 /     Suffix

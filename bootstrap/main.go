@@ -247,6 +247,7 @@ func main() {
 	})
 
 	/* Prefix          <- And Action                   { p.AddPredicate(buffer[begin:end]) }
+	   / Not Action                   { p.AddStateChange(buffer[begin:end]) }
 	   / And Suffix                   { p.AddPeekFor() }
 	   / Not Suffix                   { p.AddPeekNot() }
 	   /     Suffix */
@@ -257,6 +258,13 @@ func main() {
 					func() { addName("And") },
 					func() { addName("Action") },
 					func() { addAction(" p.AddPredicate(buffer[begin:end]) ") },
+				)
+			},
+			func() {
+				addSequence(
+					func() { addName("Not") },
+					func() { addName("Action") },
+					func() { addAction(" p.AddStateChange(buffer[begin:end]) ") },
 				)
 			},
 			func() {
