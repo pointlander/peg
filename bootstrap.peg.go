@@ -212,7 +212,7 @@ type tokenTree interface {
 	Print()
 	PrintSyntax()
 	PrintSyntaxTree(buffer string)
-	Add(rule pegRule, begin, end, next, depth int)
+	Add(rule pegRule, begin, end, next uint32, depth int)
 	Expand(index int) tokenTree
 	Tokens() <-chan token32
 	AST() *node32
@@ -250,7 +250,7 @@ type element struct {
 /* ${@} bit structure for abstract syntax tree */
 type token16 struct {
 	pegRule
-	begin, end, next int16
+	begin, end, next uint16
 }
 
 func (t *token16) isZero() bool {
@@ -262,7 +262,7 @@ func (t *token16) isParentOf(u token16) bool {
 }
 
 func (t *token16) getToken32() token32 {
-	return token32{pegRule: t.pegRule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+	return token32{pegRule: t.pegRule, begin: uint32(t.begin), end: uint32(t.end), next: uint32(t.next)}
 }
 
 func (t *token16) String() string {
@@ -311,7 +311,7 @@ func (t *tokens16) Order() [][]token16 {
 
 	for i, token := range t.tree {
 		depth := token.next
-		token.next = int16(i)
+		token.next = uint16(i)
 		ordered[depth][depths[depth]] = token
 		depths[depth]++
 	}
@@ -353,7 +353,7 @@ func (t *tokens16) PreOrder() (<-chan state16, [][]token16) {
 		depths, state, depth := make([]int16, len(ordered)), 0, 1
 		write := func(t token16, leaf bool) {
 			S := states[state]
-			state, S.pegRule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.pegRule, t.begin, t.end, int16(depth), leaf
+			state, S.pegRule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.pegRule, t.begin, t.end, uint16(depth), leaf
 			copy(S.depths, depths)
 			s <- S
 		}
@@ -467,8 +467,8 @@ func (t *tokens16) PrintSyntaxTree(buffer string) {
 	}
 }
 
-func (t *tokens16) Add(rule pegRule, begin, end, depth, index int) {
-	t.tree[index] = token16{pegRule: rule, begin: int16(begin), end: int16(end), next: int16(depth)}
+func (t *tokens16) Add(rule pegRule, begin, end, depth uint32, index int) {
+	t.tree[index] = token16{pegRule: rule, begin: uint16(begin), end: uint16(end), next: uint16(depth)}
 }
 
 func (t *tokens16) Tokens() <-chan token32 {
@@ -498,7 +498,7 @@ func (t *tokens16) Error() []token32 {
 /* ${@} bit structure for abstract syntax tree */
 type token32 struct {
 	pegRule
-	begin, end, next int32
+	begin, end, next uint32
 }
 
 func (t *token32) isZero() bool {
@@ -510,7 +510,7 @@ func (t *token32) isParentOf(u token32) bool {
 }
 
 func (t *token32) getToken32() token32 {
-	return token32{pegRule: t.pegRule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+	return token32{pegRule: t.pegRule, begin: uint32(t.begin), end: uint32(t.end), next: uint32(t.next)}
 }
 
 func (t *token32) String() string {
@@ -559,7 +559,7 @@ func (t *tokens32) Order() [][]token32 {
 
 	for i, token := range t.tree {
 		depth := token.next
-		token.next = int32(i)
+		token.next = uint32(i)
 		ordered[depth][depths[depth]] = token
 		depths[depth]++
 	}
@@ -601,7 +601,7 @@ func (t *tokens32) PreOrder() (<-chan state32, [][]token32) {
 		depths, state, depth := make([]int32, len(ordered)), 0, 1
 		write := func(t token32, leaf bool) {
 			S := states[state]
-			state, S.pegRule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.pegRule, t.begin, t.end, int32(depth), leaf
+			state, S.pegRule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.pegRule, t.begin, t.end, uint32(depth), leaf
 			copy(S.depths, depths)
 			s <- S
 		}
@@ -715,8 +715,8 @@ func (t *tokens32) PrintSyntaxTree(buffer string) {
 	}
 }
 
-func (t *tokens32) Add(rule pegRule, begin, end, depth, index int) {
-	t.tree[index] = token32{pegRule: rule, begin: int32(begin), end: int32(end), next: int32(depth)}
+func (t *tokens32) Add(rule pegRule, begin, end, depth uint32, index int) {
+	t.tree[index] = token32{pegRule: rule, begin: uint32(begin), end: uint32(end), next: uint32(depth)}
 }
 
 func (t *tokens32) Tokens() <-chan token32 {
@@ -963,7 +963,7 @@ func (p *Peg) Init() {
 	}
 
 	var tree tokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
-	position, depth, tokenIndex, buffer, _rules := 0, 0, 0, p.buffer, p.rules
+	position, depth, tokenIndex, buffer, _rules := uint32(0), uint32(0), 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
 		r := 1
@@ -983,7 +983,7 @@ func (p *Peg) Init() {
 		position, tokenIndex, depth = 0, 0, 0
 	}
 
-	add := func(rule pegRule, begin int) {
+	add := func(rule pegRule, begin uint32) {
 		if t := tree.Expand(tokenIndex); t != nil {
 			tree = t
 		}

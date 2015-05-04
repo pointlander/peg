@@ -52,7 +52,7 @@ type tokenTree interface {
 	Print()
 	PrintSyntax()
 	PrintSyntaxTree(buffer string)
-	Add(rule pegRule, begin, end, next, depth int)
+	Add(rule pegRule, begin, end, next uint32, depth int)
 	Expand(index int) tokenTree
 	Tokens() <-chan token32
 	AST() *node32
@@ -92,7 +92,7 @@ type element struct {
 /* ${@} bit structure for abstract syntax tree */
 type token{{.}} struct {
 	pegRule
-	begin, end, next int{{.}}
+	begin, end, next uint{{.}}
 }
 
 func (t *token{{.}}) isZero() bool {
@@ -104,7 +104,7 @@ func (t *token{{.}}) isParentOf(u token{{.}}) bool {
 }
 
 func (t *token{{.}}) getToken32() token32 {
-	return token32{pegRule: t.pegRule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+	return token32{pegRule: t.pegRule, begin: uint32(t.begin), end: uint32(t.end), next: uint32(t.next)}
 }
 
 func (t *token{{.}}) String() string {
@@ -153,7 +153,7 @@ func (t *tokens{{.}}) Order() [][]token{{.}} {
 
 	for i, token := range t.tree {
 		depth := token.next
-		token.next = int{{.}}(i)
+		token.next = uint{{.}}(i)
 		ordered[depth][depths[depth]] = token
 		depths[depth]++
 	}
@@ -195,7 +195,7 @@ func (t *tokens{{.}}) PreOrder() (<-chan state{{.}}, [][]token{{.}}) {
 		depths, state, depth := make([]int{{.}}, len(ordered)), 0, 1
 		write := func(t token{{.}}, leaf bool) {
 			S := states[state]
-			state, S.pegRule, S.begin, S.end, S.next, S.leaf = (state + 1) % 8, t.pegRule, t.begin, t.end, int{{.}}(depth), leaf
+			state, S.pegRule, S.begin, S.end, S.next, S.leaf = (state + 1) % 8, t.pegRule, t.begin, t.end, uint{{.}}(depth), leaf
 			copy(S.depths, depths)
 			s <- S
 		}
@@ -308,8 +308,8 @@ func (t *tokens{{.}}) PrintSyntaxTree(buffer string) {
 	}
 }
 
-func (t *tokens{{.}}) Add(rule pegRule, begin, end, depth, index int) {
-	t.tree[index] = token{{.}}{pegRule: rule, begin: int{{.}}(begin), end: int{{.}}(end), next: int{{.}}(depth)}
+func (t *tokens{{.}}) Add(rule pegRule, begin, end, depth uint32, index int) {
+	t.tree[index] = token{{.}}{pegRule: rule, begin: uint{{.}}(begin), end: uint{{.}}(end), next: uint{{.}}(depth)}
 }
 
 func (t *tokens{{.}}) Tokens() <-chan token32 {
@@ -448,7 +448,7 @@ func (p *{{.StructName}}) Init() {
 	}
 
 	var tree tokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
-	position, depth, tokenIndex, buffer, _rules := 0, 0, 0, p.buffer, p.rules
+	position, depth, tokenIndex, buffer, _rules := uint32(0), uint32(0), 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
 		r := 1
@@ -468,7 +468,7 @@ func (p *{{.StructName}}) Init() {
 		position, tokenIndex, depth = 0, 0, 0
 	}
 
-	add := func(rule pegRule, begin int) {
+	add := func(rule pegRule, begin uint32) {
 		if t := tree.Expand(tokenIndex); t != nil {
 			tree = t
 		}
