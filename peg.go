@@ -1579,7 +1579,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			continue
 		}
 		expression := element.Front()
-		if expression.GetType() == TypeNil {
+		if implicit := expression.Front(); expression.GetType() == TypeNil || implicit.GetType() == TypeNil {
 			if element.String() != "PegText" {
 				fmt.Fprintf(os.Stderr, "rule '%v' used but not defined\n", element)
 			}
