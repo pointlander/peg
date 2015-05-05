@@ -337,7 +337,7 @@ func (t *tokens{{.}}) Error() []token32 {
 }
 {{end}}
 
-func (t *tokens16) Expand(index int) tokenTree {
+/*func (t *tokens16) Expand(index int) tokenTree {
 	tree := t.tree
 	if index >= len(tree) {
 		expanded := make([]token32, 2 * len(tree))
@@ -347,7 +347,7 @@ func (t *tokens16) Expand(index int) tokenTree {
 		return &tokens32{tree: expanded}
 	}
 	return nil
-}
+}*/
 
 func (t *tokens32) Expand(index int) tokenTree {
 	tree := t.tree
@@ -447,7 +447,7 @@ func (p *{{.StructName}}) Init() {
 		p.buffer = append(p.buffer, end_symbol)
 	}
 
-	var tree tokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
+	var tree tokenTree = &tokens32{tree: make([]token32, math.MaxInt16)}
 	position, depth, tokenIndex, buffer, _rules := uint32(0), uint32(0), 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
@@ -730,7 +730,7 @@ type Tree struct {
 	inline, _switch bool
 
 	RuleNames       []Node
-	Sizes           [2]int
+	Sizes           [1]int
 	PackageName     string
 	Imports         []string
 	EndSymbol       rune
@@ -751,7 +751,7 @@ type Tree struct {
 
 func New(inline, _switch bool) *Tree {
 	return &Tree{Rules: make(map[string]Node),
-		Sizes:      [2]int{16, 32},
+		Sizes:      [1]int{32},
 		rulesCount: make(map[string]uint),
 		inline:     inline,
 		_switch:    _switch}
