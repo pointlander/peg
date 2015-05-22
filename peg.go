@@ -875,7 +875,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 	t.AddImport("math")
 	t.AddImport("sort")
 	t.AddImport("strconv")
-	t.EndSymbol = '\u0004'
+	t.EndSymbol = 0x110000
 	t.RulesCount++
 
 	counts := [TypeLast]uint{}

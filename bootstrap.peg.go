@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-const end_symbol rune = 4
+const end_symbol rune = 1114112
 
 /* The rule types inferred from the grammar are below. */
 type pegRule uint8
