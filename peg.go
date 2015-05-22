@@ -1304,7 +1304,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			lower := element
 			element = element.Next()
 			upper := element
-			print("[%v-%v]", lower, upper)
+			print("[%v-%v]", escape(lower.String()), escape(upper.String()))
 		case TypePredicate:
 			print("&{%v}", n)
 		case TypeStateChange:
