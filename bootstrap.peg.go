@@ -592,23 +592,24 @@ func (p *Peg) Highlighter() {
 }
 
 func (p *Peg) Execute() {
-	buffer, begin, end := p.Buffer, 0, 0
+	buffer, _buffer, text, begin, end := p.Buffer, p.buffer, "", 0, 0
 	for token := range p.tokenTree.Tokens() {
 		switch token.pegRule {
 
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
+			text = string(_buffer[begin:end])
 
 		case ruleAction0:
-			p.AddPackage(buffer[begin:end])
+			p.AddPackage(text)
 		case ruleAction1:
-			p.AddPeg(buffer[begin:end])
+			p.AddPeg(text)
 		case ruleAction2:
-			p.AddState(buffer[begin:end])
+			p.AddState(text)
 		case ruleAction3:
-			p.AddImport(buffer[begin:end])
+			p.AddImport(text)
 		case ruleAction4:
-			p.AddRule(buffer[begin:end])
+			p.AddRule(text)
 		case ruleAction5:
 			p.AddExpression()
 		case ruleAction6:
@@ -621,9 +622,9 @@ func (p *Peg) Execute() {
 		case ruleAction9:
 			p.AddSequence()
 		case ruleAction10:
-			p.AddPredicate(buffer[begin:end])
+			p.AddPredicate(text)
 		case ruleAction11:
-			p.AddStateChange(buffer[begin:end])
+			p.AddStateChange(text)
 		case ruleAction12:
 			p.AddPeekFor()
 		case ruleAction13:
@@ -635,11 +636,11 @@ func (p *Peg) Execute() {
 		case ruleAction16:
 			p.AddPlus()
 		case ruleAction17:
-			p.AddName(buffer[begin:end])
+			p.AddName(text)
 		case ruleAction18:
 			p.AddDot()
 		case ruleAction19:
-			p.AddAction(buffer[begin:end])
+			p.AddAction(text)
 		case ruleAction20:
 			p.AddPush()
 		case ruleAction21:
@@ -663,11 +664,11 @@ func (p *Peg) Execute() {
 		case ruleAction28:
 			p.AddDoubleRange()
 		case ruleAction29:
-			p.AddCharacter(buffer[begin:end])
+			p.AddCharacter(text)
 		case ruleAction30:
-			p.AddDoubleCharacter(buffer[begin:end])
+			p.AddDoubleCharacter(text)
 		case ruleAction31:
-			p.AddCharacter(buffer[begin:end])
+			p.AddCharacter(text)
 		case ruleAction32:
 			p.AddCharacter("\a")
 		case ruleAction33:
@@ -695,17 +696,17 @@ func (p *Peg) Execute() {
 		case ruleAction44:
 			p.AddCharacter("-")
 		case ruleAction45:
-			p.AddHexaCharacter(buffer[begin:end])
+			p.AddHexaCharacter(text)
 		case ruleAction46:
-			p.AddOctalCharacter(buffer[begin:end])
+			p.AddOctalCharacter(text)
 		case ruleAction47:
-			p.AddOctalCharacter(buffer[begin:end])
+			p.AddOctalCharacter(text)
 		case ruleAction48:
 			p.AddCharacter("\\")
 
 		}
 	}
-	_, _, _ = buffer, begin, end
+	_, _, _, _ = buffer, text, begin, end
 }
 
 func (p *Peg) Init() {
@@ -2897,16 +2898,16 @@ func (p *Peg) Init() {
 		nil,
 		/* 39 End <- <('>' Spacing)> */
 		nil,
-		/* 41 Action0 <- <{ p.AddPackage(buffer[begin:end]) }> */
+		/* 41 Action0 <- <{ p.AddPackage(text) }> */
 		nil,
-		/* 42 Action1 <- <{ p.AddPeg(buffer[begin:end]) }> */
+		/* 42 Action1 <- <{ p.AddPeg(text) }> */
 		nil,
-		/* 43 Action2 <- <{ p.AddState(buffer[begin:end]) }> */
+		/* 43 Action2 <- <{ p.AddState(text) }> */
 		nil,
 		nil,
-		/* 45 Action3 <- <{ p.AddImport(buffer[begin:end]) }> */
+		/* 45 Action3 <- <{ p.AddImport(text) }> */
 		nil,
-		/* 46 Action4 <- <{ p.AddRule(buffer[begin:end]) }> */
+		/* 46 Action4 <- <{ p.AddRule(text) }> */
 		nil,
 		/* 47 Action5 <- <{ p.AddExpression() }> */
 		nil,
@@ -2918,9 +2919,9 @@ func (p *Peg) Init() {
 		nil,
 		/* 51 Action9 <- <{ p.AddSequence() }> */
 		nil,
-		/* 52 Action10 <- <{ p.AddPredicate(buffer[begin:end]) }> */
+		/* 52 Action10 <- <{ p.AddPredicate(text) }> */
 		nil,
-		/* 53 Action11 <- <{ p.AddStateChange(buffer[begin:end]) }> */
+		/* 53 Action11 <- <{ p.AddStateChange(text) }> */
 		nil,
 		/* 54 Action12 <- <{ p.AddPeekFor() }> */
 		nil,
@@ -2932,11 +2933,11 @@ func (p *Peg) Init() {
 		nil,
 		/* 58 Action16 <- <{ p.AddPlus() }> */
 		nil,
-		/* 59 Action17 <- <{ p.AddName(buffer[begin:end]) }> */
+		/* 59 Action17 <- <{ p.AddName(text) }> */
 		nil,
 		/* 60 Action18 <- <{ p.AddDot() }> */
 		nil,
-		/* 61 Action19 <- <{ p.AddAction(buffer[begin:end]) }> */
+		/* 61 Action19 <- <{ p.AddAction(text) }> */
 		nil,
 		/* 62 Action20 <- <{ p.AddPush() }> */
 		nil,
@@ -2956,11 +2957,11 @@ func (p *Peg) Init() {
 		nil,
 		/* 70 Action28 <- <{ p.AddDoubleRange() }> */
 		nil,
-		/* 71 Action29 <- <{ p.AddCharacter(buffer[begin:end]) }> */
+		/* 71 Action29 <- <{ p.AddCharacter(text) }> */
 		nil,
-		/* 72 Action30 <- <{ p.AddDoubleCharacter(buffer[begin:end]) }> */
+		/* 72 Action30 <- <{ p.AddDoubleCharacter(text) }> */
 		nil,
-		/* 73 Action31 <- <{ p.AddCharacter(buffer[begin:end]) }> */
+		/* 73 Action31 <- <{ p.AddCharacter(text) }> */
 		nil,
 		/* 74 Action32 <- <{ p.AddCharacter("\a") }> */
 		nil,
@@ -2988,11 +2989,11 @@ func (p *Peg) Init() {
 		nil,
 		/* 86 Action44 <- <{ p.AddCharacter("-") }> */
 		nil,
-		/* 87 Action45 <- <{ p.AddHexaCharacter(buffer[begin:end]) }> */
+		/* 87 Action45 <- <{ p.AddHexaCharacter(text) }> */
 		nil,
-		/* 88 Action46 <- <{ p.AddOctalCharacter(buffer[begin:end]) }> */
+		/* 88 Action46 <- <{ p.AddOctalCharacter(text) }> */
 		nil,
-		/* 89 Action47 <- <{ p.AddOctalCharacter(buffer[begin:end]) }> */
+		/* 89 Action47 <- <{ p.AddOctalCharacter(text) }> */
 		nil,
 		/* 90 Action48 <- <{ p.AddCharacter("\\") }> */
 		nil,

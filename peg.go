@@ -426,19 +426,20 @@ func (p *{{.StructName}}) Highlighter() {
 
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
-	buffer, begin, end := p.Buffer, 0, 0
+	buffer, _buffer, text, begin, end := p.Buffer, p.buffer, "", 0, 0
 	for token := range p.tokenTree.Tokens() {
 		switch (token.pegRule) {
 		{{if .HasPush}}
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
+			text = string(_buffer[begin:end])
 		{{end}}
 		{{range .Actions}}case ruleAction{{.GetId}}:
 			{{.String}}
 		{{end}}
 		}
 	}
-	_, _, _ = buffer, begin, end
+	_, _, _, _ = buffer, text, begin, end
 }
 {{end}}
 

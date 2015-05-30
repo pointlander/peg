@@ -121,10 +121,10 @@ func main() {
 		t.AddPeekFor()
 	}
 
-	/* Grammar         <- Spacing 'package' MustSpacing Identifier      { p.AddPackage(buffer[begin:end]) }
+	/* Grammar         <- Spacing 'package' MustSpacing Identifier      { p.AddPackage(text) }
 	   Import*
-	   'type' MustSpacing Identifier         { p.AddPeg(buffer[begin:end]) }
-	   'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
+	   'type' MustSpacing Identifier         { p.AddPeg(text) }
+	   'Peg' Spacing Action              { p.AddState(text) }
 	   Definition+ EndOfFile */
 	addRule("Grammar", func() {
 		addSequence(
@@ -132,22 +132,22 @@ func main() {
 			func() { addString("package") },
 			func() { addName("MustSpacing") },
 			func() { addName("Identifier") },
-			func() { addAction(" p.AddPackage(buffer[begin:end]) ") },
+			func() { addAction(" p.AddPackage(text) ") },
 			func() { addStar(func() { addName("Import") }) },
 			func() { addString("type") },
 			func() { addName("MustSpacing") },
 			func() { addName("Identifier") },
-			func() { addAction(" p.AddPeg(buffer[begin:end]) ") },
+			func() { addAction(" p.AddPeg(text) ") },
 			func() { addString("Peg") },
 			func() { addName("Spacing") },
 			func() { addName("Action") },
-			func() { addAction(" p.AddState(buffer[begin:end]) ") },
+			func() { addAction(" p.AddState(text) ") },
 			func() { addPlus(func() { addName("Definition") }) },
 			func() { addName("EndOfFile") },
 		)
 	})
 
-	/* Import          <- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(buffer[begin:end]) } */
+	/* Import          <- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(text) } */
 	addRule("Import", func() {
 		addSequence(
 			func() { addString("import") },
@@ -169,16 +169,16 @@ func main() {
 			},
 			func() { addCharacter(`"`) },
 			func() { addName("Spacing") },
-			func() { addAction(" p.AddImport(buffer[begin:end]) ") },
+			func() { addAction(" p.AddImport(text) ") },
 		)
 	})
 
-	/* Definition      <- Identifier                   { p.AddRule(buffer[begin:end]) }
+	/* Definition      <- Identifier                   { p.AddRule(text) }
 	   LeftArrow Expression         { p.AddExpression() } &(Identifier LeftArrow / !.)*/
 	addRule("Definition", func() {
 		addSequence(
 			func() { addName("Identifier") },
-			func() { addAction(" p.AddRule(buffer[begin:end]) ") },
+			func() { addAction(" p.AddRule(text) ") },
 			func() { addName("LeftArrow") },
 			func() { addName("Expression") },
 			func() { addAction(" p.AddExpression() ") },
@@ -246,8 +246,8 @@ func main() {
 		)
 	})
 
-	/* Prefix          <- And Action                   { p.AddPredicate(buffer[begin:end]) }
-	   / Not Action                   { p.AddStateChange(buffer[begin:end]) }
+	/* Prefix          <- And Action                   { p.AddPredicate(text) }
+	   / Not Action                   { p.AddStateChange(text) }
 	   / And Suffix                   { p.AddPeekFor() }
 	   / Not Suffix                   { p.AddPeekNot() }
 	   /     Suffix */
@@ -257,14 +257,14 @@ func main() {
 				addSequence(
 					func() { addName("And") },
 					func() { addName("Action") },
-					func() { addAction(" p.AddPredicate(buffer[begin:end]) ") },
+					func() { addAction(" p.AddPredicate(text) ") },
 				)
 			},
 			func() {
 				addSequence(
 					func() { addName("Not") },
 					func() { addName("Action") },
-					func() { addAction(" p.AddStateChange(buffer[begin:end]) ") },
+					func() { addAction(" p.AddStateChange(text) ") },
 				)
 			},
 			func() {
@@ -319,12 +319,12 @@ func main() {
 		)
 	})
 
-	/* Primary         <- Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
+	/* Primary         <- Identifier !LeftArrow        { p.AddName(text) }
 	   / Open Expression Close
 	   / Literal
 	   / Class
 	   / Dot                          { p.AddDot() }
-	   / Action                       { p.AddAction(buffer[begin:end]) }
+	   / Action                       { p.AddAction(text) }
 	   / Begin Expression End         { p.AddPush() }*/
 	addRule("Primary", func() {
 		addAlternate(
@@ -332,7 +332,7 @@ func main() {
 				addSequence(
 					func() { addName("Identifier") },
 					func() { addPeekNot(func() { t.AddName("LeftArrow") }) },
-					func() { addAction(" p.AddName(buffer[begin:end]) ") },
+					func() { addAction(" p.AddName(text) ") },
 				)
 			},
 			func() {
@@ -353,7 +353,7 @@ func main() {
 			func() {
 				addSequence(
 					func() { addName("Action") },
-					func() { addAction(" p.AddAction(buffer[begin:end]) ") },
+					func() { addAction(" p.AddAction(text) ") },
 				)
 			},
 			func() {
@@ -581,7 +581,7 @@ func main() {
 	})
 
 	/* Char            <- Escape
-	   / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) } */
+	   / !'\\' <.>                  { p.AddCharacter(text) } */
 	addRule("Char", func() {
 		addAlternate(
 			func() { addName("Escape") },
@@ -589,15 +589,15 @@ func main() {
 				addSequence(
 					func() { addPeekNot(func() { addCharacter("\\") }) },
 					func() { addPush(func() { addDot() }) },
-					func() { addAction(` p.AddCharacter(buffer[begin:end]) `) },
+					func() { addAction(` p.AddCharacter(text) `) },
 				)
 			},
 		)
 	})
 
 	/* DoubleChar      <- Escape
-	   / <[a-zA-Z]>                 { p.AddDoubleCharacter(buffer[begin:end]) }
-	   / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) } */
+	   / <[a-zA-Z]>                 { p.AddDoubleCharacter(text) }
+	   / !'\\' <.>                  { p.AddCharacter(text) } */
 	addRule("DoubleChar", func() {
 		addAlternate(
 			func() { addName("Escape") },
@@ -611,14 +611,14 @@ func main() {
 							)
 						})
 					},
-					func() { addAction(` p.AddDoubleCharacter(buffer[begin:end]) `) },
+					func() { addAction(` p.AddDoubleCharacter(text) `) },
 				)
 			},
 			func() {
 				addSequence(
 					func() { addPeekNot(func() { addCharacter("\\") }) },
 					func() { addPush(func() { addDot() }) },
-					func() { addAction(` p.AddCharacter(buffer[begin:end]) `) },
+					func() { addAction(` p.AddCharacter(text) `) },
 				)
 			},
 		)
@@ -637,9 +637,9 @@ func main() {
 	                              / '\\['                      { p.AddCharacter("[") }
 	                              / '\\]'                      { p.AddCharacter("]") }
 	                              / '\\-'                      { p.AddCharacter("-") }
-				      / '\\' "0x"<[0-9a-fA-F]+>    { p.AddHexaCharacter(buffer[begin:end]) }
-	                              / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
-	                              / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
+				      / '\\' "0x"<[0-9a-fA-F]+>    { p.AddHexaCharacter(text) }
+	                              / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(text) }
+	                              / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(text) }
 	                              / '\\\\'                     { p.AddCharacter("\\") } */
 	addRule("Escape", func() {
 		addAlternate(
@@ -754,7 +754,7 @@ func main() {
 							})
 						})
 					},
-					func() { addAction(` p.AddHexaCharacter(buffer[begin:end]) `) },
+					func() { addAction(` p.AddHexaCharacter(text) `) },
 				)
 			},
 			func() {
@@ -769,7 +769,7 @@ func main() {
 							)
 						})
 					},
-					func() { addAction(` p.AddOctalCharacter(buffer[begin:end]) `) },
+					func() { addAction(` p.AddOctalCharacter(text) `) },
 				)
 			},
 			func() {
@@ -783,7 +783,7 @@ func main() {
 							)
 						})
 					},
-					func() { addAction(` p.AddOctalCharacter(buffer[begin:end]) `) },
+					func() { addAction(` p.AddOctalCharacter(text) `) },
 				)
 			},
 			func() {

@@ -17,15 +17,15 @@ type Peg Peg {
 }
 
 # Hierarchical syntax
-Grammar		<- Spacing 'package' MustSpacing Identifier      { p.AddPackage(buffer[begin:end]) }
+Grammar		<- Spacing 'package' MustSpacing Identifier      { p.AddPackage(text) }
 			   Import*
-                           'type' MustSpacing Identifier         { p.AddPeg(buffer[begin:end]) }
-                           'Peg' Spacing Action              { p.AddState(buffer[begin:end]) }
+                           'type' MustSpacing Identifier         { p.AddPeg(text) }
+                           'Peg' Spacing Action              { p.AddState(text) }
                            Definition+ EndOfFile
 
-Import		<- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(buffer[begin:end]) }
+Import		<- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(text) }
 
-Definition	<- Identifier 			{ p.AddRule(buffer[begin:end]) }
+Definition	<- Identifier 			{ p.AddRule(text) }
 		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.)
 Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }
 			    )* (Slash           { p.AddNil(); p.AddAlternate() }
@@ -33,8 +33,8 @@ Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }
                  /				{ p.AddNil() }
 Sequence	<- Prefix (Prefix		{ p.AddSequence() }
 			  )*
-Prefix		<- And Action			{ p.AddPredicate(buffer[begin:end]) }
-		 / Not Action			{ p.AddStateChange(buffer[begin:end]) }
+Prefix		<- And Action			{ p.AddPredicate(text) }
+		 / Not Action			{ p.AddStateChange(text) }
 		 / And Suffix			{ p.AddPeekFor() }
 		 / Not Suffix			{ p.AddPeekNot() }
 		 /     Suffix
@@ -42,12 +42,12 @@ Suffix          <- Primary (Question            { p.AddQuery() }
                            / Star               { p.AddStar() }
                            / Plus               { p.AddPlus() }
                            )?
-Primary	        <- Identifier !LeftArrow        { p.AddName(buffer[begin:end]) }
+Primary	        <- Identifier !LeftArrow        { p.AddName(text) }
                  / Open Expression Close
                  / Literal
                  / Class
                  / Dot                          { p.AddDot() }
-                 / Action                       { p.AddAction(buffer[begin:end]) }
+                 / Action                       { p.AddAction(text) }
                  / Begin Expression End         { p.AddPush() }
 
 # Lexical syntax
@@ -76,10 +76,10 @@ Range		<- Char '-' Char              { p.AddRange() }
 DoubleRange	<- Char '-' Char              { p.AddDoubleRange() }
                  / DoubleChar
 Char            <- Escape
-                 / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
+                 / !'\\' <.>                  { p.AddCharacter(text) }
 DoubleChar	<- Escape
-		 / <[a-zA-Z]>                 { p.AddDoubleCharacter(buffer[begin:end]) }
-                 / !'\\' <.>                  { p.AddCharacter(buffer[begin:end]) }
+		 / <[a-zA-Z]>                 { p.AddDoubleCharacter(text) }
+                 / !'\\' <.>                  { p.AddCharacter(text) }
 Escape          <- "\\a"                      { p.AddCharacter("\a") }   # bell
                  / "\\b"                      { p.AddCharacter("\b") }   # bs
                  / "\\e"                      { p.AddCharacter("\x1B") } # esc
@@ -93,9 +93,9 @@ Escape          <- "\\a"                      { p.AddCharacter("\a") }   # bell
                  / '\\['                      { p.AddCharacter("[") }
                  / '\\]'                      { p.AddCharacter("]") }
                  / '\\-'                      { p.AddCharacter("-") }
-                 / '\\' "0x"<[0-9a-fA-F]+>     { p.AddHexaCharacter(buffer[begin:end]) }
-                 / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(buffer[begin:end]) }
-                 / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(buffer[begin:end]) }
+                 / '\\' "0x"<[0-9a-fA-F]+>     { p.AddHexaCharacter(text) }
+                 / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(text) }
+                 / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(text) }
                  / '\\\\'                     { p.AddCharacter("\\") }
 LeftArrow	<- ('<-' / '\0x2190') Spacing
 Slash		<- '/' Spacing
