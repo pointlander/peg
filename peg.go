@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/pointlander/jetset"
 	"go/parser"
 	"go/printer"
 	"go/token"
@@ -1059,12 +1060,12 @@ func (t *Tree) Compile(file string, out io.Writer) {
 		}})
 
 	if t._switch {
-		var optimizeAlternates func(node Node) (consumes bool, s *set)
+		var optimizeAlternates func(node Node) (consumes bool, s jetset.Set)
 		cache, firstPass := make([]struct {
 			reached, consumes bool
-			s                 *set
+			s                 jetset.Set
 		}, t.RulesCount), true
-		optimizeAlternates = func(n Node) (consumes bool, s *set) {
+		optimizeAlternates = func(n Node) (consumes bool, s jetset.Set) {
 			/*n.debug()*/
 			switch n.GetType() {
 			case TypeRule:
@@ -1080,37 +1081,33 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			case TypeName:
 				consumes, s = optimizeAlternates(t.Rules[n.String()])
 			case TypeDot:
-				consumes, s = true, &set{}
+				consumes = true
 				/* TypeDot set doesn't include the EndSymbol */
-				s.add(byte(t.EndSymbol))
-				s.complement()
+				s = s.Add(uint64(t.EndSymbol))
+				s = s.Complement(uint64(t.EndSymbol))
 			case TypeString, TypeCharacter:
-				consumes, s = true, &set{}
-				s.add(n.String()[0])
+				consumes = true
+				s = s.Add(uint64(n.String()[0]))
 			case TypeRange:
-				consumes, s = true, &set{}
+				consumes = true
 				element := n.Front()
 				lower := element.String()[0]
 				element = element.Next()
 				upper := element.String()[0]
 				for c := lower; c <= upper; c++ {
-					s.add(c)
+					s = s.Add(uint64(c))
 				}
 			case TypeAlternate:
-				consumes, s = true, &set{}
+				consumes = true
 				mconsumes, properties, c :=
 					consumes, make([]struct {
 						intersects bool
-						s          *set
+						s          jetset.Set
 					}, n.Len()), 0
 				for _, element := range n.Slice() {
 					mconsumes, properties[c].s = optimizeAlternates(element)
 					consumes = consumes && mconsumes
-					if properties[c].s == nil {
-						/* recursive definition, so set has yet to be completed */
-					} else {
-						s.union(properties[c].s)
-					}
+					s = s.Union(properties[c].s)
 					c++
 				}
 
@@ -1122,7 +1119,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			compare:
 				for ai, a := range properties[0 : len(properties)-1] {
 					for _, b := range properties[ai+1:] {
-						if a.s.intersects(b.s) {
+						if a.s.Intersects(b.s) {
 							intersections++
 							properties[ai].intersects = true
 							continue compare
@@ -1141,13 +1138,13 @@ func (t *Tree) Compile(file string, out io.Writer) {
 					} else {
 						class := &node{Type: TypeUnorderedAlternate}
 						for d := 0; d < 256; d++ {
-							if properties[c].s.has(uint8(d)) {
+							if properties[c].s.Has(uint64(d)) {
 								class.PushBack(&node{Type: TypeCharacter, string: string(d)})
 							}
 						}
 
 						sequence, predicate, length :=
-							&node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[c].s.len()
+							&node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[c].s.Len()
 						if length == 0 {
 							class.PushBack(&node{Type: TypeNil, string: "<nil>"})
 						}
@@ -1181,7 +1178,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			case TypeSequence:
 				classes, elements :=
 					make([]struct {
-						s *set
+						s jetset.Set
 					}, n.Len()), n.Slice()
 
 				for c, element := range elements {
@@ -1192,11 +1189,8 @@ func (t *Tree) Compile(file string, out io.Writer) {
 					}
 				}
 
-				s = &set{}
 				for c := len(classes) - 1; c >= 0; c-- {
-					if classes[c].s != nil {
-						s.union(classes[c].s)
-					}
+					s = s.Union(classes[c].s)
 				}
 
 				for _, element := range elements {
@@ -1204,13 +1198,12 @@ func (t *Tree) Compile(file string, out io.Writer) {
 				}
 			case TypePeekNot, TypePeekFor:
 				optimizeAlternates(n.Front())
-				s = &set{}
 			case TypeQuery, TypeStar:
 				_, s = optimizeAlternates(n.Front())
 			case TypePlus, TypePush, TypeImplicitPush:
 				consumes, s = optimizeAlternates(n.Front())
 			case TypeAction, TypeNil:
-				s = &set{}
+				//empty
 			}
 			return
 		}
@@ -1566,7 +1559,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 
 	/* now for the real compile pass */
 	t.PegRuleType = "uint8"
-	if length := t.Len(); length > math.MaxUint32 {
+	if length := int64(t.Len()); length > math.MaxUint32 {
 		t.PegRuleType = "uint64"
 	} else if length > math.MaxUint16 {
 		t.PegRuleType = "uint32"
