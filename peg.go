@@ -1088,16 +1088,14 @@ func (t *Tree) Compile(file string, out io.Writer) {
 				s = s.Complement(uint64(t.EndSymbol))
 			case TypeString, TypeCharacter:
 				consumes = true
-				s = s.Add(uint64(n.String()[0]))
+				s = s.Add(uint64([]rune(n.String())[0]))
 			case TypeRange:
 				consumes = true
 				element := n.Front()
-				lower := element.String()[0]
+				lower := []rune(element.String())[0]
 				element = element.Next()
-				upper := element.String()[0]
-				for c := lower; c <= upper; c++ {
-					s = s.Add(uint64(c))
-				}
+				upper := []rune(element.String())[0]
+				s = s.AddRange(uint64(lower), uint64(upper))
 			case TypeAlternate:
 				consumes = true
 				mconsumes, properties, c :=
