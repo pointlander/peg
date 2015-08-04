@@ -539,7 +539,7 @@ func translatePositions(buffer string, positions []int) textPositionMap {
 	sort.Ints(positions)
 
 search:
-	for i, c := range buffer[0:] {
+	for i, c := range []rune(buffer) {
 		if c == '\n' {
 			line, symbol = line+1, 0
 		} else {
