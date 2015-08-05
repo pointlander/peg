@@ -380,7 +380,7 @@ func translatePositions(buffer string, positions []int) textPositionMap {
 	length, translations, j, line, symbol := len(positions), make(textPositionMap, len(positions)), 0, 1, 0
 	sort.Ints(positions)
 
-	search: for i, c := range buffer[0:] {
+	search: for i, c := range []rune(buffer) {
 		if c == '\n' {line, symbol = line + 1, 0} else {symbol++}
 		if i == positions[j] {
 			translations[positions[j]] = textPosition{line, symbol}
