@@ -439,7 +439,7 @@ func (p *{{.StructName}}) Execute() {
 		{{end}}
 		}
 	}
-	_, _, _, _ = buffer, text, begin, end
+	_, _, _, _, _ = buffer, _buffer, text, begin, end
 }
 {{end}}
 
