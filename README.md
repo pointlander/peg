@@ -69,7 +69,7 @@ specific <- 'a'* 'bc'+ 'de'?
 ```
 will match the string "aaabcbcde".
 
-For choosing between differnt inputs use alternates:
+For choosing between different inputs use alternates:
 ```
 prioritized <- 'a' 'a'* / 'bc'+ / 'de'?
 ```
