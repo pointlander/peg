@@ -706,7 +706,7 @@ func (p *Peg) Execute() {
 
 		}
 	}
-	_, _, _, _ = buffer, text, begin, end
+	_, _, _, _, _ = buffer, _buffer, text, begin, end
 }
 
 func (p *Peg) Init() {
