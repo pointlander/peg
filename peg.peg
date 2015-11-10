@@ -114,6 +114,8 @@ Comment		<- '#' (!EndOfLine .)* EndOfLine
 Space		<- ' ' / '\t' / EndOfLine
 EndOfLine	<- '\r\n' / '\n' / '\r'
 EndOfFile	<- !.
-Action		<- '{' < [^}]* > '}' Spacing
+Action		<- '{' < ActionBody* > '}' Spacing
+ActionBody	<- [^{}] / '{' ActionBody* '}'
 Begin		<- '<' Spacing
 End		<- '>' Spacing
+

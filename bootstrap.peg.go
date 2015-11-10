@@ -52,6 +52,7 @@ const (
 	ruleEndOfLine
 	ruleEndOfFile
 	ruleAction
+	ruleActionBody
 	ruleBegin
 	ruleEnd
 	ruleAction0
@@ -150,6 +151,7 @@ var rul3s = [...]string{
 	"EndOfLine",
 	"EndOfFile",
 	"Action",
+	"ActionBody",
 	"Begin",
 	"End",
 	"Action0",
@@ -522,7 +524,7 @@ type Peg struct {
 
 	Buffer string
 	buffer []rune
-	rules  [91]func() bool
+	rules  [92]func() bool
 	Parse  func(rule ...int) error
 	Reset  func()
 	tokenTree
@@ -2843,7 +2845,7 @@ func (p *Peg) Init() {
 		},
 		/* 36 EndOfFile <- <!.> */
 		nil,
-		/* 37 Action <- <('{' <(!'}' .)*> '}' Spacing)> */
+		/* 37 Action <- <('{' <ActionBody*> '}' Spacing)> */
 		func() bool {
 			position276, tokenIndex276, depth276 := position, tokenIndex, depth
 			{
@@ -2859,17 +2861,7 @@ func (p *Peg) Init() {
 				l279:
 					{
 						position280, tokenIndex280, depth280 := position, tokenIndex, depth
-						{
-							position281, tokenIndex281, depth281 := position, tokenIndex, depth
-							if buffer[position] != rune('}') {
-								goto l281
-							}
-							position++
-							goto l280
-						l281:
-							position, tokenIndex, depth = position281, tokenIndex281, depth281
-						}
-						if !matchDot() {
+						if !_rules[ruleActionBody]() {
 							goto l280
 						}
 						goto l279
@@ -2894,108 +2886,171 @@ func (p *Peg) Init() {
 			position, tokenIndex, depth = position276, tokenIndex276, depth276
 			return false
 		},
-		/* 38 Begin <- <('<' Spacing)> */
+		/* 38 ActionBody <- <((!('{' / '}') .) / ('{' ActionBody* '}'))> */
+		func() bool {
+			position281, tokenIndex281, depth281 := position, tokenIndex, depth
+			{
+				position282 := position
+				depth++
+				{
+					position283, tokenIndex283, depth283 := position, tokenIndex, depth
+					{
+						position285, tokenIndex285, depth285 := position, tokenIndex, depth
+						{
+							position286, tokenIndex286, depth286 := position, tokenIndex, depth
+							if buffer[position] != rune('{') {
+								goto l287
+							}
+							position++
+							goto l286
+						l287:
+							position, tokenIndex, depth = position286, tokenIndex286, depth286
+							if buffer[position] != rune('}') {
+								goto l285
+							}
+							position++
+						}
+					l286:
+						goto l284
+					l285:
+						position, tokenIndex, depth = position285, tokenIndex285, depth285
+					}
+					if !matchDot() {
+						goto l284
+					}
+					goto l283
+				l284:
+					position, tokenIndex, depth = position283, tokenIndex283, depth283
+					if buffer[position] != rune('{') {
+						goto l281
+					}
+					position++
+				l288:
+					{
+						position289, tokenIndex289, depth289 := position, tokenIndex, depth
+						if !_rules[ruleActionBody]() {
+							goto l289
+						}
+						goto l288
+					l289:
+						position, tokenIndex, depth = position289, tokenIndex289, depth289
+					}
+					if buffer[position] != rune('}') {
+						goto l281
+					}
+					position++
+				}
+			l283:
+				depth--
+				add(ruleActionBody, position282)
+			}
+			return true
+		l281:
+			position, tokenIndex, depth = position281, tokenIndex281, depth281
+			return false
+		},
+		/* 39 Begin <- <('<' Spacing)> */
 		nil,
-		/* 39 End <- <('>' Spacing)> */
+		/* 40 End <- <('>' Spacing)> */
 		nil,
-		/* 41 Action0 <- <{ p.AddPackage(text) }> */
+		/* 42 Action0 <- <{ p.AddPackage(text) }> */
 		nil,
-		/* 42 Action1 <- <{ p.AddPeg(text) }> */
+		/* 43 Action1 <- <{ p.AddPeg(text) }> */
 		nil,
-		/* 43 Action2 <- <{ p.AddState(text) }> */
+		/* 44 Action2 <- <{ p.AddState(text) }> */
 		nil,
 		nil,
-		/* 45 Action3 <- <{ p.AddImport(text) }> */
+		/* 46 Action3 <- <{ p.AddImport(text) }> */
 		nil,
-		/* 46 Action4 <- <{ p.AddRule(text) }> */
+		/* 47 Action4 <- <{ p.AddRule(text) }> */
 		nil,
-		/* 47 Action5 <- <{ p.AddExpression() }> */
+		/* 48 Action5 <- <{ p.AddExpression() }> */
 		nil,
-		/* 48 Action6 <- <{ p.AddAlternate() }> */
+		/* 49 Action6 <- <{ p.AddAlternate() }> */
 		nil,
-		/* 49 Action7 <- <{ p.AddNil(); p.AddAlternate() }> */
+		/* 50 Action7 <- <{ p.AddNil(); p.AddAlternate() }> */
 		nil,
-		/* 50 Action8 <- <{ p.AddNil() }> */
+		/* 51 Action8 <- <{ p.AddNil() }> */
 		nil,
-		/* 51 Action9 <- <{ p.AddSequence() }> */
+		/* 52 Action9 <- <{ p.AddSequence() }> */
 		nil,
-		/* 52 Action10 <- <{ p.AddPredicate(text) }> */
+		/* 53 Action10 <- <{ p.AddPredicate(text) }> */
 		nil,
-		/* 53 Action11 <- <{ p.AddStateChange(text) }> */
+		/* 54 Action11 <- <{ p.AddStateChange(text) }> */
 		nil,
-		/* 54 Action12 <- <{ p.AddPeekFor() }> */
+		/* 55 Action12 <- <{ p.AddPeekFor() }> */
 		nil,
-		/* 55 Action13 <- <{ p.AddPeekNot() }> */
+		/* 56 Action13 <- <{ p.AddPeekNot() }> */
 		nil,
-		/* 56 Action14 <- <{ p.AddQuery() }> */
+		/* 57 Action14 <- <{ p.AddQuery() }> */
 		nil,
-		/* 57 Action15 <- <{ p.AddStar() }> */
+		/* 58 Action15 <- <{ p.AddStar() }> */
 		nil,
-		/* 58 Action16 <- <{ p.AddPlus() }> */
+		/* 59 Action16 <- <{ p.AddPlus() }> */
 		nil,
-		/* 59 Action17 <- <{ p.AddName(text) }> */
+		/* 60 Action17 <- <{ p.AddName(text) }> */
 		nil,
-		/* 60 Action18 <- <{ p.AddDot() }> */
+		/* 61 Action18 <- <{ p.AddDot() }> */
 		nil,
-		/* 61 Action19 <- <{ p.AddAction(text) }> */
+		/* 62 Action19 <- <{ p.AddAction(text) }> */
 		nil,
-		/* 62 Action20 <- <{ p.AddPush() }> */
+		/* 63 Action20 <- <{ p.AddPush() }> */
 		nil,
-		/* 63 Action21 <- <{ p.AddSequence() }> */
+		/* 64 Action21 <- <{ p.AddSequence() }> */
 		nil,
-		/* 64 Action22 <- <{ p.AddSequence() }> */
+		/* 65 Action22 <- <{ p.AddSequence() }> */
 		nil,
-		/* 65 Action23 <- <{ p.AddPeekNot(); p.AddDot(); p.AddSequence() }> */
+		/* 66 Action23 <- <{ p.AddPeekNot(); p.AddDot(); p.AddSequence() }> */
 		nil,
-		/* 66 Action24 <- <{ p.AddPeekNot(); p.AddDot(); p.AddSequence() }> */
+		/* 67 Action24 <- <{ p.AddPeekNot(); p.AddDot(); p.AddSequence() }> */
 		nil,
-		/* 67 Action25 <- <{ p.AddAlternate() }> */
+		/* 68 Action25 <- <{ p.AddAlternate() }> */
 		nil,
-		/* 68 Action26 <- <{ p.AddAlternate() }> */
+		/* 69 Action26 <- <{ p.AddAlternate() }> */
 		nil,
-		/* 69 Action27 <- <{ p.AddRange() }> */
+		/* 70 Action27 <- <{ p.AddRange() }> */
 		nil,
-		/* 70 Action28 <- <{ p.AddDoubleRange() }> */
+		/* 71 Action28 <- <{ p.AddDoubleRange() }> */
 		nil,
-		/* 71 Action29 <- <{ p.AddCharacter(text) }> */
+		/* 72 Action29 <- <{ p.AddCharacter(text) }> */
 		nil,
-		/* 72 Action30 <- <{ p.AddDoubleCharacter(text) }> */
+		/* 73 Action30 <- <{ p.AddDoubleCharacter(text) }> */
 		nil,
-		/* 73 Action31 <- <{ p.AddCharacter(text) }> */
+		/* 74 Action31 <- <{ p.AddCharacter(text) }> */
 		nil,
-		/* 74 Action32 <- <{ p.AddCharacter("\a") }> */
+		/* 75 Action32 <- <{ p.AddCharacter("\a") }> */
 		nil,
-		/* 75 Action33 <- <{ p.AddCharacter("\b") }> */
+		/* 76 Action33 <- <{ p.AddCharacter("\b") }> */
 		nil,
-		/* 76 Action34 <- <{ p.AddCharacter("\x1B") }> */
+		/* 77 Action34 <- <{ p.AddCharacter("\x1B") }> */
 		nil,
-		/* 77 Action35 <- <{ p.AddCharacter("\f") }> */
+		/* 78 Action35 <- <{ p.AddCharacter("\f") }> */
 		nil,
-		/* 78 Action36 <- <{ p.AddCharacter("\n") }> */
+		/* 79 Action36 <- <{ p.AddCharacter("\n") }> */
 		nil,
-		/* 79 Action37 <- <{ p.AddCharacter("\r") }> */
+		/* 80 Action37 <- <{ p.AddCharacter("\r") }> */
 		nil,
-		/* 80 Action38 <- <{ p.AddCharacter("\t") }> */
+		/* 81 Action38 <- <{ p.AddCharacter("\t") }> */
 		nil,
-		/* 81 Action39 <- <{ p.AddCharacter("\v") }> */
+		/* 82 Action39 <- <{ p.AddCharacter("\v") }> */
 		nil,
-		/* 82 Action40 <- <{ p.AddCharacter("'") }> */
+		/* 83 Action40 <- <{ p.AddCharacter("'") }> */
 		nil,
-		/* 83 Action41 <- <{ p.AddCharacter("\"") }> */
+		/* 84 Action41 <- <{ p.AddCharacter("\"") }> */
 		nil,
-		/* 84 Action42 <- <{ p.AddCharacter("[") }> */
+		/* 85 Action42 <- <{ p.AddCharacter("[") }> */
 		nil,
-		/* 85 Action43 <- <{ p.AddCharacter("]") }> */
+		/* 86 Action43 <- <{ p.AddCharacter("]") }> */
 		nil,
-		/* 86 Action44 <- <{ p.AddCharacter("-") }> */
+		/* 87 Action44 <- <{ p.AddCharacter("-") }> */
 		nil,
-		/* 87 Action45 <- <{ p.AddHexaCharacter(text) }> */
+		/* 88 Action45 <- <{ p.AddHexaCharacter(text) }> */
 		nil,
-		/* 88 Action46 <- <{ p.AddOctalCharacter(text) }> */
+		/* 89 Action46 <- <{ p.AddOctalCharacter(text) }> */
 		nil,
-		/* 89 Action47 <- <{ p.AddOctalCharacter(text) }> */
+		/* 90 Action47 <- <{ p.AddOctalCharacter(text) }> */
 		nil,
-		/* 90 Action48 <- <{ p.AddCharacter("\\") }> */
+		/* 91 Action48 <- <{ p.AddCharacter("\\") }> */
 		nil,
 	}
 	p.rules = _rules
