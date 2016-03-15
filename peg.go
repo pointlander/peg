@@ -367,6 +367,7 @@ type {{.StructName}} struct {
 	rules		[{{.RulesCount}}]func() bool
 	Parse		func(rule ...int) error
 	Reset		func()
+	Pretty 	bool
 	tokenTree
 }
 
@@ -376,11 +377,11 @@ type textPosition struct {
 
 type textPositionMap map[int] textPosition
 
-func translatePositions(buffer string, positions []int) textPositionMap {
+func translatePositions(buffer []rune, positions []int) textPositionMap {
 	length, translations, j, line, symbol := len(positions), make(textPositionMap, len(positions)), 0, 1, 0
 	sort.Ints(positions)
 
-	search: for i, c := range []rune(buffer) {
+	search: for i, c := range buffer {
 		if c == '\n' {line, symbol = line + 1, 0} else {symbol++}
 		if i == positions[j] {
 			translations[positions[j]] = textPosition{line, symbol}
@@ -394,23 +395,28 @@ func translatePositions(buffer string, positions []int) textPositionMap {
 
 type parseError struct {
 	p *{{.StructName}}
+	max token32
 }
 
 func (e *parseError) Error() string {
-	tokens, error := e.p.tokenTree.Error(), "\n"
+	tokens, error := []token32{e.max}, "\n"
 	positions, p := make([]int, 2 * len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p + 1
 		positions[p], p = int(token.end), p + 1
 	}
-	translations := translatePositions(e.p.Buffer, positions)
+	translations := translatePositions(e.p.buffer, positions)
+	format := "parse error near %v (line %v symbol %v - line %v symbol %v):\n%v\n"
+	if e.p.Pretty {
+		format = "parse error near \x1B[34m%v\x1B[m (line %v symbol %v - line %v symbol %v):\n%v\n"
+	}
 	for _, token := range tokens {
 		begin, end := int(token.begin), int(token.end)
-		error += fmt.Sprintf("parse error near \x1B[34m%v\x1B[m (line %v symbol %v - line %v symbol %v):\n%v\n",
-                                     rul3s[token.pegRule],
-                                     translations[begin].line, translations[begin].symbol,
-                                     translations[end].line, translations[end].symbol,
-                                     /*strconv.Quote(*/e.p.Buffer[begin:end]/*)*/)
+		error += fmt.Sprintf(format,
+                         rul3s[token.pegRule],
+                         translations[begin].line, translations[begin].symbol,
+                         translations[end].line, translations[end].symbol,
+                         strconv.Quote(string(e.p.buffer[begin:end])))
 	}
 
 	return error
@@ -450,6 +456,7 @@ func (p *{{.StructName}}) Init() {
 	}
 
 	var tree tokenTree = &tokens32{tree: make([]token32, math.MaxInt16)}
+	var max token32
 	position, depth, tokenIndex, buffer, _rules := uint32(0), uint32(0), 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
@@ -463,7 +470,7 @@ func (p *{{.StructName}}) Init() {
 			p.tokenTree.trim(tokenIndex)
 			return nil
 		}
-		return &parseError{p}
+		return &parseError{p, max}
 	}
 
 	p.Reset = func() {
@@ -476,6 +483,9 @@ func (p *{{.StructName}}) Init() {
 		}
 		tree.Add(rule, begin, position, depth, tokenIndex)
 		tokenIndex++
+		if begin != position && position > max.end {
+			max = token32{rule, begin, position, depth}
+		}
 	}
 
 	{{if .HasDot}}
@@ -792,12 +802,12 @@ func (t *Tree) AddOctalCharacter(text string) {
 	octal, _ := strconv.ParseInt(text, 8, 8)
 	t.PushFront(&node{Type: TypeCharacter, string: string(octal)})
 }
-func (t *Tree) AddPredicate(text string) { t.PushFront(&node{Type: TypePredicate, string: text}) }
+func (t *Tree) AddPredicate(text string)   { t.PushFront(&node{Type: TypePredicate, string: text}) }
 func (t *Tree) AddStateChange(text string) { t.PushFront(&node{Type: TypeStateChange, string: text}) }
-func (t *Tree) AddNil()                  { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
-func (t *Tree) AddAction(text string)    { t.PushFront(&node{Type: TypeAction, string: text}) }
-func (t *Tree) AddPackage(text string)   { t.PushBack(&node{Type: TypePackage, string: text}) }
-func (t *Tree) AddImport(text string)    { t.PushBack(&node{Type: TypeImport, string: text}) }
+func (t *Tree) AddNil()                    { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
+func (t *Tree) AddAction(text string)      { t.PushFront(&node{Type: TypeAction, string: text}) }
+func (t *Tree) AddPackage(text string)     { t.PushBack(&node{Type: TypePackage, string: text}) }
+func (t *Tree) AddImport(text string)      { t.PushBack(&node{Type: TypeImport, string: text}) }
 func (t *Tree) AddState(text string) {
 	peg := t.PopFront()
 	peg.PushBack(&node{Type: TypeState, string: text})
