@@ -879,7 +879,6 @@ func escape(c string) string {
 		c = strconv.Quote(c)
 		return c[1 : len(c)-1]
 	}
-	return ""
 }
 
 func (t *Tree) Compile(file string, out io.Writer) {
@@ -1254,9 +1253,9 @@ func (t *Tree) Compile(file string, out io.Writer) {
 
 	}()
 
-	print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
-	printSave := func(n uint) { print("\n   position%d, tokenIndex%d, depth%d := position, tokenIndex, depth", n, n, n) }
-	printRestore := func(n uint) { print("\n   position, tokenIndex, depth = position%d, tokenIndex%d, depth%d", n, n, n) }
+	_print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
+	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d, depth%d := position, tokenIndex, depth", n, n, n) }
+	printRestore := func(n uint) { _print("\n   position, tokenIndex, depth = position%d, tokenIndex%d, depth%d", n, n, n) }
 	printTemplate := func(s string) {
 		if error := template.Must(template.New("peg").Parse(s)).Execute(&buffer, t); error != nil {
 			panic(error)
@@ -1275,92 +1274,92 @@ func (t *Tree) Compile(file string, out io.Writer) {
 	var compile func(expression Node, ko uint)
 	var label uint
 	labels := make(map[uint]bool)
-	printBegin := func() { print("\n   {") }
-	printEnd := func() { print("\n   }") }
+	printBegin := func() { _print("\n   {") }
+	printEnd := func() { _print("\n   }") }
 	printLabel := func(n uint) {
-		print("\n")
+		_print("\n")
 		if labels[n] {
-			print("   l%d:\t", n)
+			_print("   l%d:\t", n)
 		}
 	}
 	printJump := func(n uint) {
-		print("\n   goto l%d", n)
+		_print("\n   goto l%d", n)
 		labels[n] = true
 	}
 	printRule = func(n Node) {
 		switch n.GetType() {
 		case TypeRule:
-			print("%v <- ", n)
+			_print("%v <- ", n)
 			printRule(n.Front())
 		case TypeDot:
-			print(".")
+			_print(".")
 		case TypeName:
-			print("%v", n)
+			_print("%v", n)
 		case TypeCharacter:
-			print("'%v'", escape(n.String()))
+			_print("'%v'", escape(n.String()))
 		case TypeString:
 			s := escape(n.String())
-			print("'%v'", s[1:len(s)-1])
+			_print("'%v'", s[1:len(s)-1])
 		case TypeRange:
 			element := n.Front()
 			lower := element
 			element = element.Next()
 			upper := element
-			print("[%v-%v]", escape(lower.String()), escape(upper.String()))
+			_print("[%v-%v]", escape(lower.String()), escape(upper.String()))
 		case TypePredicate:
-			print("&{%v}", n)
+			_print("&{%v}", n)
 		case TypeStateChange:
-			print("!{%v}", n)
+			_print("!{%v}", n)
 		case TypeAction:
-			print("{%v}", n)
+			_print("{%v}", n)
 		case TypeCommit:
-			print("commit")
+			_print("commit")
 		case TypeAlternate:
-			print("(")
+			_print("(")
 			elements := n.Slice()
 			printRule(elements[0])
 			for _, element := range elements[1:] {
-				print(" / ")
+				_print(" / ")
 				printRule(element)
 			}
-			print(")")
+			_print(")")
 		case TypeUnorderedAlternate:
-			print("(")
+			_print("(")
 			elements := n.Slice()
 			printRule(elements[0])
 			for _, element := range elements[1:] {
-				print(" | ")
+				_print(" | ")
 				printRule(element)
 			}
-			print(")")
+			_print(")")
 		case TypeSequence:
-			print("(")
+			_print("(")
 			elements := n.Slice()
 			printRule(elements[0])
 			for _, element := range elements[1:] {
-				print(" ")
+				_print(" ")
 				printRule(element)
 			}
-			print(")")
+			_print(")")
 		case TypePeekFor:
-			print("&")
+			_print("&")
 			printRule(n.Front())
 		case TypePeekNot:
-			print("!")
+			_print("!")
 			printRule(n.Front())
 		case TypeQuery:
 			printRule(n.Front())
-			print("?")
+			_print("?")
 		case TypeStar:
 			printRule(n.Front())
-			print("*")
+			_print("*")
 		case TypePlus:
 			printRule(n.Front())
-			print("+")
+			_print("+")
 		case TypePush, TypeImplicitPush:
-			print("<")
+			_print("<")
 			printRule(n.Front())
-			print(">")
+			_print(">")
 		case TypeNil:
 		default:
 			fmt.Fprintf(os.Stderr, "illegal node type: %v\n", n.GetType())
@@ -1371,11 +1370,11 @@ func (t *Tree) Compile(file string, out io.Writer) {
 		case TypeRule:
 			fmt.Fprintf(os.Stderr, "internal error #1 (%v)\n", n)
 		case TypeDot:
-			print("\n   if !matchDot() {")
+			_print("\n   if !matchDot() {")
 			/*print("\n   if buffer[position] == end_symbol {")*/
 			printJump(ko)
 			/*print("}\nposition++")*/
-			print("}")
+			_print("}")
 		case TypeName:
 			name := n.String()
 			rule := t.Rules[name]
@@ -1383,33 +1382,33 @@ func (t *Tree) Compile(file string, out io.Writer) {
 				compile(rule.Front(), ko)
 				return
 			}
-			print("\n   if !_rules[rule%v]() {", name /*rule.GetId()*/)
+			_print("\n   if !_rules[rule%v]() {", name /*rule.GetId()*/)
 			printJump(ko)
-			print("}")
+			_print("}")
 		case TypeRange:
 			element := n.Front()
 			lower := element
 			element = element.Next()
 			upper := element
 			/*print("\n   if !matchRange('%v', '%v') {", escape(lower.String()), escape(upper.String()))*/
-			print("\n   if c := buffer[position]; c < rune('%v') || c > rune('%v') {", escape(lower.String()), escape(upper.String()))
+			_print("\n   if c := buffer[position]; c < rune('%v') || c > rune('%v') {", escape(lower.String()), escape(upper.String()))
 			printJump(ko)
-			print("}\nposition++")
+			_print("}\nposition++")
 		case TypeCharacter:
 			/*print("\n   if !matchChar('%v') {", escape(n.String()))*/
-			print("\n   if buffer[position] != rune('%v') {", escape(n.String()))
+			_print("\n   if buffer[position] != rune('%v') {", escape(n.String()))
 			printJump(ko)
-			print("}\nposition++")
+			_print("}\nposition++")
 		case TypeString:
-			print("\n   if !matchString(%v) {", strconv.Quote(n.String()))
+			_print("\n   if !matchString(%v) {", strconv.Quote(n.String()))
 			printJump(ko)
-			print("}")
+			_print("}")
 		case TypePredicate:
-			print("\n   if !(%v) {", n)
+			_print("\n   if !(%v) {", n)
 			printJump(ko)
-			print("}")
+			_print("}")
 		case TypeStateChange:
-			print("\n   %v", n)
+			_print("\n   %v", n)
 		case TypeAction:
 		case TypeCommit:
 		case TypePush:
@@ -1420,13 +1419,13 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			nodeType, rule := element.GetType(), element.Next()
 			printBegin()
 			if nodeType == TypeAction {
-				print("\nadd(rule%v, position)", rule)
+				_print("\nadd(rule%v, position)", rule)
 			} else {
-				print("\nposition%d := position", ok)
-				print("\ndepth++")
+				_print("\nposition%d := position", ok)
+				_print("\ndepth++")
 				compile(element, ko)
-				print("\ndepth--")
-				print("\nadd(rule%v, position%d)", rule, ok)
+				_print("\ndepth--")
+				_print("\nadd(rule%v, position%d)", rule, ok)
 			}
 			printEnd()
 		case TypeAlternate:
@@ -1450,31 +1449,31 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			done, ok := ko, label
 			label++
 			printBegin()
-			print("\n   switch buffer[position] {")
+			_print("\n   switch buffer[position] {")
 			elements := n.Slice()
 			elements, last := elements[:len(elements)-1], elements[len(elements)-1].Front().Next()
 			for _, element := range elements {
 				sequence := element.Front()
 				class := sequence.Front()
 				sequence = sequence.Next()
-				print("\n   case")
+				_print("\n   case")
 				comma := false
 				for _, character := range class.Slice() {
 					if comma {
-						print(",")
+						_print(",")
 					} else {
 						comma = true
 					}
-					print(" '%s'", escape(character.String()))
+					_print(" '%s'", escape(character.String()))
 				}
-				print(":")
+				_print(":")
 				compile(sequence, done)
-				print("\nbreak")
+				_print("\nbreak")
 			}
-			print("\n   default:")
+			_print("\n   default:")
 			compile(last, done)
-			print("\nbreak")
-			print("\n   }")
+			_print("\nbreak")
+			_print("\n   }")
 			printEnd()
 			printLabel(ok)
 		case TypeSequence:
@@ -1546,7 +1545,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 	}
 
 	/* lets figure out which jump labels are going to be used with this dry compile */
-	printTemp, print := print, func(format string, a ...interface{}) {}
+	printTemp, _print := _print, func(format string, a ...interface{}) {}
 	for _, element := range t.Slice() {
 		if element.GetType() != TypeRule {
 			continue
@@ -1564,7 +1563,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 		}
 		compile(expression, ko)
 	}
-	print, label = printTemp, 0
+	_print, label = printTemp, 0
 
 	/* now for the real compile pass */
 	t.PegRuleType = "uint8"
@@ -1585,36 +1584,36 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			if element.String() != "PegText" {
 				fmt.Fprintf(os.Stderr, "rule '%v' used but not defined\n", element)
 			}
-			print("\n  nil,")
+			_print("\n  nil,")
 			continue
 		}
 		ko := label
 		label++
-		print("\n  /* %v ", element.GetId())
+		_print("\n  /* %v ", element.GetId())
 		printRule(element)
-		print(" */")
+		_print(" */")
 		if count, ok := t.rulesCount[element.String()]; !ok {
 			fmt.Fprintf(os.Stderr, "rule '%v' defined but not used\n", element)
-			print("\n  nil,")
+			_print("\n  nil,")
 			continue
 		} else if t.inline && count == 1 && ko != 0 {
-			print("\n  nil,")
+			_print("\n  nil,")
 			continue
 		}
-		print("\n  func() bool {")
+		_print("\n  func() bool {")
 		if labels[ko] {
 			printSave(ko)
 		}
 		compile(expression, ko)
 		//print("\n  fmt.Printf(\"%v\\n\")", element.String())
-		print("\n   return true")
+		_print("\n   return true")
 		if labels[ko] {
 			printLabel(ko)
 			printRestore(ko)
-			print("\n   return false")
+			_print("\n   return false")
 		}
-		print("\n  },")
+		_print("\n  },")
 	}
-	print("\n }\n p.rules = _rules")
-	print("\n}\n")
+	_print("\n }\n p.rules = _rules")
+	_print("\n}\n")
 }
