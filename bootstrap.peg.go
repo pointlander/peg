@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-const end_symbol rune = 1114112
+const endSymbol rune = 1114112
 
 /* The rule types inferred from the grammar are below. */
 type pegRule uint8
@@ -106,9 +106,9 @@ const (
 	ruleAction47
 	ruleAction48
 
-	rulePre_
-	rule_In_
-	rule_Suf
+	rulePre
+	ruleIn
+	ruleSuf
 )
 
 var rul3s = [...]string{
@@ -371,14 +371,14 @@ func (t *tokens32) PreOrder() (<-chan state32, [][]token32) {
 					if c, j := ordered[depth][i-1], depths[depth-1]; a.isParentOf(c) &&
 						(j < 2 || !ordered[depth-1][j-2].isParentOf(c)) {
 						if c.end != b.begin {
-							write(token32{pegRule: rule_In_, begin: c.end, end: b.begin}, true)
+							write(token32{pegRule: ruleIn, begin: c.end, end: b.begin}, true)
 						}
 						break
 					}
 				}
 
 				if a.begin < b.begin {
-					write(token32{pegRule: rulePre_, begin: a.begin, end: b.begin}, true)
+					write(token32{pegRule: rulePre, begin: a.begin, end: b.begin}, true)
 				}
 				break
 			}
@@ -399,7 +399,7 @@ func (t *tokens32) PreOrder() (<-chan state32, [][]token32) {
 					b = c
 					continue depthFirstSearch
 				} else if parent && b.end != a.end {
-					write(token32{pegRule: rule_Suf, begin: b.end, end: a.end}, true)
+					write(token32{pegRule: ruleSuf, begin: b.end, end: a.end}, true)
 				}
 
 				depth--
@@ -719,8 +719,8 @@ func (p *Peg) Execute() {
 
 func (p *Peg) Init() {
 	p.buffer = []rune(p.Buffer)
-	if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != end_symbol {
-		p.buffer = append(p.buffer, end_symbol)
+	if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != endSymbol {
+		p.buffer = append(p.buffer, endSymbol)
 	}
 
 	var tree tokenTree = &tokens32{tree: make([]token32, math.MaxInt16)}
@@ -757,7 +757,7 @@ func (p *Peg) Init() {
 	}
 
 	matchDot := func() bool {
-		if buffer[position] != end_symbol {
+		if buffer[position] != endSymbol {
 			position++
 			return true
 		}
