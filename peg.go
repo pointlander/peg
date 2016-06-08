@@ -191,7 +191,7 @@ func (t *tokens{{.}}) PreOrder() (<-chan state{{.}}, [][]token{{.}}) {
 	s, ordered := make(chan state{{.}}, 6), t.Order()
 	go func() {
 		var states [8]state{{.}}
-		for i, _ := range states {
+		for i := range states {
 			states[i].depths = make([]int{{.}}, len(ordered))
 		}
 		depths, state, depth := make([]int{{.}}, len(ordered)), 0, 1
@@ -329,7 +329,7 @@ func (t *tokens{{.}}) Error() []token32 {
 	ordered := t.Order()
 	length := len(ordered)
 	tokens, length := make([]token32, length), length - 1
-	for i, _ := range tokens {
+	for i := range tokens {
 		o := ordered[length - i]
 		if len(o) > 1 {
 			tokens[i] = o[len(o) - 2].getToken32()
