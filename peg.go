@@ -80,8 +80,8 @@ func (node *node32) print(depth int, buffer string) {
 	}
 }
 
-func (ast *node32) Print(buffer string) {
-	ast.print(0, buffer)
+func (node *node32) Print(buffer string) {
+	node.print(0, buffer)
 }
 
 type element struct {
