@@ -63,7 +63,7 @@ For an optional character match use:
 optional <- .?
 ```
 
-If specific charaters are to be matched use single quotes:
+If specific characters are to be matched use single quotes:
 ```
 specific <- 'a'* 'bc'+ 'de'?
 ```
