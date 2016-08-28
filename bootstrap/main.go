@@ -206,7 +206,7 @@ func main() {
 		addAlternate(
 			func() {
 				addSequence(
-					func() {addName("Sequence")},
+					func() { addName("Sequence") },
 					func() {
 						addStar(func() {
 							addSequence(
@@ -295,7 +295,7 @@ func main() {
 			func() {
 				addQuery(func() {
 					addAlternate(
-		 				func() {
+						func() {
 							addSequence(
 								func() { addName("Question") },
 								func() { addAction(" p.AddQuery() ") },
@@ -896,7 +896,7 @@ func main() {
 
 	/* MustSpacing     <- SpaceComment+ */
 	addRule("MustSpacing", func() {
-		addPlus(func() {t.AddName("SpaceComment")})
+		addPlus(func() { t.AddName("SpaceComment") })
 	})
 
 	/* Comment         <- '#' (!EndOfLine .)* EndOfLine */
@@ -938,22 +938,43 @@ func main() {
 		addPeekNot(func() { addDot() })
 	})
 
-	/* Action          <- '{' < [^}]* > '}' Spacing */
+	/* Action		<- '{' < ActionBody* > '}' Spacing */
 	addRule("Action", func() {
 		addSequence(
 			func() { addCharacter(`{`) },
 			func() {
 				addPush(func() {
-					addStar(func() {
-						addSequence(
-							func() { addPeekNot(func() { addCharacter(`}`) }) },
-							func() { addDot() },
-						)
-					})
+					addStar(func() { addName("ActionBody") })
 				})
 			},
 			func() { addCharacter(`}`) },
 			func() { addName("Spacing") },
+		)
+	})
+
+	/* ActionBody	<- [^{}] / '{' ActionBody* '}' */
+	addRule("ActionBody", func() {
+		addAlternate(
+			func() {
+				addSequence(
+					func() {
+						addPeekNot(func() {
+							addAlternate(
+								func() { addCharacter(`{`) },
+								func() { addCharacter(`}`) },
+							)
+						})
+					},
+					func() { addDot() },
+				)
+			},
+			func() {
+				addSequence(
+					func() { addCharacter(`{`) },
+					func() { addStar(func() { addName("ActionBody") }) },
+					func() { addCharacter(`}`) },
+				)
+			},
 		)
 	})
 
