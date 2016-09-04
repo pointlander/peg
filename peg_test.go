@@ -80,3 +80,34 @@ func TestSame(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkParse(b *testing.B) {
+	files := [...]string{
+		"peg.peg",
+		"grammars/c/c.peg",
+		"grammars/calculator/calculator.peg",
+		"grammars/fexl/fexl.peg",
+		"grammars/java/java_1_7.peg",
+	}
+	pegs := make([]*Peg, len(files))
+	for i, file := range files {
+		input, err := ioutil.ReadFile(file)
+		if err != nil {
+			b.Error(err)
+		}
+
+		p := &Peg{Tree: New(true, true), Buffer: string(input)}
+		p.Init()
+		pegs[i] = p
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, peg := range pegs {
+			peg.Reset()
+			if err := peg.Parse(); err != nil {
+				b.Error(err)
+			}
+		}
+	}
+}
