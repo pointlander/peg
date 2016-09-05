@@ -61,7 +61,7 @@ func main() {
 	p.Execute()
 
 	if *ast {
-		p.tokenTree.AST().Print(p.Buffer)
+		p.AST().Print(p.Buffer)
 	}
 	if *print {
 		p.Print()
