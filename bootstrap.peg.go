@@ -693,14 +693,26 @@ func (p *Peg) Execute() {
 }
 
 func (p *Peg) Init() {
-	p.buffer = []rune(p.Buffer)
-	if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != endSymbol {
-		p.buffer = append(p.buffer, endSymbol)
-	}
+	var (
+		max             token32
+		position, depth uint32
+		tokenIndex      int
+		buffer          []rune
+	)
+	p.Reset = func() {
+		max = token32{}
+		position, depth = 0, 0
+		tokenIndex = 0
 
-	tree := tokens32{tree: make([]token32, math.MaxInt16)}
-	var max token32
-	position, depth, tokenIndex, buffer, _rules := uint32(0), uint32(0), 0, p.buffer, p.rules
+		p.buffer = []rune(p.Buffer)
+		if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != endSymbol {
+			p.buffer = append(p.buffer, endSymbol)
+		}
+		buffer = p.buffer
+	}
+	p.Reset()
+
+	_rules, tree := p.rules, tokens32{tree: make([]token32, math.MaxInt16)}
 
 	p.Parse = func(rule ...int) error {
 		r := 1
@@ -714,10 +726,6 @@ func (p *Peg) Init() {
 			return nil
 		}
 		return &parseError{p, max}
-	}
-
-	p.Reset = func() {
-		position, tokenIndex, depth = 0, 0, 0
 	}
 
 	add := func(rule pegRule, begin uint32) {
