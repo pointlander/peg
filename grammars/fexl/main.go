@@ -5,8 +5,8 @@
 package main
 
 import (
-	"log"
 	"io/ioutil"
+	"log"
 )
 
 func main() {
@@ -21,5 +21,5 @@ func main() {
 	if err := fexl.Parse(); err != nil {
 		log.Fatal(err)
 	}
-	fexl.Highlighter()
+	fexl.PrintSyntaxTree()
 }

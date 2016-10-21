@@ -11,17 +11,13 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"time"
 )
 
 var (
-	inline    = flag.Bool("inline", false, "parse rule inlining")
-	_switch   = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
-	syntax    = flag.Bool("syntax", false, "print out the syntax tree")
-	highlight = flag.Bool("highlight", false, "test the syntax highlighter")
-	ast       = flag.Bool("ast", false, "generate an AST")
-	test      = flag.Bool("test", false, "test the PEG parser performance")
-	print     = flag.Bool("print", false, "directly dump the syntax tree")
+	inline  = flag.Bool("inline", false, "parse rule inlining")
+	_switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
+	print   = flag.Bool("print", false, "directly dump the syntax tree")
+	syntax  = flag.Bool("syntax", false, "print out the syntax tree")
 )
 
 func main() {
@@ -39,19 +35,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if *test {
-		iterations, p := 1000, &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer)}
-		p.Init()
-		start := time.Now()
-		for i := 0; i < iterations; i++ {
-			p.Parse()
-			p.Reset()
-		}
-		total := float64(time.Since(start).Nanoseconds()) / float64(1000)
-		fmt.Printf("time: %v us\n", total/float64(iterations))
-		return
-	}
-
 	p := &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer), Pretty: true}
 	p.Init()
 	if err := p.Parse(); err != nil {
@@ -60,17 +43,11 @@ func main() {
 
 	p.Execute()
 
-	if *ast {
-		p.AST().Print(p.Buffer)
-	}
 	if *print {
 		p.Print()
 	}
 	if *syntax {
 		p.PrintSyntaxTree()
-	}
-	if *highlight {
-		p.Highlighter()
 	}
 
 	filename := file + ".go"
