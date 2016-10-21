@@ -36,18 +36,21 @@ const (
 	ruleUnknown pegRule = iota
 	{{range .RuleNames}}rule{{.String}}
 	{{end}}
-	rulePre
-	ruleIn
-	ruleSuf
 )
 
 var rul3s = [...]string {
 	"Unknown",
 	{{range .RuleNames}}"{{.String}}",
 	{{end}}
-	"Pre_",
-	"_In_",
-	"_Suf",
+}
+
+type token32 struct {
+	pegRule
+	begin, end uint32
+}
+
+func (t *token32) String() string {
+	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v", rul3s[t.pegRule], t.begin, t.end)
 }
 
 type node32 struct {
@@ -55,112 +58,45 @@ type node32 struct {
 	up, next *node32
 }
 
-func (node *node32) print(depth int, buffer string) {
-	for node != nil {
-		for c := 0; c < depth; c++ {
-			fmt.Printf(" ")
-		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[node.pegRule], strconv.Quote(string(([]rune(buffer)[node.begin:node.end]))))
-		if node.up != nil {
-			node.up.print(depth + 1, buffer)
-		}
-		node = node.next
-	}
-}
-
 func (node *node32) Print(buffer string) {
-	node.print(0, buffer)
+	var print func(node *node32, depth int)
+	print = func(node *node32, depth int) {
+		for node != nil {
+			for c := 0; c < depth; c++ {
+				fmt.Printf(" ")
+			}
+			fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[node.pegRule], strconv.Quote(string(([]rune(buffer)[node.begin:node.end]))))
+			if node.up != nil {
+				print(node.up, depth + 1)
+			}
+			node = node.next
+		}
+	}
+	print(node, 0)
 }
 
-type element struct {
-	node *node32
-	down *element
+type tokens32 struct {
+	tree		[]token32
 }
 
-{{range .Sizes}}
-
-/* ${@} bit structure for abstract syntax tree */
-type token{{.}} struct {
-	pegRule
-	begin, end, next uint{{.}}
+func (t *tokens32) Trim(length uint32) {
+	t.tree = t.tree[:length]
 }
 
-func (t *token{{.}}) isZero() bool {
-	return t.pegRule == ruleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
-}
-
-func (t *token{{.}}) isParentOf(u token{{.}}) bool {
-	return t.begin <= u.begin && t.end >= u.end && t.next > u.next
-}
-
-func (t *token{{.}}) getToken32() token32 {
-	return token32{pegRule: t.pegRule, begin: uint32(t.begin), end: uint32(t.end), next: uint32(t.next)}
-}
-
-func (t *token{{.}}) String() string {
-	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", rul3s[t.pegRule], t.begin, t.end, t.next)
-}
-
-type tokens{{.}} struct {
-	tree		[]token{{.}}
-	ordered		[][]token{{.}}
-}
-
-func (t *tokens{{.}}) trim(length int) {
-	t.tree = t.tree[0:length]
-}
-
-func (t *tokens{{.}}) Print() {
+func (t *tokens32) Print() {
 	for _, token := range t.tree {
 		fmt.Println(token.String())
 	}
 }
 
-func (t *tokens{{.}}) Order() [][]token{{.}} {
-	if t.ordered != nil {
-		return t.ordered
+func (t *tokens32) AST() *node32 {
+	type element struct {
+		node *node32
+		down *element
 	}
-
-	depths := make([]int{{.}}, 1, math.MaxInt16)
-	for i, token := range t.tree {
-		if token.pegRule == ruleUnknown {
-			t.tree = t.tree[:i]
-			break
-		}
-		depth := int(token.next)
-		if length := len(depths); depth >= length {
-			depths = depths[:depth + 1]
-		}
-		depths[depth]++
-	}
-	depths = append(depths, 0)
-
-	ordered, pool := make([][]token{{.}}, len(depths)), make([]token{{.}}, len(t.tree) + len(depths))
-	for i, depth := range depths {
-		depth++
-		ordered[i], pool, depths[i] = pool[:depth], pool[depth:], 0
-	}
-
-	for i, token := range t.tree {
-		depth := token.next
-		token.next = uint{{.}}(i)
-		ordered[depth][depths[depth]] = token
-		depths[depth]++
-	}
-	t.ordered = ordered
-	return ordered
-}
-
-type state{{.}} struct {
-	token{{.}}
-	depths []int{{.}}
-	leaf bool
-}
-
-func (t *tokens{{.}}) AST() *node32 {
 	tokens := t.Tokens()
 	var stack *element
-	for token := range tokens {
+	for _, token := range tokens {
 		if token.begin == token.end {
 			continue
 		}
@@ -178,165 +114,25 @@ func (t *tokens{{.}}) AST() *node32 {
 	return nil
 }
 
-func (t *tokens{{.}}) PreOrder() (<-chan state{{.}}, [][]token{{.}}) {
-	s, ordered := make(chan state{{.}}, 6), t.Order()
-	go func() {
-		var states [8]state{{.}}
-		for i := range states {
-			states[i].depths = make([]int{{.}}, len(ordered))
-		}
-		depths, state, depth := make([]int{{.}}, len(ordered)), 0, 1
-		write := func(t token{{.}}, leaf bool) {
-			S := states[state]
-			state, S.pegRule, S.begin, S.end, S.next, S.leaf = (state + 1) % 8, t.pegRule, t.begin, t.end, uint{{.}}(depth), leaf
-			copy(S.depths, depths)
-			s <- S
-		}
-
-		states[state].token{{.}} = ordered[0][0]
-		depths[0]++
-		state++
-		a, b := ordered[depth - 1][depths[depth - 1] - 1], ordered[depth][depths[depth]]
-		depthFirstSearch: for {
-			for {
-				if i := depths[depth]; i > 0 {
-					if c, j := ordered[depth][i - 1], depths[depth - 1]; a.isParentOf(c) &&
-						(j < 2 || !ordered[depth - 1][j - 2].isParentOf(c)) {
-						if c.end != b.begin {
-							write(token{{.}} {pegRule: ruleIn, begin: c.end, end: b.begin}, true)
-						}
-						break
-					}
-				}
-
-				if a.begin < b.begin {
-					write(token{{.}} {pegRule: rulePre, begin: a.begin, end: b.begin}, true)
-				}
-				break
-			}
-
-			next := depth + 1
-			if c := ordered[next][depths[next]]; c.pegRule != ruleUnknown && b.isParentOf(c) {
-				write(b, false)
-				depths[depth]++
-				depth, a, b = next, b, c
-				continue
-			}
-
-			write(b, true)
-			depths[depth]++
-			c, parent := ordered[depth][depths[depth]], true
-			for {
-				if c.pegRule != ruleUnknown && a.isParentOf(c) {
-					b = c
-					continue depthFirstSearch
-				} else if parent && b.end != a.end {
-					write(token{{.}} {pegRule: ruleSuf, begin: b.end, end: a.end}, true)
-				}
-
-				depth--
-				if depth > 0 {
-					a, b, c = ordered[depth - 1][depths[depth - 1] - 1], a, ordered[depth][depths[depth]]
-					parent = a.isParentOf(b)
-					continue
-				}
-
-				break depthFirstSearch
-			}
-		}
-
-		close(s)
-	}()
-	return s, ordered
+func (t *tokens32) PrintSyntaxTree(buffer string) {
+	t.AST().Print(buffer)
 }
 
-func (t *tokens{{.}}) PrintSyntax() {
-	tokens, ordered := t.PreOrder()
-	max := -1
-	for token := range tokens {
-		if !token.leaf {
-			fmt.Printf("%v", token.begin)
-			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[36m%v\x1B[m", rul3s[ordered[i][depths[i] - 1].pegRule])
-			}
-			fmt.Printf(" \x1B[36m%v\x1B[m\n", rul3s[token.pegRule])
-		} else if token.begin == token.end {
-			fmt.Printf("%v", token.begin)
-			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[31m%v\x1B[m", rul3s[ordered[i][depths[i] - 1].pegRule])
-			}
-			fmt.Printf(" \x1B[31m%v\x1B[m\n", rul3s[token.pegRule])
-		} else {
-			for c, end := token.begin, token.end; c < end; c++ {
-				if i := int(c); max + 1 < i {
-					for j := max; j < i; j++ {
-						fmt.Printf("skip %v %v\n", j, token.String())
-					}
-					max = i
-				} else if i := int(c); i <= max {
-					for j := i; j <= max; j++ {
-						fmt.Printf("dupe %v %v\n", j, token.String())
-					}
-				} else {
-					max = int(c)
-				}
-				fmt.Printf("%v", c)
-				for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-					fmt.Printf(" \x1B[34m%v\x1B[m", rul3s[ordered[i][depths[i] - 1].pegRule])
-				}
-				fmt.Printf(" \x1B[34m%v\x1B[m\n", rul3s[token.pegRule])
-			}
-			fmt.Printf("\n")
-		}
-	}
-}
-
-func (t *tokens{{.}}) PrintSyntaxTree(buffer string) {
-	tokens, _ := t.PreOrder()
-	for token := range tokens {
-		for c := 0; c < int(token.next); c++ {
-			fmt.Printf(" ")
-		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.pegRule], strconv.Quote(string(([]rune(buffer)[token.begin:token.end]))))
-	}
-}
-
-func (t *tokens{{.}}) Add(rule pegRule, begin, end, depth uint32, index int) {
-	t.tree[index] = token{{.}}{pegRule: rule, begin: uint{{.}}(begin), end: uint{{.}}(end), next: uint{{.}}(depth)}
-}
-
-func (t *tokens{{.}}) Tokens() <-chan token32 {
-	s := make(chan token32, 16)
-	go func() {
-		for _, v := range t.tree {
-			s <- v.getToken32()
-		}
-		close(s)
-	}()
-	return s
-}
-
-func (t *tokens{{.}}) Error() []token32 {
-	ordered := t.Order()
-	length := len(ordered)
-	tokens, length := make([]token32, length), length - 1
-	for i := range tokens {
-		o := ordered[length - i]
-		if len(o) > 1 {
-			tokens[i] = o[len(o) - 2].getToken32()
-		}
-	}
-	return tokens
-}
-{{end}}
-
-func (t *tokens32) Expand(index int) {
-	tree := t.tree
-	if index >= len(tree) {
+func (t *tokens32) Add(rule pegRule, begin, end, index uint32) {
+	if tree := t.tree; int(index) >= len(tree) {
 		expanded := make([]token32, 2 * len(tree))
 		copy(expanded, tree)
 		t.tree = expanded
 	}
+	t.tree[index] = token32{
+		pegRule: rule,
+		begin: begin,
+		end: end,
+	}
+}
+
+func (t *tokens32) Tokens() []token32 {
+	return t.tree
 }
 
 type {{.StructName}} struct {
@@ -405,14 +201,10 @@ func (p *{{.StructName}}) PrintSyntaxTree() {
 	p.tokens32.PrintSyntaxTree(p.Buffer)
 }
 
-func (p *{{.StructName}}) Highlighter() {
-	p.PrintSyntax()
-}
-
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
 	buffer, _buffer, text, begin, end := p.Buffer, p.buffer, "", 0, 0
-	for token := range p.Tokens() {
+	for _, token := range p.Tokens() {
 		switch (token.pegRule) {
 		{{if .HasPush}}
 		case rulePegText:
@@ -431,14 +223,12 @@ func (p *{{.StructName}}) Execute() {
 func (p *{{.StructName}}) Init() {
 	var (
 		max token32
-		position, depth uint32
-		tokenIndex int
+		position, tokenIndex uint32
 		buffer []rune
 	)
 	p.Reset = func() {
 		max = token32{}
-		position, depth = 0, 0
-		tokenIndex = 0
+		position, tokenIndex = 0, 0
 
 		p.buffer = []rune(p.Buffer)
 		if len(p.buffer) == 0 || p.buffer[len(p.buffer) - 1] != endSymbol {
@@ -449,7 +239,6 @@ func (p *{{.StructName}}) Init() {
 	p.Reset()
 
 	_rules, tree := p.rules, tokens32{tree: make([]token32, math.MaxInt16)}
-
 	p.Parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
@@ -458,18 +247,17 @@ func (p *{{.StructName}}) Init() {
 		matches := p.rules[r]()
 		p.tokens32 = tree
 		if matches {
-			p.trim(tokenIndex)
+			p.Trim(tokenIndex)
 			return nil
 		}
 		return &parseError{p, max}
 	}
 
 	add := func(rule pegRule, begin uint32) {
-		tree.Expand(tokenIndex)
-		tree.Add(rule, begin, position, depth, tokenIndex)
+		tree.Add(rule, begin, position, tokenIndex)
 		tokenIndex++
 		if begin != position && position > max.end {
-			max = token32{rule, begin, position, depth}
+			max = token32{rule, begin, position}
 		}
 	}
 
@@ -727,7 +515,6 @@ type Tree struct {
 	inline, _switch bool
 
 	RuleNames       []Node
-	Sizes           [1]int
 	PackageName     string
 	Imports         []string
 	EndSymbol       rune
@@ -748,7 +535,6 @@ type Tree struct {
 
 func New(inline, _switch bool) *Tree {
 	return &Tree{Rules: make(map[string]Node),
-		Sizes:      [1]int{32},
 		rulesCount: make(map[string]uint),
 		inline:     inline,
 		_switch:    _switch}
@@ -1239,8 +1025,8 @@ func (t *Tree) Compile(file string, out io.Writer) {
 	}()
 
 	_print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
-	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d, depth%d := position, tokenIndex, depth", n, n, n) }
-	printRestore := func(n uint) { _print("\n   position, tokenIndex, depth = position%d, tokenIndex%d, depth%d", n, n, n) }
+	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d := position, tokenIndex", n, n) }
+	printRestore := func(n uint) { _print("\n   position, tokenIndex = position%d, tokenIndex%d", n, n) }
 	printTemplate := func(s string) {
 		if error := template.Must(template.New("peg").Parse(s)).Execute(&buffer, t); error != nil {
 			panic(error)
@@ -1407,9 +1193,7 @@ func (t *Tree) Compile(file string, out io.Writer) {
 				_print("\nadd(rule%v, position)", rule)
 			} else {
 				_print("\nposition%d := position", ok)
-				_print("\ndepth++")
 				compile(element, ko)
-				_print("\ndepth--")
 				_print("\nadd(rule%v, position%d)", rule, ok)
 			}
 			printEnd()
