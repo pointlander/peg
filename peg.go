@@ -159,7 +159,7 @@ type state{{.}} struct {
 
 func (t *tokens{{.}}) AST() *node32 {
 	tokens := t.Tokens()
-	stack := &element{node: &node32{token32:<-tokens}}
+	var stack *element
 	for token := range tokens {
 		if token.begin == token.end {
 			continue
@@ -172,7 +172,10 @@ func (t *tokens{{.}}) AST() *node32 {
 		}
 		stack = &element{node: node, down: stack}
 	}
-	return stack.node
+	if stack != nil {
+		return stack.node
+	}
+	return nil
 }
 
 func (t *tokens{{.}}) PreOrder() (<-chan state{{.}}, [][]token{{.}}) {
