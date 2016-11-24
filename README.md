@@ -26,9 +26,11 @@ This Go implementation is based on:
 
 # Syntax
 
-First declare the package name:
+First declare the package name and any import(s) required:
 ```
 package <package name>
+
+import <import name>
 ```
 
 Then declare the parser:
@@ -43,57 +45,57 @@ Next declare the rules. The first rule is the entry point into the parser:
 <rule name> <- <rule body>
 ```
 
-The first rule should probably end with '!.' to indicate no more input follows:
+The first rule should probably end with `!.` to indicate no more input follows:
 ```
 first <- . !.
 ```
 
-'.' means any character matches. For zero or more character matches use:
+`.` means any character matches. For zero or more character matches, use:
 ```
 repetition <- .*
 ```
 
-For one or more character matches use:
+For one or more character matches, use:
 ```
 oneOrMore <- .+
 ```
 
-For an optional character match use:
+For an optional character match, use:
 ```
 optional <- .?
 ```
 
-If specific characters are to be matched use single quotes:
+If specific characters are to be matched, use single quotes:
 ```
 specific <- 'a'* 'bc'+ 'de'?
 ```
 will match the string "aaabcbcde".
 
-For choosing between different inputs use alternates:
+For choosing between different inputs, use alternates:
 ```
 prioritized <- 'a' 'a'* / 'bc'+ / 'de'?
 ```
 will match "aaaa" or "bcbc" or "de" or "". The matches are attempted in order.
 
-If the characters are case insensitive use double quotes:
+If the characters are case insensitive, use double quotes:
 ```
 insensitive <- "abc"
 ```
 will match "abc" or "Abc" or "ABc" etc...
 
-For matching a set of characters use a character class:
+For matching a set of characters, use a character class:
 ```
 class <- [a-z]
 ```
-will watch "a" or "b" or all the way to "z".
+will match "a" or "b" or all the way to "z".
 
-For an inverse character class start with a tilde:
+For an inverse character class, start with a caret:
 ```
-inverse <- [~a-z]
+inverse <- [^a-z]
 ```
-will match anything but "a" or "b" or all the way to "z"
+will match anything but "a" or "b" or all the way to "z".
 
-If the character class is case insensitive use double brackets:
+If the character class is case insensitive, use double brackets:
 ```
 insensitive <- [[A-Z]]
 ```
@@ -103,12 +105,12 @@ Use parentheses for grouping:
 grouping <- (rule1 / rule2) rule3
 ```
 
-For looking ahead for a match (predicate) use:
+For looking ahead a match (predicate), use:
 ```
 lookAhead <- &rule1 rule2
 ```
 
-For inverse look ahead use:
+For inverse look ahead, use:
 ```
 inverse <- !rule1 rule2
 ```
@@ -118,11 +120,11 @@ Use curly braces for Go code:
 gocode <- { fmt.Println("hello world") }
 ```
 
-For string captures use less than greater than:
+For string captures, use less than and greater than:
 ```
 capture <- <'capture'> { fmt.Println(buffer[begin:end]) }
 ```
-Will print out "capture". The captured string is stored in buffer[begin:end].
+Will print out "capture". The captured string is stored in `buffer[begin:end]`.
 
 
 # Files
