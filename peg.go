@@ -140,10 +140,18 @@ type {{.StructName}} struct {
 	Buffer		string
 	buffer		[]rune
 	rules		[{{.RulesCount}}]func() bool
-	Parse		func(rule ...int) error
-	Reset		func()
+	parse		func(rule ...int) error
+	reset		func()
 	Pretty 	bool
 	tokens32
+}
+
+func (p *{{.StructName}}) Parse(rule ...int) error {
+	return p.parse(rule...)
+}
+
+func (p *{{.StructName}}) Reset() {
+	p.reset()
 }
 
 type textPosition struct {
@@ -226,7 +234,7 @@ func (p *{{.StructName}}) Init() {
 		position, tokenIndex uint32
 		buffer []rune
 	)
-	p.Reset = func() {
+	p.reset = func() {
 		max = token32{}
 		position, tokenIndex = 0, 0
 
@@ -236,10 +244,10 @@ func (p *{{.StructName}}) Init() {
 		}
 		buffer = p.buffer
 	}
-	p.Reset()
+	p.reset()
 
 	_rules, tree := p.rules, tokens32{tree: make([]token32, math.MaxInt16)}
-	p.Parse = func(rule ...int) error {
+	p.parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
 			r = rule[0]
