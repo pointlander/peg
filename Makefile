@@ -11,3 +11,6 @@ bootstrap.peg.go: bootstrap/main.go peg.go
 
 clean:
 	rm -f bootstrap/bootstrap peg peg.peg.go
+
+test:
+	go test -benchmem -bench .

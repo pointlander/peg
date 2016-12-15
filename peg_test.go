@@ -111,3 +111,33 @@ func BenchmarkParse(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkInitAndParse(b *testing.B) {
+	files := [...]string{
+		"peg.peg",
+		"grammars/c/c.peg",
+		"grammars/calculator/calculator.peg",
+		"grammars/fexl/fexl.peg",
+		"grammars/java/java_1_7.peg",
+	}
+	pegs := []string{}
+	for _, file := range files {
+		input, err := ioutil.ReadFile(file)
+		if err != nil {
+			b.Error(err)
+		}
+		pegs = append(pegs, string(input))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, peg := range pegs {
+			p := &Peg{Tree: New(true, true), Buffer: string(peg)}
+			p.Init()
+			p.Reset()
+			if err := p.Parse(); err != nil {
+				b.Error(err)
+			}
+		}
+	}
+}
