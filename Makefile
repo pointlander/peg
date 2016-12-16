@@ -9,8 +9,11 @@ bootstrap.peg.go: bootstrap/main.go peg.go
 	cd bootstrap; go build
 	bootstrap/bootstrap
 
+.PHONY:clean
 clean:
 	rm -f bootstrap/bootstrap peg peg.peg.go
 
-test:
+.PHONY:test
+test: bootstrap.peg.go
+	go test
 	go test -benchmem -bench .

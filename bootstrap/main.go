@@ -12,7 +12,7 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(2)
-	t := New(true, true)
+	t := New(true, true, false)
 
 	/*package main
 

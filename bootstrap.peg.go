@@ -513,7 +513,8 @@ func (p *Peg) Init() {
 	}
 	p.reset()
 
-	_rules, tree := p.rules, tokens32{tree: make([]token32, math.MaxInt16)}
+	_rules := p.rules
+	tree := tokens32{tree: make([]token32, math.MaxInt16)}
 	p.parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
