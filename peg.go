@@ -147,7 +147,7 @@ type {{.StructName}} struct {
 	Pretty 	bool
 {{if .Ast -}}
 	tokens32
-{{- end}}
+{{end -}}
 }
 
 func (p *{{.StructName}}) Parse(rule ...int) error {
@@ -241,7 +241,7 @@ func (p *{{.StructName}}) Init() {
 		buffer []rune
 {{if not .Ast -}}
 		text string
-{{- end}}
+{{end -}}
 	)
 	p.reset = func() {
 		max = token32{}
@@ -258,7 +258,7 @@ func (p *{{.StructName}}) Init() {
 	_rules := p.rules
 {{if .Ast -}}
 	tree := tokens32{tree: make([]token32, math.MaxInt16)}
-{{- end}}
+{{end -}}
 	p.parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
@@ -267,11 +267,11 @@ func (p *{{.StructName}}) Init() {
 		matches := p.rules[r]()
 {{if .Ast -}}
 		p.tokens32 = tree
-{{- end}}
+{{end -}}
 		if matches {
 {{if .Ast -}}
 			p.Trim(tokenIndex)
-{{- end}}
+{{end -}}
 			return nil
 		}
 		return &parseError{p, max}
@@ -280,7 +280,7 @@ func (p *{{.StructName}}) Init() {
 	add := func(rule pegRule, begin uint32) {
 {{if .Ast -}}
 		tree.Add(rule, begin, position, tokenIndex)
-{{- end}}
+{{end -}}
 		tokenIndex++
 		if begin != position && position > max.end {
 			max = token32{rule, begin, position}
