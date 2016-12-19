@@ -16,4 +16,7 @@ clean:
 .PHONY:test
 test: bootstrap.peg.go
 	go test
+
+.PHONY:bench
+bench:
 	go test -benchmem -bench .
