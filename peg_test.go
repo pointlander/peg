@@ -11,7 +11,7 @@ func TestCorrect(t *testing.T) {
 type T Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: New(false, false), Buffer: buffer}
+	p := &Peg{Tree: New(false, false, false), Buffer: buffer}
 	p.Init()
 	err := p.Parse()
 	if err != nil {
@@ -24,7 +24,7 @@ func TestNoSpacePackage(t *testing.T) {
 type T Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: New(false, false), Buffer: buffer}
+	p := &Peg{Tree: New(false, false, false), Buffer: buffer}
 	p.Init()
 	err := p.Parse()
 	if err == nil {
@@ -38,7 +38,7 @@ package p
 typenospace Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: New(false, false), Buffer: buffer}
+	p := &Peg{Tree: New(false, false, false), Buffer: buffer}
 	p.Init()
 	err := p.Parse()
 	if err == nil {
@@ -52,9 +52,9 @@ func TestSame(t *testing.T) {
 		t.Error(err)
 	}
 
-	p := &Peg{Tree: New(true, true), Buffer: string(buffer)}
+	p := &Peg{Tree: New(true, true, false), Buffer: string(buffer)}
 	p.Init()
-	if err := p.Parse(); err != nil {
+	if err = p.Parse(); err != nil {
 		t.Error(err)
 	}
 
@@ -81,14 +81,34 @@ func TestSame(t *testing.T) {
 	}
 }
 
-func BenchmarkParse(b *testing.B) {
-	files := [...]string{
-		"peg.peg",
-		"grammars/c/c.peg",
-		"grammars/calculator/calculator.peg",
-		"grammars/fexl/fexl.peg",
-		"grammars/java/java_1_7.peg",
+var files = [...]string{
+	"peg.peg",
+	"grammars/c/c.peg",
+	"grammars/calculator/calculator.peg",
+	"grammars/fexl/fexl.peg",
+	"grammars/java/java_1_7.peg",
+}
+
+func BenchmarkInitOnly(b *testing.B) {
+	pegs := []string{}
+	for _, file := range files {
+		input, err := ioutil.ReadFile(file)
+		if err != nil {
+			b.Error(err)
+		}
+		pegs = append(pegs, string(input))
 	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, peg := range pegs {
+			p := &Peg{Tree: New(true, true, false), Buffer: string(peg)}
+			p.Init()
+		}
+	}
+}
+
+func BenchmarkParse(b *testing.B) {
 	pegs := make([]*Peg, len(files))
 	for i, file := range files {
 		input, err := ioutil.ReadFile(file)
@@ -96,7 +116,7 @@ func BenchmarkParse(b *testing.B) {
 			b.Error(err)
 		}
 
-		p := &Peg{Tree: New(true, true), Buffer: string(input)}
+		p := &Peg{Tree: New(true, true, false), Buffer: string(input)}
 		p.Init()
 		pegs[i] = p
 	}
@@ -104,6 +124,77 @@ func BenchmarkParse(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, peg := range pegs {
+			b.StopTimer()
+			peg.Reset()
+			b.StartTimer()
+			if err := peg.Parse(); err != nil {
+				b.Error(err)
+			}
+		}
+	}
+}
+
+func BenchmarkResetAndParse(b *testing.B) {
+	pegs := make([]*Peg, len(files))
+	for i, file := range files {
+		input, err := ioutil.ReadFile(file)
+		if err != nil {
+			b.Error(err)
+		}
+
+		p := &Peg{Tree: New(true, true, false), Buffer: string(input)}
+		p.Init()
+		pegs[i] = p
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, peg := range pegs {
+			peg.Reset()
+			if err := peg.Parse(); err != nil {
+				b.Error(err)
+			}
+		}
+	}
+}
+
+func BenchmarkInitAndParse(b *testing.B) {
+	strs := []string{}
+	for _, file := range files {
+		input, err := ioutil.ReadFile(file)
+		if err != nil {
+			b.Error(err)
+		}
+		strs = append(strs, string(input))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, str := range strs {
+			peg := &Peg{Tree: New(true, true, false), Buffer: string(str)}
+			peg.Init()
+			if err := peg.Parse(); err != nil {
+				b.Error(err)
+			}
+		}
+	}
+}
+
+func BenchmarkInitResetAndParse(b *testing.B) {
+	strs := []string{}
+	for _, file := range files {
+		input, err := ioutil.ReadFile(file)
+		if err != nil {
+			b.Error(err)
+		}
+		strs = append(strs, string(input))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, str := range strs {
+			peg := &Peg{Tree: New(true, true, false), Buffer: string(str)}
+			peg.Init()
 			peg.Reset()
 			if err := peg.Parse(); err != nil {
 				b.Error(err)

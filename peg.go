@@ -53,6 +53,7 @@ func (t *token32) String() string {
 	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v", rul3s[t.pegRule], t.begin, t.end)
 }
 
+{{if .Ast}}
 type node32 struct {
 	token32
 	up, next *node32
@@ -134,6 +135,7 @@ func (t *tokens32) Add(rule pegRule, begin, end, index uint32) {
 func (t *tokens32) Tokens() []token32 {
 	return t.tree
 }
+{{end}}
 
 type {{.StructName}} struct {
 	{{.StructVariables}}
@@ -143,7 +145,9 @@ type {{.StructName}} struct {
 	parse		func(rule ...int) error
 	reset		func()
 	Pretty 	bool
+{{if .Ast -}}
 	tokens32
+{{end -}}
 }
 
 func (p *{{.StructName}}) Parse(rule ...int) error {
@@ -205,6 +209,7 @@ func (e *parseError) Error() string {
 	return error
 }
 
+{{if .Ast}}
 func (p *{{.StructName}}) PrintSyntaxTree() {
 	p.tokens32.PrintSyntaxTree(p.Buffer)
 }
@@ -227,12 +232,16 @@ func (p *{{.StructName}}) Execute() {
 	_, _, _, _, _ = buffer, _buffer, text, begin, end
 }
 {{end}}
+{{end}}
 
 func (p *{{.StructName}}) Init() {
 	var (
 		max token32
 		position, tokenIndex uint32
 		buffer []rune
+{{if not .Ast -}}
+		text string
+{{end -}}
 	)
 	p.reset = func() {
 		max = token32{}
@@ -246,23 +255,32 @@ func (p *{{.StructName}}) Init() {
 	}
 	p.reset()
 
-	_rules, tree := p.rules, tokens32{tree: make([]token32, math.MaxInt16)}
+	_rules := p.rules
+{{if .Ast -}}
+	tree := tokens32{tree: make([]token32, math.MaxInt16)}
+{{end -}}
 	p.parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
 			r = rule[0]
 		}
 		matches := p.rules[r]()
+{{if .Ast -}}
 		p.tokens32 = tree
+{{end -}}
 		if matches {
+{{if .Ast -}}
 			p.Trim(tokenIndex)
+{{end -}}
 			return nil
 		}
 		return &parseError{p, max}
 	}
 
 	add := func(rule pegRule, begin uint32) {
+{{if .Ast -}}
 		tree.Add(rule, begin, position, tokenIndex)
+{{end -}}
 		tokenIndex++
 		if begin != position && position > max.end {
 			max = token32{rule, begin, position}
@@ -520,7 +538,7 @@ type Tree struct {
 	Rules      map[string]Node
 	rulesCount map[string]uint
 	node
-	inline, _switch bool
+	inline, _switch, Ast bool
 
 	RuleNames       []Node
 	PackageName     string
@@ -541,11 +559,12 @@ type Tree struct {
 	HasRange        bool
 }
 
-func New(inline, _switch bool) *Tree {
+func New(inline, _switch, noast bool) *Tree {
 	return &Tree{Rules: make(map[string]Node),
 		rulesCount: make(map[string]uint),
 		inline:     inline,
-		_switch:    _switch}
+		_switch:    _switch,
+		Ast:        !noast}
 }
 
 func (t *Tree) AddRule(name string) {
@@ -662,7 +681,9 @@ func escape(c string) string {
 
 func (t *Tree) Compile(file string, out io.Writer) {
 	t.AddImport("fmt")
-	t.AddImport("math")
+	if t.Ast {
+		t.AddImport("math")
+	}
 	t.AddImport("sort")
 	t.AddImport("strconv")
 	t.EndSymbol = 0x110000
@@ -1198,11 +1219,24 @@ func (t *Tree) Compile(file string, out io.Writer) {
 			nodeType, rule := element.GetType(), element.Next()
 			printBegin()
 			if nodeType == TypeAction {
-				_print("\nadd(rule%v, position)", rule)
+				if t.Ast {
+					_print("\nadd(rule%v, position)", rule)
+				} else {
+					// There is no AST support, so inline the rule code
+					_print("\n%v", element)
+				}
 			} else {
 				_print("\nposition%d := position", ok)
 				compile(element, ko)
-				_print("\nadd(rule%v, position%d)", rule, ok)
+				if n.GetType() == TypePush && !t.Ast {
+					// This is TypePush and there is no AST support,
+					// so inline capture to text right here
+					_print("\nbegin := position%d", ok)
+					_print("\nend := position")
+					_print("\ntext = string(buffer[begin:end])")
+				} else {
+					_print("\nadd(rule%v, position%d)", rule, ok)
+				}
 			}
 			printEnd()
 		case TypeAlternate:

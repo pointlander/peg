@@ -18,6 +18,7 @@ var (
 	_switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
 	print   = flag.Bool("print", false, "directly dump the syntax tree")
 	syntax  = flag.Bool("syntax", false, "print out the syntax tree")
+	noast   = flag.Bool("noast", false, "disable AST")
 )
 
 func main() {
@@ -35,7 +36,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	p := &Peg{Tree: New(*inline, *_switch), Buffer: string(buffer), Pretty: true}
+	p := &Peg{Tree: New(*inline, *_switch, *noast), Buffer: string(buffer), Pretty: true}
 	p.Init()
 	if err := p.Parse(); err != nil {
 		log.Fatal(err)
