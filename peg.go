@@ -59,14 +59,20 @@ type node32 struct {
 	up, next *node32
 }
 
-func (node *node32) Print(buffer string) {
+func (node *node32) print(pretty bool, buffer string) {
 	var print func(node *node32, depth int)
 	print = func(node *node32, depth int) {
 		for node != nil {
 			for c := 0; c < depth; c++ {
 				fmt.Printf(" ")
 			}
-			fmt.Printf("%v %v\n", rul3s[node.pegRule], strconv.Quote(string(([]rune(buffer)[node.begin:node.end]))))
+			rule := rul3s[node.pegRule]
+			quote := strconv.Quote(string(([]rune(buffer)[node.begin:node.end])))
+			if !pretty {
+				fmt.Printf("%v %v\n", rule, quote)
+			} else {
+				fmt.Printf("\x1B[34m%v\x1B[m %v\n", rule, quote)
+			}
 			if node.up != nil {
 				print(node.up, depth + 1)
 			}
@@ -76,21 +82,12 @@ func (node *node32) Print(buffer string) {
 	print(node, 0)
 }
 
+func (node *node32) Print(buffer string) {
+	node.print(false, buffer)
+}
+
 func (node *node32) PrettyPrint(buffer string) {
-	var print func(node *node32, depth int)
-	print = func(node *node32, depth int) {
-		for node != nil {
-			for c := 0; c < depth; c++ {
-				fmt.Printf(" ")
-			}
-			fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[node.pegRule], strconv.Quote(string(([]rune(buffer)[node.begin:node.end]))))
-			if node.up != nil {
-				print(node.up, depth + 1)
-			}
-			node = node.next
-		}
-	}
-	print(node, 0)
+	node.print(true, buffer)
 }
 
 type tokens32 struct {
