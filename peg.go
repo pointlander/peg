@@ -59,14 +59,20 @@ type node32 struct {
 	up, next *node32
 }
 
-func (node *node32) Print(buffer string) {
+func (node *node32) print(pretty bool, buffer string) {
 	var print func(node *node32, depth int)
 	print = func(node *node32, depth int) {
 		for node != nil {
 			for c := 0; c < depth; c++ {
 				fmt.Printf(" ")
 			}
-			fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[node.pegRule], strconv.Quote(string(([]rune(buffer)[node.begin:node.end]))))
+			rule := rul3s[node.pegRule]
+			quote := strconv.Quote(string(([]rune(buffer)[node.begin:node.end])))
+			if !pretty {
+				fmt.Printf("%v %v\n", rule, quote)
+			} else {
+				fmt.Printf("\x1B[34m%v\x1B[m %v\n", rule, quote)
+			}
 			if node.up != nil {
 				print(node.up, depth + 1)
 			}
@@ -74,6 +80,14 @@ func (node *node32) Print(buffer string) {
 		}
 	}
 	print(node, 0)
+}
+
+func (node *node32) Print(buffer string) {
+	node.print(false, buffer)
+}
+
+func (node *node32) PrettyPrint(buffer string) {
+	node.print(true, buffer)
 }
 
 type tokens32 struct {
@@ -117,6 +131,10 @@ func (t *tokens32) AST() *node32 {
 
 func (t *tokens32) PrintSyntaxTree(buffer string) {
 	t.AST().Print(buffer)
+}
+
+func (t *tokens32) PrettyPrintSyntaxTree(buffer string) {
+	t.AST().PrettyPrint(buffer)
 }
 
 func (t *tokens32) Add(rule pegRule, begin, end, index uint32) {
@@ -211,7 +229,11 @@ func (e *parseError) Error() string {
 
 {{if .Ast}}
 func (p *{{.StructName}}) PrintSyntaxTree() {
-	p.tokens32.PrintSyntaxTree(p.Buffer)
+	if p.Pretty {
+		p.tokens32.PrettyPrintSyntaxTree(p.Buffer)
+	} else {
+		p.tokens32.PrintSyntaxTree(p.Buffer)
+	}
 }
 
 {{if .HasActions}}
