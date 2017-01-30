@@ -262,7 +262,9 @@ func (p *{{.StructName}}) Init() {
 		position, tokenIndex uint32
 		buffer []rune
 {{if not .Ast -}}
+{{if .HasPush -}}
 		text string
+{{end -}}
 {{end -}}
 	)
 	p.reset = func() {
