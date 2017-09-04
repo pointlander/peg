@@ -4,3 +4,7 @@ https://en.wikipedia.org/wiki/DFA_minimization
 
 https://news.ycombinator.com/item?id=14589173
 http://jamey.thesharps.us/2017/06/search-based-compiler-code-generation.html
+
+https://news.ycombinator.com/item?id=15105119  
+https://en.wikipedia.org/wiki/Tree_transducer  
+
