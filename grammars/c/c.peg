@@ -347,7 +347,7 @@ UnaryOperator
     / TILDA
     / BANG
 
-CastExpression <- (LPAR TypeName RPAR)* UnaryExpression
+CastExpression <- ((LPAR TypeName RPAR)* UnaryExpression) / UnaryExpression
 
 MultiplicativeExpression <- CastExpression ((STAR / DIV / MOD) CastExpression)*
 
