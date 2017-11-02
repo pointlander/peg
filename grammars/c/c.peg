@@ -110,7 +110,7 @@ type C Peg {
 
 }
 
-TranslationUnit <- Spacing ExternalDeclaration+ EOT
+TranslationUnit <- Spacing ExternalDeclaration* EOT
 
 ExternalDeclaration <- FunctionDefinition / Declaration
 
