@@ -19,6 +19,7 @@ This Go implementation is based on:
 -inline
  Tells the parser generator to inline parser rules.
 -switch
+ Use at your own peril!
  Reduces the number of rules that have to be tried for some pegs.
  If statements are replaced with switch statements.
 ```
