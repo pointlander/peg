@@ -19,6 +19,13 @@ func parseC_4t(t *testing.T, src string) *C {
 	return c
 }
 
+func noParseC_4t(t *testing.T, src string) {
+	_, err := parseCBuffer(src)
+	if err == nil {
+		t.Fatal("Parsed what should not have parsed.")
+	}
+}
+
 func TestCParsing_Expressions1(t *testing.T) {
 	case1src :=
 		`int a() {
@@ -88,5 +95,16 @@ func TestCParsing_EmptyStruct(t *testing.T) {
 	parseC_4t(t, `struct empty{};`)
 	parseC_4t(t, `struct {} empty;`)
 	parseC_4t(t, `struct empty {} empty;`)
+}
+func TestCParsing_ExtraSEMI(t *testing.T) {
+	parseC_4t(t, `int func(){}
+;
+struct {} empty;
+struct {} empty;;
+int foo() {};
+int foo() {};;
+`)
+
+	noParseC_4t(t, `struct empty{}`)
 }
 
