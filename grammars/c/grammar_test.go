@@ -82,6 +82,5 @@ func TestCParsing_Cast1(t *testing.T) {
 }
 
 func TestCParsing_Empty(t *testing.T) {
-	t.Skip() // this branch doesn't have the empty support yet.
 	parseC_4t(t, `/** empty is valid. */  `)
 }
