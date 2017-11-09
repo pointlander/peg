@@ -86,5 +86,7 @@ func TestCParsing_Empty(t *testing.T) {
 }
 func TestCParsing_EmptyStruct(t *testing.T) {
 	parseC_4t(t, `struct empty{};`)
+	parseC_4t(t, `struct {} empty;`)
+	parseC_4t(t, `struct empty {} empty;`)
 }
 
