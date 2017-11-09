@@ -84,3 +84,7 @@ func TestCParsing_Cast1(t *testing.T) {
 func TestCParsing_Empty(t *testing.T) {
 	parseC_4t(t, `/** empty is valid. */  `)
 }
+func TestCParsing_EmptyStruct(t *testing.T) {
+	parseC_4t(t, `struct empty{};`)
+}
+
