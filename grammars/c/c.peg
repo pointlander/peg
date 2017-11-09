@@ -608,7 +608,7 @@ Escape
     / HexEscape
     / UniversalCharacter
 
-SimpleEscape <- '\\' ['\"?\\abfnrtv]
+SimpleEscape <- '\\' ['\"?\\%abfnrtv]
 OctalEscape  <- '\\' [0-7][0-7]?[0-7]?
 HexEscape    <- '\\x' HexDigit+
 

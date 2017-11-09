@@ -108,3 +108,13 @@ int foo() {};;
 	noParseC_4t(t, `struct empty{}`)
 }
 
+func TestCParsing_Escapes(t *testing.T) {
+	parseC_4t(t, `
+int f() {
+	printf("%s", "\a\b\f\n\r\t\v");
+	printf("\\");
+	printf("\%");
+	printf("\"");
+	printf('\"'); // <- semantically wrong but syntactically valid.
+}`)
+}
