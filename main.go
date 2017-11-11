@@ -58,5 +58,5 @@ func main() {
 		return
 	}
 	defer out.Close()
-	p.Compile(filename, out)
+	p.Compile(filename, os.Args, out)
 }

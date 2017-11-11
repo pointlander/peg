@@ -1001,5 +1001,5 @@ func main() {
 		return
 	}
 	defer out.Close()
-	t.Compile(filename, out)
+	t.Compile(filename, os.Args, out)
 }
