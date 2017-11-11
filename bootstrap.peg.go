@@ -1,5 +1,7 @@
 package main
 
+//go:generate bootstrap/bootstrap
+
 import (
 	"fmt"
 	"math"

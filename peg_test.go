@@ -61,7 +61,7 @@ func TestSame(t *testing.T) {
 	p.Execute()
 
 	out := &bytes.Buffer{}
-	p.Compile("peg.peg.go", out)
+	p.Compile("peg.peg.go", []string{"bootstrap/bootstrap"}, out)
 
 	bootstrap, err := ioutil.ReadFile("bootstrap.peg.go")
 	if err != nil {
