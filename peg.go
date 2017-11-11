@@ -22,6 +22,8 @@ import (
 
 const pegHeaderTemplate = `package {{.PackageName}}
 
+//go:generate {{.Generator}}
+
 import (
 	{{range .Imports}}"{{.}}"
 	{{end}}
@@ -564,6 +566,7 @@ type Tree struct {
 	node
 	inline, _switch, Ast bool
 
+	Generator	string
 	RuleNames       []Node
 	PackageName     string
 	Imports         []string
@@ -703,7 +706,7 @@ func escape(c string) string {
 	}
 }
 
-func (t *Tree) Compile(file string, out io.Writer) {
+func (t *Tree) Compile(file string, args []string, out io.Writer) {
 	t.AddImport("fmt")
 	if t.Ast {
 		t.AddImport("math")
@@ -712,6 +715,8 @@ func (t *Tree) Compile(file string, out io.Writer) {
 	t.AddImport("strconv")
 	t.EndSymbol = 0x110000
 	t.RulesCount++
+
+	t.Generator = strings.Join(args, " ")
 
 	counts := [TypeLast]uint{}
 	{
