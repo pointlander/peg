@@ -177,7 +177,7 @@ StructOrUnionSpecifier
 
 StructOrUnion <- STRUCT / UNION
 
-StructDeclaration <- ( SpecifierQualifierList StructDeclaratorList )? SEMI
+StructDeclaration <- ( SpecifierQualifierList StructDeclaratorList? )? SEMI
 
 SpecifierQualifierList
    <- ( TypeQualifier*

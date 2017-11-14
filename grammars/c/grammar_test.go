@@ -96,6 +96,14 @@ func TestCParsing_EmptyStruct(t *testing.T) {
 	parseC_4t(t, `struct {} empty;`)
 	parseC_4t(t, `struct empty {} empty;`)
 }
+func TestCParsing_EmptyEmbeddedUnion(t *testing.T) {
+	parseC_4t(t, `struct empty{
+	union {
+		int a;
+		char b;
+	};
+};`)
+}
 func TestCParsing_ExtraSEMI(t *testing.T) {
 	parseC_4t(t, `int func(){}
 ;
