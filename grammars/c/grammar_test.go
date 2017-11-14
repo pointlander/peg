@@ -107,6 +107,13 @@ int foo() {};;
 
 	noParseC_4t(t, `struct empty{}`)
 }
+func TestCParsing_ExtraSEMI2(t *testing.T) {
+	parseC_4t(t, `
+struct a { int b; ; };
+`)
+
+	noParseC_4t(t, `struct empty{}`)
+}
 
 func TestCParsing_Escapes(t *testing.T) {
 	parseC_4t(t, `
@@ -118,3 +125,4 @@ int f() {
 	printf('\"'); // <- semantically wrong but syntactically valid.
 }`)
 }
+
