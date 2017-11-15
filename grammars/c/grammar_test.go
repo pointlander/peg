@@ -19,6 +19,13 @@ func parseC_4t(t *testing.T, src string) *C {
 	return c
 }
 
+func noParseC_4t(t *testing.T, src string) {
+	_, err := parseCBuffer(src)
+	if err == nil {
+		t.Fatal("Parsed what should not have parsed.")
+	}
+}
+
 func TestCParsing_Expressions1(t *testing.T) {
 	case1src :=
 		`int a() {
@@ -82,6 +89,48 @@ func TestCParsing_Cast1(t *testing.T) {
 }
 
 func TestCParsing_Empty(t *testing.T) {
-	t.Skip() // this branch doesn't have the empty support yet.
 	parseC_4t(t, `/** empty is valid. */  `)
 }
+func TestCParsing_EmptyStruct(t *testing.T) {
+	parseC_4t(t, `struct empty{};`)
+	parseC_4t(t, `struct {} empty;`)
+	parseC_4t(t, `struct empty {} empty;`)
+}
+func TestCParsing_EmptyEmbeddedUnion(t *testing.T) {
+	parseC_4t(t, `struct empty{
+	union {
+		int a;
+		char b;
+	};
+};`)
+}
+func TestCParsing_ExtraSEMI(t *testing.T) {
+	parseC_4t(t, `int func(){}
+;
+struct {} empty;
+struct {} empty;;
+int foo() {};
+int foo() {};;
+`)
+
+	noParseC_4t(t, `struct empty{}`)
+}
+func TestCParsing_ExtraSEMI2(t *testing.T) {
+	parseC_4t(t, `
+struct a { int b; ; };
+`)
+
+	noParseC_4t(t, `struct empty{}`)
+}
+
+func TestCParsing_Escapes(t *testing.T) {
+	parseC_4t(t, `
+int f() {
+	printf("%s", "\a\b\f\n\r\t\v");
+	printf("\\");
+	printf("\%");
+	printf("\"");
+	printf('\"'); // <- semantically wrong but syntactically valid.
+}`)
+}
+

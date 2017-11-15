@@ -10,3 +10,6 @@ c.peg.go: c.peg
 
 clean:
 	rm -f c c.peg.go
+
+test:
+	go test

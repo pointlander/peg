@@ -110,7 +110,7 @@ type C Peg {
 
 }
 
-TranslationUnit <- Spacing ExternalDeclaration+ EOT
+TranslationUnit <- Spacing ( ExternalDeclaration / SEMI ) * EOT
 
 ExternalDeclaration <- FunctionDefinition / Declaration
 
@@ -171,13 +171,13 @@ TypeSpecifier
 
 StructOrUnionSpecifier
    <- StructOrUnion
-      ( Identifier? LWING StructDeclaration+ RWING
+      ( Identifier? LWING StructDeclaration* RWING
       / Identifier
       )
 
 StructOrUnion <- STRUCT / UNION
 
-StructDeclaration <- SpecifierQualifierList StructDeclaratorList SEMI
+StructDeclaration <- ( SpecifierQualifierList StructDeclaratorList? )? SEMI
 
 SpecifierQualifierList
    <- ( TypeQualifier*
@@ -608,7 +608,7 @@ Escape
     / HexEscape
     / UniversalCharacter
 
-SimpleEscape <- '\\' ['\"?\\abfnrtv]
+SimpleEscape <- '\\' ['\"?\\%abfnrtv]
 OctalEscape  <- '\\' [0-7][0-7]?[0-7]?
 HexEscape    <- '\\x' HexDigit+
 
