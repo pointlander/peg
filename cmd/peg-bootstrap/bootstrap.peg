@@ -1,0 +1,46 @@
+# Core bootstrap PE Grammar for peg language.
+# Adapted from peg.peg.
+
+Grammar		<- Spacing	{ p.AddPackage("main") }
+				{ p.AddImport("github.com/pointlander/peg/tree") }
+				{ p.AddPeg("Peg");  p.AddState("*tree.Tree") }
+				Action* Definition* !.
+
+Definition	<- Identifier 			{ p.AddRule(text) }
+			LeftArrow Expression 	{ p.AddExpression() }
+Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }	)*
+Sequence	<- Prefix (Prefix		{ p.AddSequence() }	)*
+Prefix		<- '!' Suffix { p.AddPeekNot() } / Suffix
+Suffix		<- Primary 	(Question	{ p.AddQuery() }
+				/ Star		{ p.AddStar() }		)?
+Primary		<- Identifier !LeftArrow	{ p.AddName(text) }
+		 / Open Expression Close
+		 / Literal / Class / Dot	{ p.AddDot() }
+		 / Action			{ p.AddAction(text) }
+		 / Begin Expression End		{ p.AddPush() }
+
+Identifier	<- < Ident Ident* > Spacing
+Ident		<- [A-Za-z]
+Literal		<- ['] !['] Char (!['] Char	{ p.AddSequence() } )* 	['] Spacing
+Class		<- '[' Range (!']' Range	{ p.AddAlternate() } )* ']' Spacing
+Range		<- Char '-' Char { p.AddRange() } / Char
+Char		<- '\\0x' <[0-9a-f]*>		{ p.AddHexaCharacter(text) }
+		 / '\\\\'			{ p.AddCharacter("\\") }
+		 / !'\\' <.>			{ p.AddCharacter(text) }
+
+LeftArrow	<- '<-' Spacing
+Slash		<- '/' Spacing
+Question	<- '?' Spacing
+Star		<- '*' Spacing
+Open		<- '(' Spacing
+Close		<- ')' Spacing
+Dot		<- '.' Spacing
+
+Spacing		<- (Space / Comment)*
+Comment		<- '#' (!EndOfLine .)*
+Space		<- ' ' / '\0x9' / EndOfLine
+EndOfLine	<- '\0xd\0xa' / '\0xa' / '\0xd'
+
+Action		<- '{' < (![}].)* > '}' Spacing
+Begin		<- '<' Spacing
+End		<- '>' Spacing

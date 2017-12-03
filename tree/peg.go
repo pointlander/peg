@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tree
 
 import (
 	"bytes"
@@ -565,7 +565,7 @@ type Tree struct {
 	rulesCount map[string]uint
 	node
 	inline, _switch, Ast bool
-	strict               bool
+	Strict               bool
 
 	Generator       string
 	RuleNames       []Node
@@ -1075,11 +1075,11 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 	var buffer bytes.Buffer
 	defer func() {
-		if t.strict && werr != nil && err == nil {
+		if t.Strict && werr != nil && err == nil {
 			// Treat warnings as errors.
 			err = werr
 		}
-		if !t.strict && werr != nil {
+		if !t.Strict && werr != nil {
 			// Display warnings.
 			fmt.Fprintln(os.Stderr, werr)
 		}

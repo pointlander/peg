@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/pointlander/peg/tree"
 )
 
 func TestCorrect(t *testing.T) {
@@ -12,7 +14,7 @@ func TestCorrect(t *testing.T) {
 type T Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: New(false, false, false), Buffer: buffer}
+	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
 	p.Init()
 	err := p.Parse()
 	if err != nil {
@@ -25,7 +27,7 @@ func TestNoSpacePackage(t *testing.T) {
 type T Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: New(false, false, false), Buffer: buffer}
+	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
 	p.Init()
 	err := p.Parse()
 	if err == nil {
@@ -39,7 +41,7 @@ package p
 typenospace Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: New(false, false, false), Buffer: buffer}
+	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
 	p.Init()
 	err := p.Parse()
 	if err == nil {
@@ -53,7 +55,7 @@ func TestSame(t *testing.T) {
 		t.Error(err)
 	}
 
-	p := &Peg{Tree: New(true, true, false), Buffer: string(buffer)}
+	p := &Peg{Tree: tree.New(true, true, false), Buffer: string(buffer)}
 	p.Init()
 	if err = p.Parse(); err != nil {
 		t.Error(err)
@@ -62,21 +64,21 @@ func TestSame(t *testing.T) {
 	p.Execute()
 
 	out := &bytes.Buffer{}
-	p.Compile("peg.peg.go", []string{"bootstrap/bootstrap"}, out)
+	p.Compile("peg.peg.go", []string{"peg", "-inline", "-switch", "peg.peg"}, out)
 
-	bootstrap, err := ioutil.ReadFile("bootstrap.peg.go")
+	bootstrap, err := ioutil.ReadFile("peg.peg.go")
 	if err != nil {
 		t.Error(err)
 	}
 
 	if len(out.Bytes()) != len(bootstrap) {
-		t.Error("code generated from peg.peg is not the same as bootstrap.peg.go")
+		t.Error("code generated from peg.peg is not the same as .go")
 		return
 	}
 
 	for i, v := range out.Bytes() {
 		if v != bootstrap[i] {
-			t.Error("code generated from peg.peg is not the same as bootstrap.peg.go")
+			t.Error("code generated from peg.peg is not the same as .go")
 			return
 		}
 	}
@@ -105,7 +107,7 @@ Begin <- Begin 'x'
 	}
 
 	for i, buffer := range tt {
-		p := &Peg{Tree: New(false, false, false), Buffer: buffer}
+		p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
 		p.Init()
 		if err := p.Parse(); err != nil {
 			t.Fatal(err)
@@ -121,11 +123,11 @@ Begin <- Begin 'x'
 			f.Close()
 		}()
 		out := &bytes.Buffer{}
-		p.strict = true
+		p.Strict = true
 		if err = p.Compile(f.Name(), []string{"peg"}, out); err == nil {
 			t.Fatalf("#%d: expected warning error", i)
 		}
-		p.strict = false
+		p.Strict = false
 		if err = p.Compile(f.Name(), []string{"peg"}, out); err != nil {
 			t.Fatalf("#%d: unexpected error (%v)", i, err)
 		}
@@ -153,7 +155,7 @@ func BenchmarkInitOnly(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, peg := range pegs {
-			p := &Peg{Tree: New(true, true, false), Buffer: string(peg)}
+			p := &Peg{Tree: tree.New(true, true, false), Buffer: string(peg)}
 			p.Init()
 		}
 	}
@@ -167,7 +169,7 @@ func BenchmarkParse(b *testing.B) {
 			b.Error(err)
 		}
 
-		p := &Peg{Tree: New(true, true, false), Buffer: string(input)}
+		p := &Peg{Tree: tree.New(true, true, false), Buffer: string(input)}
 		p.Init()
 		pegs[i] = p
 	}
@@ -193,7 +195,7 @@ func BenchmarkResetAndParse(b *testing.B) {
 			b.Error(err)
 		}
 
-		p := &Peg{Tree: New(true, true, false), Buffer: string(input)}
+		p := &Peg{Tree: tree.New(true, true, false), Buffer: string(input)}
 		p.Init()
 		pegs[i] = p
 	}
@@ -222,7 +224,7 @@ func BenchmarkInitAndParse(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
-			peg := &Peg{Tree: New(true, true, false), Buffer: string(str)}
+			peg := &Peg{Tree: tree.New(true, true, false), Buffer: string(str)}
 			peg.Init()
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
@@ -244,7 +246,7 @@ func BenchmarkInitResetAndParse(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
-			peg := &Peg{Tree: New(true, true, false), Buffer: string(str)}
+			peg := &Peg{Tree: tree.New(true, true, false), Buffer: string(str)}
 			peg.Init()
 			peg.Reset()
 			if err := peg.Parse(); err != nil {
