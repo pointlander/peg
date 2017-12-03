@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -77,6 +78,56 @@ func TestSame(t *testing.T) {
 		if v != bootstrap[i] {
 			t.Error("code generated from peg.peg is not the same as bootstrap.peg.go")
 			return
+		}
+	}
+}
+
+func TestStrict(t *testing.T) {
+	tt := []string{
+		// rule used but not defined
+		`
+package main
+type test Peg {}
+Begin <- begin !.
+`,
+		// rule defined but not used
+		`
+package main
+type test Peg {}
+Begin <- .
+unused <- 'unused'
+`,
+		// left recursive rule
+		`package main
+type test Peg {}
+Begin <- Begin 'x'
+`,
+	}
+
+	for i, buffer := range tt {
+		p := &Peg{Tree: New(false, false, false), Buffer: buffer}
+		p.Init()
+		if err := p.Parse(); err != nil {
+			t.Fatal(err)
+		}
+		p.Execute()
+
+		f, err := ioutil.TempFile("", "peg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			os.Remove(f.Name())
+			f.Close()
+		}()
+		out := &bytes.Buffer{}
+		p.strict = true
+		if err = p.Compile(f.Name(), []string{"peg"}, out); err == nil {
+			t.Fatalf("#%d: expected warning error", i)
+		}
+		p.strict = false
+		if err = p.Compile(f.Name(), []string{"peg"}, out); err != nil {
+			t.Fatalf("#%d: unexpected error (%v)", i, err)
 		}
 	}
 }

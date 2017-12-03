@@ -565,8 +565,9 @@ type Tree struct {
 	rulesCount map[string]uint
 	node
 	inline, _switch, Ast bool
+	strict               bool
 
-	Generator	string
+	Generator       string
 	RuleNames       []Node
 	PackageName     string
 	Imports         []string
@@ -706,7 +707,7 @@ func escape(c string) string {
 	}
 }
 
-func (t *Tree) Compile(file string, args []string, out io.Writer) {
+func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	t.AddImport("fmt")
 	if t.Ast {
 		t.AddImport("math")
@@ -717,6 +718,15 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 	t.RulesCount++
 
 	t.Generator = strings.Join(args, " ")
+
+	var werr error
+	warn := func(e error) {
+		if werr == nil {
+			werr = fmt.Errorf("warning: %s.", e)
+		} else {
+			werr = fmt.Errorf("%s\nwarning: %s", werr, e)
+		}
+	}
 
 	counts := [TypeLast]uint{}
 	{
@@ -860,7 +870,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 				case TypeRule:
 					id := node.GetId()
 					if ruleReached[id] {
-						fmt.Fprintf(os.Stderr, "possible infinite left recursion in rule '%v'\n", node)
+						warn(fmt.Errorf("possible infinite left recursion in rule '%v'", node))
 						return false
 					}
 					ruleReached[id] = true
@@ -1065,18 +1075,29 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 
 	var buffer bytes.Buffer
 	defer func() {
+		if t.strict && werr != nil && err == nil {
+			// Treat warnings as errors.
+			err = werr
+		}
+		if !t.strict && werr != nil {
+			// Display warnings.
+			fmt.Fprintln(os.Stderr, werr)
+		}
+		if err != nil {
+			return
+		}
 		fileSet := token.NewFileSet()
 		code, error := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
 		if error != nil {
 			buffer.WriteTo(out)
-			fmt.Printf("%v: %v\n", file, error)
+			err = fmt.Errorf("%v: %v", file, error)
 			return
 		}
 		formatter := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}
 		error = formatter.Fprint(out, fileSet, code)
 		if error != nil {
 			buffer.WriteTo(out)
-			fmt.Printf("%v: %v\n", file, error)
+			err = fmt.Errorf("%v: %v", file, error)
 			return
 		}
 
@@ -1085,10 +1106,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 	_print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d := position, tokenIndex", n, n) }
 	printRestore := func(n uint) { _print("\n   position, tokenIndex = position%d, tokenIndex%d", n, n) }
-	printTemplate := func(s string) {
-		if error := template.Must(template.New("peg").Parse(s)).Execute(&buffer, t); error != nil {
-			panic(error)
-		}
+	printTemplate := func(s string) error {
+		return template.Must(template.New("peg").Parse(s)).Execute(&buffer, t)
 	}
 
 	t.HasActions = counts[TypeAction] > 0
@@ -1191,13 +1210,13 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 			_print(">")
 		case TypeNil:
 		default:
-			fmt.Fprintf(os.Stderr, "illegal node type: %v\n", n.GetType())
+			warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
 	}
 	compile = func(n Node, ko uint) {
 		switch n.GetType() {
 		case TypeRule:
-			fmt.Fprintf(os.Stderr, "internal error #1 (%v)\n", n)
+			warn(fmt.Errorf("internal error #1 (%v)", n))
 		case TypeDot:
 			_print("\n   if !matchDot() {")
 			/*print("\n   if buffer[position] == endSymbol {")*/
@@ -1380,7 +1399,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 			printEnd()
 		case TypeNil:
 		default:
-			fmt.Fprintf(os.Stderr, "illegal node type: %v\n", n.GetType())
+			warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
 	}
 
@@ -1414,7 +1433,9 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 	} else if length > math.MaxUint8 {
 		t.PegRuleType = "uint16"
 	}
-	printTemplate(pegHeaderTemplate)
+	if err = printTemplate(pegHeaderTemplate); err != nil {
+		return err
+	}
 	for _, element := range t.Slice() {
 		if element.GetType() != TypeRule {
 			continue
@@ -1422,7 +1443,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 		expression := element.Front()
 		if implicit := expression.Front(); expression.GetType() == TypeNil || implicit.GetType() == TypeNil {
 			if element.String() != "PegText" {
-				fmt.Fprintf(os.Stderr, "rule '%v' used but not defined\n", element)
+				warn(fmt.Errorf("rule '%v' used but not defined", element))
 			}
 			_print("\n  nil,")
 			continue
@@ -1433,7 +1454,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 		printRule(element)
 		_print(" */")
 		if count, ok := t.rulesCount[element.String()]; !ok {
-			fmt.Fprintf(os.Stderr, "rule '%v' defined but not used\n", element)
+			warn(fmt.Errorf("rule '%v' defined but not used", element))
 			_print("\n  nil,")
 			continue
 		} else if t.inline && count == 1 && ko != 0 {
@@ -1456,4 +1477,5 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) {
 	}
 	_print("\n }\n p.rules = _rules")
 	_print("\n}\n")
+	return nil
 }

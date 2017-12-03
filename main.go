@@ -19,6 +19,7 @@ var (
 	print   = flag.Bool("print", false, "directly dump the syntax tree")
 	syntax  = flag.Bool("syntax", false, "print out the syntax tree")
 	noast   = flag.Bool("noast", false, "disable AST")
+	strict  = flag.Bool("strict", false, "treat compiler warnings as errors")
 )
 
 func main() {
@@ -58,5 +59,9 @@ func main() {
 		return
 	}
 	defer out.Close()
-	p.Compile(filename, os.Args, out)
+
+	p.strict = *strict
+	if err := p.Compile(filename, os.Args, out); err != nil {
+		log.Fatal(err)
+	}
 }
