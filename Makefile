@@ -38,7 +38,7 @@ cmd/peg-bootstrap/peg1: cmd/peg-bootstrap/peg0 cmd/peg-bootstrap/bootstrap.peg
 cmd/peg-bootstrap/peg2: cmd/peg-bootstrap/peg1 cmd/peg-bootstrap/peg.bootstrap.peg
 	cd cmd/peg-bootstrap/ &&				\
 		rm -f *.peg.go &&				\
-		peg1 <peg.bootstrap.peg >peg2.peg.go && \
+		./peg1 <peg.bootstrap.peg >peg2.peg.go && \
 		go build -o peg2
 
 # peg3 <- peg.peg.go from peg2 + peg.peg
@@ -57,7 +57,7 @@ cmd/peg-bootstrap/peg-bootstrap: cmd/peg-bootstrap/peg3
 
 .PHONY:clean
 clean:
-	rm -f bootstrap/bootstrap peg peg.peg.go cmd/peg-bootstrap/{*peg.go,peg{[0-3],-bootstrap}}
+	rm -f bootstrap/bootstrap peg cmd/peg-bootstrap/{*peg.go,peg{[0-3],-bootstrap}}
 
 .PHONY:test
 test: peg

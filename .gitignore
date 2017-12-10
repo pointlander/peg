@@ -1,5 +1,5 @@
 *.peg.go
-!bootstrap.peg.go
+!peg.peg.go
 *.exe
 *.6
 peg
