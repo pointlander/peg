@@ -11,6 +11,8 @@ import (
 	"log"
 	"os"
 	"runtime"
+
+	"github.com/pointlander/peg/tree"
 )
 
 var (
@@ -37,7 +39,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	p := &Peg{Tree: New(*inline, *_switch, *noast), Buffer: string(buffer), Pretty: true}
+	p := &Peg{Tree: tree.New(*inline, *_switch, *noast), Buffer: string(buffer), Pretty: true}
 	p.Init()
 	if err := p.Parse(); err != nil {
 		log.Fatal(err)
@@ -60,7 +62,7 @@ func main() {
 	}
 	defer out.Close()
 
-	p.strict = *strict
+	p.Strict = *strict
 	if err := p.Compile(filename, os.Args, out); err != nil {
 		log.Fatal(err)
 	}

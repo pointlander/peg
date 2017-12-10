@@ -1,34 +1,18 @@
-# PE Grammar for PE Grammars
+# PE Grammar for bootstrap peg language
 #
-# Adapted from [1] by Ian Piumarta <first-name at last-name point com>.
-#
-# Best viewed using 140 columns monospaced with tabs every 8.
-#
-# [1] Bryan Ford.  "Parsing Expression Grammars: A Recognition-Based Syntactic
-#     Foundation."  Symposium on Principles of Programming Languages,
-#     January 14--16, 2004, Venice, Italy.
-
-package main
-
-import "github.com/pointlander/peg/tree"
-
-# parser declaration
-
-type Peg Peg {
- *tree.Tree
-}
+# Adapted from peg.peg.
 
 # Hierarchical syntax
 Grammar		<- Spacing 'package' MustSpacing Identifier      { p.AddPackage(text) }
 			   Import*
                            'type' MustSpacing Identifier         { p.AddPeg(text) }
                            'Peg' Spacing Action              { p.AddState(text) }
-                           Definition+ EndOfFile
+                           Definition Definition* EndOfFile
 
-Import		<- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(text) }
+Import		<- 'import' Spacing ["] < ([a-zA-Z_/.]/'-')([a-zA-Z_/.]/'-')* > ["] Spacing { p.AddImport(text) }
 
 Definition	<- Identifier 			{ p.AddRule(text) }
-		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.)
+		     LeftArrow Expression 	{ p.AddExpression() }
 Expression	<- Sequence (Slash Sequence	{ p.AddAlternate() }
 			    )* (Slash           { p.AddNil(); p.AddAlternate() }
                                )?
@@ -54,9 +38,8 @@ Primary	        <- Identifier !LeftArrow        { p.AddName(text) }
 
 # Lexical syntax
 
-#PrivateIdentifier <- < [a-z_] IdentCont* > Spacing
 Identifier	<- < IdentStart IdentCont* > Spacing
-IdentStart	<- [[a-z_]]
+IdentStart	<- [A-Za-z_]
 IdentCont	<- IdentStart / [0-9]
 Literal		<- ['] (!['] Char)? (!['] Char                { p.AddSequence() }
                                     )* ['] Spacing
@@ -82,20 +65,20 @@ Char            <- Escape
 DoubleChar	<- Escape
 		 / <[a-zA-Z]>                 { p.AddDoubleCharacter(text) }
                  / !'\\' <.>                  { p.AddCharacter(text) }
-Escape          <- "\\a"                      { p.AddCharacter("\a") }   # bell
-                 / "\\b"                      { p.AddCharacter("\b") }   # bs
-                 / "\\e"                      { p.AddCharacter("\x1B") } # esc
-                 / "\\f"                      { p.AddCharacter("\f") }   # ff
-                 / "\\n"                      { p.AddCharacter("\n") }   # nl
-                 / "\\r"                      { p.AddCharacter("\r") }   # cr
-                 / "\\t"                      { p.AddCharacter("\t") }   # ht
-                 / "\\v"                      { p.AddCharacter("\v") }   # vt
-                 / "\\'"		      { p.AddCharacter("'") }
+Escape          <- '\\' [aA]                  { p.AddCharacter("\a") }   # bell
+                 / '\\' [bB]                  { p.AddCharacter("\b") }   # bs
+                 / '\\' [eE]                  { p.AddCharacter("\x1B") } # esc
+                 / '\\' [fF]                  { p.AddCharacter("\f") }   # ff
+                 / '\\' [nN]                  { p.AddCharacter("\n") }   # nl
+                 / '\\' [rR]                  { p.AddCharacter("\r") }   # cr
+                 / '\\' [tT]                  { p.AddCharacter("\t") }   # ht
+                 / '\\' [vV]                  { p.AddCharacter("\v") }   # vt
+                 / '\\' [']		      { p.AddCharacter("'") }
                  / '\\"'		      { p.AddCharacter("\"") }
                  / '\\['                      { p.AddCharacter("[") }
                  / '\\]'                      { p.AddCharacter("]") }
                  / '\\-'                      { p.AddCharacter("-") }
-                 / '\\' "0x"<[0-9a-fA-F]+>     { p.AddHexaCharacter(text) }
+                 / '\\' '0'[xX] <[0-9a-fA-F][0-9a-fA-F]*>     { p.AddHexaCharacter(text) }
                  / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(text) }
                  / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(text) }
                  / '\\\\'                     { p.AddCharacter("\\") }
@@ -111,13 +94,13 @@ Close		<- ')' Spacing
 Dot		<- '.' Spacing
 SpaceComment	<- (Space / Comment)
 Spacing		<- SpaceComment*
-MustSpacing	<- SpaceComment+
+MustSpacing	<- SpaceComment Spacing
 Comment		<- '#' (!EndOfLine .)* EndOfLine
-Space		<- ' ' / '\t' / EndOfLine
-EndOfLine	<- '\r\n' / '\n' / '\r'
+Space		<- ' ' / '\0x9' / EndOfLine
+EndOfLine	<- '\0xd\0xa' / '\0xa' / '\0xd'
 EndOfFile	<- !.
 Action		<- '{' < ActionBody* > '}' Spacing
-ActionBody	<- [^{}] / '{' ActionBody* '}'
+ActionBody	<- ![{}]. / '{' ActionBody* '}'
 Begin		<- '<' Spacing
 End		<- '>' Spacing
 

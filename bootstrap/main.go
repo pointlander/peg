@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+
+	"github.com/pointlander/peg/tree"
 )
 
 func main() {
 	runtime.GOMAXPROCS(2)
-	t := New(true, true, false)
+	t := tree.New(true, true, false)
 
 	/*package main
 
@@ -25,16 +27,15 @@ func main() {
 	   *Tree
 	  }*/
 	t.AddPackage("main")
+	t.AddImport("github.com/pointlander/peg/tree")
 	t.AddPeg("Peg")
 	t.AddState(`
- *Tree
+ *tree.Tree
 `)
 
 	addDot := t.AddDot
 	addName := t.AddName
 	addCharacter := t.AddCharacter
-	addDoubleCharacter := t.AddDoubleCharacter
-	addHexaCharacter := t.AddHexaCharacter
 	addAction := t.AddAction
 
 	addRule := func(name string, item func()) {
@@ -85,20 +86,9 @@ func main() {
 		t.AddRange()
 	}
 
-	addDoubleRange := func(begin, end string) {
-		addCharacter(begin)
-		addCharacter(end)
-		t.AddDoubleRange()
-	}
-
 	addStar := func(item func()) {
 		item()
 		t.AddStar()
-	}
-
-	addPlus := func(item func()) {
-		item()
-		t.AddPlus()
 	}
 
 	addQuery := func(item func()) {
@@ -121,55 +111,17 @@ func main() {
 		t.AddPeekFor()
 	}
 
-	/* Grammar         <- Spacing 'package' MustSpacing Identifier      { p.AddPackage(text) }
-	   Import*
-	   'type' MustSpacing Identifier         { p.AddPeg(text) }
-	   'Peg' Spacing Action              { p.AddState(text) }
-	   Definition+ EndOfFile */
+	/* Grammar <- Spacing { hdr; } Action* Definition* !. */
 	addRule("Grammar", func() {
 		addSequence(
 			func() { addName("Spacing") },
-			func() { addString("package") },
-			func() { addName("MustSpacing") },
-			func() { addName("Identifier") },
-			func() { addAction(" p.AddPackage(text) ") },
-			func() { addStar(func() { addName("Import") }) },
-			func() { addString("type") },
-			func() { addName("MustSpacing") },
-			func() { addName("Identifier") },
-			func() { addAction(" p.AddPeg(text) ") },
-			func() { addString("Peg") },
-			func() { addName("Spacing") },
-			func() { addName("Action") },
-			func() { addAction(" p.AddState(text) ") },
-			func() { addPlus(func() { addName("Definition") }) },
-			func() { addName("EndOfFile") },
-		)
-	})
-
-	/* Import          <- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(text) } */
-	addRule("Import", func() {
-		addSequence(
-			func() { addString("import") },
-			func() { addName("Spacing") },
-			func() { addCharacter(`"`) },
-			func() {
-				addPush(func() {
-					addPlus(func() {
-						addAlternate(
-							func() { addRange(`a`, `z`) },
-							func() { addRange(`A`, `Z`) },
-							func() { addCharacter(`_`) },
-							func() { addCharacter(`/`) },
-							func() { addCharacter(`.`) },
-							func() { addCharacter(`-`) },
-						)
-					})
-				})
-			},
-			func() { addCharacter(`"`) },
-			func() { addName("Spacing") },
-			func() { addAction(" p.AddImport(text) ") },
+			func() { addAction(`p.AddPackage("main")`) },
+			func() { addAction(`p.AddImport("github.com/pointlander/peg/tree")`) },
+			func() { addAction(`p.AddPeg("Peg")`) },
+			func() { addAction(`p.AddState("*tree.Tree")`) },
+			func() { addStar(func() { addName("Action") }) },
+			func() { addStar(func() { addName("Definition") }) },
+			func() { addPeekNot(func() { addDot() }) },
 		)
 	})
 
@@ -198,40 +150,23 @@ func main() {
 		)
 	})
 
-	/* Expression      <- Sequence (Slash Sequence     { p.AddAlternate() }
-	           )* (Slash           { p.AddNil(); p.AddAlternate() }
-	              )?
-	/ { p.AddNil() } */
+	/* Expression <- Sequence (Slash Sequence { p.AddAlternate() })* */
 	addRule("Expression", func() {
-		addAlternate(
+		addSequence(
+			func() { addName("Sequence") },
 			func() {
-				addSequence(
-					func() { addName("Sequence") },
-					func() {
-						addStar(func() {
-							addSequence(
-								func() { addName("Slash") },
-								func() { addName("Sequence") },
-								func() { addAction(" p.AddAlternate() ") },
-							)
-						})
-					},
-					func() {
-						addQuery(func() {
-							addSequence(
-								func() { addName("Slash") },
-								func() { addAction(" p.AddNil(); p.AddAlternate() ") },
-							)
-						})
-					},
-				)
+				addStar(func() {
+					addSequence(
+						func() { addName("Slash") },
+						func() { addName("Sequence") },
+						func() { addAction(" p.AddAlternate() ") },
+					)
+				})
 			},
-			func() { addAction(" p.AddNil() ") },
 		)
 	})
 
-	/* Sequence        <- Prefix (Prefix               { p.AddSequence() }
-	   )* */
+	/* Sequence <- Prefix (Prefix { p.AddSequence() } )* */
 	addRule("Sequence", func() {
 		addSequence(
 			func() { addName("Prefix") },
@@ -246,37 +181,12 @@ func main() {
 		)
 	})
 
-	/* Prefix          <- And Action                   { p.AddPredicate(text) }
-	   / Not Action                   { p.AddStateChange(text) }
-	   / And Suffix                   { p.AddPeekFor() }
-	   / Not Suffix                   { p.AddPeekNot() }
-	   /     Suffix */
+	/* Prefix <- '!' Suffix { p.AddPeekNot() } / Suffix */
 	addRule("Prefix", func() {
 		addAlternate(
 			func() {
 				addSequence(
-					func() { addName("And") },
-					func() { addName("Action") },
-					func() { addAction(" p.AddPredicate(text) ") },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addName("Not") },
-					func() { addName("Action") },
-					func() { addAction(" p.AddStateChange(text) ") },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addName("And") },
-					func() { addName("Suffix") },
-					func() { addAction(" p.AddPeekFor() ") },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addName("Not") },
+					func() { addCharacter(`!`) },
 					func() { addName("Suffix") },
 					func() { addAction(" p.AddPeekNot() ") },
 				)
@@ -285,10 +195,9 @@ func main() {
 		)
 	})
 
-	/* Suffix          <- Primary (Question            { p.AddQuery() }
-	   / Star             { p.AddStar() }
-	   / Plus             { p.AddPlus() }
-	 )? */
+	/* Suffix          <- Primary (	Question	{ p.AddQuery() }
+	  				/ Star		{ p.AddStar() }
+	)? */
 	addRule("Suffix", func() {
 		addSequence(
 			func() { addName("Primary") },
@@ -305,12 +214,6 @@ func main() {
 							addSequence(
 								func() { addName("Star") },
 								func() { addAction(" p.AddStar() ") },
-							)
-						},
-						func() {
-							addSequence(
-								func() { addName("Plus") },
-								func() { addAction(" p.AddPlus() ") },
 							)
 						},
 					)
@@ -367,14 +270,14 @@ func main() {
 		)
 	})
 
-	/* Identifier      <- < IdentStart IdentCont* > Spacing */
+	/* Identifier      <- < Ident Ident* > Spacing */
 	addRule("Identifier", func() {
 		addSequence(
 			func() {
 				addPush(func() {
 					addSequence(
-						func() { addName("IdentStart") },
-						func() { addStar(func() { addName("IdentCont") }) },
+						func() { addName("Ident") },
+						func() { addStar(func() { addName("Ident") }) },
 					)
 				})
 			},
@@ -382,141 +285,42 @@ func main() {
 		)
 	})
 
-	/* IdentStart      <- [[a-z_]] */
-	addRule("IdentStart", func() {
+	/* Ident <- [A-Za-z] */
+	addRule("Ident", func() {
 		addAlternate(
-			func() { addDoubleRange(`a`, `z`) },
-			func() { addCharacter(`_`) },
+			func() { addRange(`A`, `Z`) },
+			func() { addRange(`a`, `z`) },
 		)
 	})
 
-	/* IdentCont       <- IdentStart / [0-9] */
-	addRule("IdentCont", func() {
-		addAlternate(
-			func() { addName("IdentStart") },
-			func() { addRange(`0`, `9`) },
-		)
-	})
-
-	/* Literal         <- ['] (!['] Char)? (!['] Char          { p.AddSequence() }
-	                     )* ['] Spacing
-	   / ["] (!["] DoubleChar)? (!["] DoubleChar          { p.AddSequence() }
-	                            )* ["] Spacing */
+	/* Literal <- ['] !['] Char (!['] Char { p.AddSequence() } )* ['] Spacing */
 	addRule("Literal", func() {
-		addAlternate(
-			func() {
-				addSequence(
-					func() { addCharacter(`'`) },
-					func() {
-						addQuery(func() {
-							addSequence(
-								func() { addPeekNot(func() { addCharacter(`'`) }) },
-								func() { addName("Char") },
-							)
-						})
-					},
-					func() {
-						addStar(func() {
-							addSequence(
-								func() { addPeekNot(func() { addCharacter(`'`) }) },
-								func() { addName("Char") },
-								func() { addAction(` p.AddSequence() `) },
-							)
-						})
-					},
-					func() { addCharacter(`'`) },
-					func() { addName("Spacing") },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter(`"`) },
-					func() {
-						addQuery(func() {
-							addSequence(
-								func() { addPeekNot(func() { addCharacter(`"`) }) },
-								func() { addName("DoubleChar") },
-							)
-						})
-					},
-					func() {
-						addStar(func() {
-							addSequence(
-								func() { addPeekNot(func() { addCharacter(`"`) }) },
-								func() { addName("DoubleChar") },
-								func() { addAction(` p.AddSequence() `) },
-							)
-						})
-					},
-					func() { addCharacter(`"`) },
-					func() { addName("Spacing") },
-				)
-			},
-		)
-	})
-
-	/* Class  <- ( '[[' ( '^' DoubleRanges              { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
-	          / DoubleRanges )?
-	     ']]'
-	   / '[' ( '^' Ranges                     { p.AddPeekNot(); p.AddDot(); p.AddSequence() }
-	         / Ranges )?
-	     ']' )
-	   Spacing */
-	addRule("Class", func() {
 		addSequence(
+			func() { addCharacter(`'`) },
 			func() {
-				addAlternate(
-					func() {
-						addSequence(
-							func() { addString(`[[`) },
-							func() {
-								addQuery(func() {
-									addAlternate(
-										func() {
-											addSequence(
-												func() { addCharacter(`^`) },
-												func() { addName("DoubleRanges") },
-												func() { addAction(` p.AddPeekNot(); p.AddDot(); p.AddSequence() `) },
-											)
-										},
-										func() { addName("DoubleRanges") },
-									)
-								})
-							},
-							func() { addString(`]]`) },
-						)
-					},
-					func() {
-						addSequence(
-							func() { addCharacter(`[`) },
-							func() {
-								addQuery(func() {
-									addAlternate(
-										func() {
-											addSequence(
-												func() { addCharacter(`^`) },
-												func() { addName("Ranges") },
-												func() { addAction(` p.AddPeekNot(); p.AddDot(); p.AddSequence() `) },
-											)
-										},
-										func() { addName("Ranges") },
-									)
-								})
-							},
-							func() { addCharacter(`]`) },
-						)
-					},
+				addSequence(
+					func() { addPeekNot(func() { addCharacter(`'`) }) },
+					func() { addName("Char") },
 				)
 			},
+			func() {
+				addStar(func() {
+					addSequence(
+						func() { addPeekNot(func() { addCharacter(`'`) }) },
+						func() { addName("Char") },
+						func() { addAction(` p.AddSequence() `) },
+					)
+				})
+			},
+			func() { addCharacter(`'`) },
 			func() { addName("Spacing") },
 		)
 	})
 
-	/* Ranges          <- !']' Range (!']' Range  { p.AddAlternate() }
-	   )* */
-	addRule("Ranges", func() {
+	/* Class  <- '[' Range (!']' Range { p.AddAlternate() })* ']' Spacing */
+	addRule("Class", func() {
 		addSequence(
-			func() { addPeekNot(func() { addCharacter(`]`) }) },
+			func() { addCharacter(`[`) },
 			func() { addName("Range") },
 			func() {
 				addStar(func() {
@@ -527,24 +331,8 @@ func main() {
 					)
 				})
 			},
-		)
-	})
-
-	/* DoubleRanges          <- !']]' DoubleRange (!']]' DoubleRange  { p.AddAlternate() }
-	   )* */
-	addRule("DoubleRanges", func() {
-		addSequence(
-			func() { addPeekNot(func() { addString(`]]`) }) },
-			func() { addName("DoubleRange") },
-			func() {
-				addStar(func() {
-					addSequence(
-						func() { addPeekNot(func() { addString(`]]`) }) },
-						func() { addName("DoubleRange") },
-						func() { addAction(" p.AddAlternate() ") },
-					)
-				})
-			},
+			func() { addCharacter(`]`) },
+			func() { addName("Spacing") },
 		)
 	})
 
@@ -564,192 +352,23 @@ func main() {
 		)
 	})
 
-	/* DoubleRange      <- Char '-' Char { p.AddDoubleRange() }
-	   / DoubleChar */
-	addRule("DoubleRange", func() {
-		addAlternate(
-			func() {
-				addSequence(
-					func() { addName("Char") },
-					func() { addCharacter(`-`) },
-					func() { addName("Char") },
-					func() { addAction(" p.AddDoubleRange() ") },
-				)
-			},
-			func() { addName("DoubleChar") },
-		)
-	})
-
-	/* Char            <- Escape
-	   / !'\\' <.>                  { p.AddCharacter(text) } */
+	/* Char	<- Escape
+	/  '\\' "0x"<[0-9a-f]*>   { p.AddHexaCharacter(text) }
+	/  '\\\\'                  { p.AddCharacter("\\") }
+	/  !'\\' <.>                  { p.AddCharacter(text) } */
 	addRule("Char", func() {
 		addAlternate(
-			func() { addName("Escape") },
 			func() {
 				addSequence(
-					func() { addPeekNot(func() { addCharacter("\\") }) },
-					func() { addPush(func() { addDot() }) },
-					func() { addAction(` p.AddCharacter(text) `) },
-				)
-			},
-		)
-	})
-
-	/* DoubleChar      <- Escape
-	   / <[a-zA-Z]>                 { p.AddDoubleCharacter(text) }
-	   / !'\\' <.>                  { p.AddCharacter(text) } */
-	addRule("DoubleChar", func() {
-		addAlternate(
-			func() { addName("Escape") },
-			func() {
-				addSequence(
+					func() { addCharacter("\\") },
+					func() { addCharacter(`0`) },
+					func() { addCharacter(`x`) },
 					func() {
 						addPush(func() {
-							addAlternate(
-								func() { addRange(`a`, `z`) },
-								func() { addRange(`A`, `Z`) },
-							)
-						})
-					},
-					func() { addAction(` p.AddDoubleCharacter(text) `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addPeekNot(func() { addCharacter("\\") }) },
-					func() { addPush(func() { addDot() }) },
-					func() { addAction(` p.AddCharacter(text) `) },
-				)
-			},
-		)
-	})
-
-	/* Escape            <- "\\a"                      { p.AddCharacter("\a") }   # bell
-		                      / "\\b"                      { p.AddCharacter("\b") }   # bs
-	                              / "\\e"                      { p.AddCharacter("\x1B") } # esc
-	                              / "\\f"                      { p.AddCharacter("\f") }   # ff
-	                              / "\\n"                      { p.AddCharacter("\n") }   # nl
-	                              / "\\r"                      { p.AddCharacter("\r") }   # cr
-	                              / "\\t"                      { p.AddCharacter("\t") }   # ht
-	                              / "\\v"                      { p.AddCharacter("\v") }   # vt
-	                              / "\\'"                      { p.AddCharacter("'") }
-	                              / '\\"'                      { p.AddCharacter("\"") }
-	                              / '\\['                      { p.AddCharacter("[") }
-	                              / '\\]'                      { p.AddCharacter("]") }
-	                              / '\\-'                      { p.AddCharacter("-") }
-				      / '\\' "0x"<[0-9a-fA-F]+>    { p.AddHexaCharacter(text) }
-	                              / '\\' <[0-3][0-7][0-7]>     { p.AddOctalCharacter(text) }
-	                              / '\\' <[0-7][0-7]?>         { p.AddOctalCharacter(text) }
-	                              / '\\\\'                     { p.AddCharacter("\\") } */
-	addRule("Escape", func() {
-		addAlternate(
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addDoubleCharacter(`a`) },
-					func() { addAction(` p.AddCharacter("\a") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addDoubleCharacter(`b`) },
-					func() { addAction(` p.AddCharacter("\b") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addDoubleCharacter(`e`) },
-					func() { addAction(` p.AddCharacter("\x1B") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addDoubleCharacter(`f`) },
-					func() { addAction(` p.AddCharacter("\f") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addDoubleCharacter(`n`) },
-					func() { addAction(` p.AddCharacter("\n") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addDoubleCharacter(`r`) },
-					func() { addAction(` p.AddCharacter("\r") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addDoubleCharacter(`t`) },
-					func() { addAction(` p.AddCharacter("\t") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addDoubleCharacter(`v`) },
-					func() { addAction(` p.AddCharacter("\v") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addCharacter(`'`) },
-					func() { addAction(` p.AddCharacter("'") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addCharacter(`"`) },
-					func() { addAction(` p.AddCharacter("\"") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addCharacter(`[`) },
-					func() { addAction(` p.AddCharacter("[") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addCharacter(`]`) },
-					func() { addAction(` p.AddCharacter("]") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() { addCharacter(`-`) },
-					func() { addAction(` p.AddCharacter("-") `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() {
-						addSequence(
-							func() { addCharacter(`0`) },
-							func() { addDoubleCharacter(`x`) },
-						)
-					},
-					func() {
-						addPush(func() {
-							addPlus(func() {
+							addStar(func() {
 								addAlternate(
 									func() { addRange(`0`, `9`) },
 									func() { addRange(`a`, `f`) },
-									func() { addRange(`A`, `F`) },
 								)
 							})
 						})
@@ -760,51 +379,23 @@ func main() {
 			func() {
 				addSequence(
 					func() { addCharacter("\\") },
-					func() {
-						addPush(func() {
-							addSequence(
-								func() { addRange(`0`, `3`) },
-								func() { addRange(`0`, `7`) },
-								func() { addRange(`0`, `7`) },
-							)
-						})
-					},
-					func() { addAction(` p.AddOctalCharacter(text) `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
-					func() {
-						addPush(func() {
-							addSequence(
-								func() { addRange(`0`, `7`) },
-								func() { addQuery(func() { addRange(`0`, `7`) }) },
-							)
-						})
-					},
-					func() { addAction(` p.AddOctalCharacter(text) `) },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter("\\") },
 					func() { addCharacter("\\") },
 					func() { addAction(` p.AddCharacter("\\") `) },
 				)
 			},
-		)
-	})
-
-	/* LeftArrow       <- ('<-' / '\0x2190') Spacing */
-	addRule("LeftArrow", func() {
-		addSequence(
 			func() {
-				addAlternate(
-					func() { addString(`<-`) },
-					func() { addHexaCharacter("2190") },
+				addSequence(
+					func() { addPeekNot(func() { addCharacter("\\") }) },
+					func() { addPush(func() { addDot() }) },
+					func() { addAction(` p.AddCharacter(text) `) },
 				)
 			},
+		)
+	})
+	/* LeftArrow       <- '<-' Spacing */
+	addRule("LeftArrow", func() {
+		addSequence(
+			func() { addString(`<-`) },
 			func() { addName("Spacing") },
 		)
 	})
@@ -813,22 +404,6 @@ func main() {
 	addRule("Slash", func() {
 		addSequence(
 			func() { addCharacter(`/`) },
-			func() { addName("Spacing") },
-		)
-	})
-
-	/* And             <- '&' Spacing */
-	addRule("And", func() {
-		addSequence(
-			func() { addCharacter(`&`) },
-			func() { addName("Spacing") },
-		)
-	})
-
-	/* Not             <- '!' Spacing */
-	addRule("Not", func() {
-		addSequence(
-			func() { addCharacter(`!`) },
 			func() { addName("Spacing") },
 		)
 	})
@@ -845,14 +420,6 @@ func main() {
 	addRule("Star", func() {
 		addSequence(
 			func() { addCharacter(`*`) },
-			func() { addName("Spacing") },
-		)
-	})
-
-	/* Plus            <- '+' Spacing */
-	addRule("Plus", func() {
-		addSequence(
-			func() { addCharacter(`+`) },
 			func() { addName("Spacing") },
 		)
 	})
@@ -881,25 +448,16 @@ func main() {
 		)
 	})
 
-	/* SpaceComment         <- (Space / Comment) */
-	addRule("SpaceComment", func() {
-		addAlternate(
-			func() { addName("Space") },
-			func() { addName("Comment") },
-		)
-	})
-
-	/* Spacing         <- SpaceComment* */
 	addRule("Spacing", func() {
-		addStar(func() { addName("SpaceComment") })
+		addStar(func() {
+			addAlternate(
+				func() { addName("Space") },
+				func() { addName("Comment") },
+			)
+		})
 	})
 
-	/* MustSpacing     <- SpaceComment+ */
-	addRule("MustSpacing", func() {
-		addPlus(func() { t.AddName("SpaceComment") })
-	})
-
-	/* Comment         <- '#' (!EndOfLine .)* EndOfLine */
+	/* Comment         <- '#' (!EndOfLine .)* */
 	addRule("Comment", func() {
 		addSequence(
 			func() { addCharacter(`#`) },
@@ -911,7 +469,6 @@ func main() {
 					)
 				})
 			},
-			func() { addName("EndOfLine") },
 		)
 	})
 
@@ -933,48 +490,26 @@ func main() {
 		)
 	})
 
-	/* EndOfFile       <- !. */
-	addRule("EndOfFile", func() {
-		addPeekNot(func() { addDot() })
-	})
-
-	/* Action		<- '{' < ActionBody* > '}' Spacing */
+	/* Action		<- '{' < (![}].)* > '}' Spacing */
 	addRule("Action", func() {
 		addSequence(
 			func() { addCharacter(`{`) },
 			func() {
 				addPush(func() {
-					addStar(func() { addName("ActionBody") })
+					addStar(func() {
+						addSequence(
+							func() {
+								addPeekNot(func() {
+									addCharacter(`}`)
+								})
+							},
+							func() { addDot() },
+						)
+					})
 				})
 			},
 			func() { addCharacter(`}`) },
 			func() { addName("Spacing") },
-		)
-	})
-
-	/* ActionBody	<- [^{}] / '{' ActionBody* '}' */
-	addRule("ActionBody", func() {
-		addAlternate(
-			func() {
-				addSequence(
-					func() {
-						addPeekNot(func() {
-							addAlternate(
-								func() { addCharacter(`{`) },
-								func() { addCharacter(`}`) },
-							)
-						})
-					},
-					func() { addDot() },
-				)
-			},
-			func() {
-				addSequence(
-					func() { addCharacter(`{`) },
-					func() { addStar(func() { addName("ActionBody") }) },
-					func() { addCharacter(`}`) },
-				)
-			},
 		)
 	})
 

@@ -1,8 +1,9 @@
 package main
 
-//go:generate bootstrap/bootstrap
+//go:generate peg -inline -switch peg.peg
 
 import (
+	"github.com/pointlander/peg/tree"
 	"fmt"
 	"math"
 	"sort"
@@ -314,7 +315,7 @@ func (t *tokens32) Tokens() []token32 {
 }
 
 type Peg struct {
-	*Tree
+	*tree.Tree
 
 	Buffer string
 	buffer []rune
