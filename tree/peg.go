@@ -13,6 +13,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -817,6 +818,9 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				}
 			}
 		}
+		/* sort imports to satisfy gofmt */
+		sort.Strings(t.Imports)
+
 		/* second pass */
 		for _, node := range t.Slice() {
 			if node.GetType() == TypeRule {
@@ -1061,7 +1065,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			}
 		}
 
-		for i, _ := range cache {
+		for i := range cache {
 			cache[i].reached = false
 		}
 		firstPass = false

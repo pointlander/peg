@@ -3,8 +3,8 @@ package main
 //go:generate peg -inline -switch peg.peg
 
 import (
-	"github.com/pointlander/peg/tree"
 	"fmt"
+	"github.com/pointlander/peg/tree"
 	"math"
 	"sort"
 	"strconv"
