@@ -1,6 +1,6 @@
 package main
 
-//go:generate peg -inline -switch peg.peg
+//go:generate ./peg -inline -switch peg.peg
 
 import (
 	"fmt"

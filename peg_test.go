@@ -64,7 +64,7 @@ func TestSame(t *testing.T) {
 	p.Execute()
 
 	out := &bytes.Buffer{}
-	p.Compile("peg.peg.go", []string{"peg", "-inline", "-switch", "peg.peg"}, out)
+	p.Compile("peg.peg.go", []string{"./peg", "-inline", "-switch", "peg.peg"}, out)
 
 	bootstrap, err := ioutil.ReadFile("peg.peg.go")
 	if err != nil {

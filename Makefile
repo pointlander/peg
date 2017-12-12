@@ -8,7 +8,7 @@ peg: peg.peg.go main.go
 peg.peg.go: bootstrap
 	cmd/peg-bootstrap/peg-bootstrap <peg.peg >peg.peg.go
 	go build
-	peg -inline -switch peg.peg
+	./peg -inline -switch peg.peg
 
 # Use peg-bootstrap to compile peg from peg.peg
 .PHONY: bootstrap
