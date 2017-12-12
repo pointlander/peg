@@ -60,8 +60,14 @@ clean:
 	rm -f bootstrap/bootstrap peg cmd/peg-bootstrap/{*peg.go,peg{[0-3],-bootstrap}}
 
 .PHONY:test
-test: peg
+test: peg fmt
 	go test
+
+.PHONY:fmt
+fmt:
+	# fail if any files don't match gofmt
+	gofmt -l -s {*,*/*,*/*/*}.go | awk ' { exit 1 } '
+
 
 .PHONY:bench
 bench:

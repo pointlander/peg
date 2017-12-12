@@ -25,7 +25,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		if fileInfo.Mode() & (os.ModeNamedPipe | os.ModeSocket | os.ModeDevice) != 0 {
+		if fileInfo.Mode()&(os.ModeNamedPipe|os.ModeSocket|os.ModeDevice) != 0 {
 			/* will lock up if opened */
 		} else if fileInfo.IsDir() {
 			fmt.Printf("directory %v\n", name)
