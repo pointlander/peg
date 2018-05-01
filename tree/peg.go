@@ -402,6 +402,7 @@ var TypeMap = [...]string{
 	"TypeRange",
 	"TypeString",
 	"TypePredicate",
+	"TypeStateChange",
 	"TypeCommit",
 	"TypeAction",
 	"TypePackage",
