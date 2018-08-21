@@ -178,7 +178,7 @@ InterfaceMethodOrFieldRest
     / InterfaceMethodDeclaratorRest
 
 InterfaceMethodDeclaratorRest
-    <- FormalParameters Dim* (THROWS ClassTypeList)? SEM
+    <- FormalParameters Dim* (THROWS ClassTypeList)? SEMI
 
 InterfaceGenericMethodDecl
     <- TypeParameters (Type / VOID) Identifier InterfaceMethodDeclaratorRest
