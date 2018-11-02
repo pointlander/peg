@@ -243,6 +243,11 @@ func (p *{{.StructName}}) PrintSyntaxTree() {
 	}
 }
 
+func (p *{{.StructName}}) WriteSyntaxTree(w io.Writer) {
+	p.tokens32.WriteSyntaxTree(w, p.Buffer)
+}
+
+
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
 	buffer, _buffer, text, begin, end := p.Buffer, p.buffer, "", 0, 0
