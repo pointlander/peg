@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -41,6 +42,7 @@ var processed = make(map[string]bool)
 
 func done(file string, deps ...interface{}) bool {
 	fini := true
+	file = filepath.FromSlash(file)
 	info, err := os.Stat(file)
 	if err != nil {
 		fini = false
@@ -52,7 +54,7 @@ func done(file string, deps ...interface{}) bool {
 				fini = false
 				break
 			}
-
+			dep = filepath.FromSlash(dep)
 			fileInfo, err := os.Stat(dep)
 			if err != nil {
 				panic(err)
@@ -78,6 +80,7 @@ func done(file string, deps ...interface{}) bool {
 }
 
 func chdir(dir string) string {
+	dir = filepath.FromSlash(dir)
 	working, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -91,6 +94,9 @@ func chdir(dir string) string {
 }
 
 func command(name, inputFile, outputFile string, arg ...string) {
+	name = filepath.FromSlash(name)
+	inputFile = filepath.FromSlash(inputFile)
+	outputFile = filepath.FromSlash(outputFile)
 	fmt.Print(name)
 	for _, a := range arg {
 		fmt.Printf(" %s", a)
@@ -137,11 +143,13 @@ func command(name, inputFile, outputFile string, arg ...string) {
 }
 
 func delete(file string) {
-	command("rm", "", "", "-f", file)
+	file = filepath.FromSlash(file)
+	fmt.Printf("rm -f %s\n", file)
+	os.Remove(file)
 }
 
 func deleteFilesWithSuffix(suffix string) {
-	files, err := ioutil.ReadDir("./")
+	files, err := ioutil.ReadDir(".")
 	if err != nil {
 		panic(err)
 	}
