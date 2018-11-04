@@ -183,7 +183,7 @@ func peg0() bool {
 
 	deleteFilesWithSuffix(".peg.go")
 	command("../../bootstrap/bootstrap", "", "")
-	command("go", "", "", "build", "-o", "peg0")
+	command("go", "", "", "build", "-tags", "bootstrap", "-o", "peg0")
 
 	return false
 }
@@ -198,7 +198,7 @@ func peg1() bool {
 
 	deleteFilesWithSuffix(".peg.go")
 	command("./peg0", "bootstrap.peg", "peg1.peg.go")
-	command("go", "", "", "build", "-o", "peg1")
+	command("go", "", "", "build", "-tags", "bootstrap", "-o", "peg1")
 
 	return false
 }
@@ -213,7 +213,7 @@ func peg2() bool {
 
 	deleteFilesWithSuffix(".peg.go")
 	command("./peg1", "peg.bootstrap.peg", "peg2.peg.go")
-	command("go", "", "", "build", "-o", "peg2")
+	command("go", "", "", "build", "-tags", "bootstrap", "-o", "peg2")
 
 	return false
 }
@@ -228,7 +228,7 @@ func peg3() bool {
 
 	deleteFilesWithSuffix(".peg.go")
 	command("./peg2", "../../peg.peg", "peg3.peg.go")
-	command("go", "", "", "build", "-o", "peg3")
+	command("go", "", "", "build", "-tags", "bootstrap", "-o", "peg3")
 
 	return false
 }
@@ -243,7 +243,7 @@ func peg_bootstrap() bool {
 
 	deleteFilesWithSuffix(".peg.go")
 	command("./peg3", "../../peg.peg", "peg-bootstrap.peg.go")
-	command("go", "", "", "build", "-o", "peg-bootstrap")
+	command("go", "", "", "build", "-tags", "bootstrap", "-o", "peg-bootstrap")
 
 	return false
 }
@@ -273,6 +273,12 @@ func peg() bool {
 func clean() bool {
 	delete("bootstrap/bootstrap")
 
+	delete("grammars/c/c.peg.go")
+	delete("grammars/calculator/calculator.peg.go")
+	delete("grammars/fexl/fexl.peg.go")
+	delete("grammars/java/java_1_7.peg.go")
+	delete("grammars/long_test/long.peg.go")
+
 	wd := chdir("cmd/peg-bootstrap/")
 	defer chdir(wd)
 
@@ -286,10 +292,77 @@ func clean() bool {
 	return false
 }
 
-func test() bool {
-	peg()
+func grammars_c() bool {
+	if done("grammars/c/c.peg.go", "grammars/c/c.peg") {
+		return true
+	}
 
-	command("go", "", "", "test")
+	wd := chdir("grammars/c/")
+	defer chdir(wd)
+
+	command("../../peg", "", "", "-switch", "-inline", "c.peg")
+
+	return false
+}
+
+func grammars_calculator() bool {
+	if done("grammars/calculator/calculator.peg.go", "grammars/calculator/calculator.peg") {
+		return true
+	}
+
+	wd := chdir("grammars/calculator/")
+	defer chdir(wd)
+
+	command("../../peg", "", "", "-switch", "-inline", "calculator.peg")
+
+	return false
+}
+
+func grammars_fexl() bool {
+	if done("grammars/fexl/fexl.peg.go", "grammars/fexl/fexl.peg") {
+		return true
+	}
+
+	wd := chdir("grammars/fexl/")
+	defer chdir(wd)
+
+	command("../../peg", "", "", "-switch", "-inline", "fexl.peg")
+
+	return false
+}
+
+func grammars_java() bool {
+	if done("grammars/java/java_1_7.peg.go", "grammars/java/java_1_7.peg") {
+		return true
+	}
+
+	wd := chdir("grammars/java/")
+	defer chdir(wd)
+
+	command("../../peg", "", "", "-switch", "-inline", "java_1_7.peg")
+
+	return false
+}
+
+func grammars_long_test() bool {
+	if done("grammars/long_test/long.peg.go", "grammars/long_test/long.peg") {
+		return true
+	}
+
+	wd := chdir("grammars/long_test/")
+	defer chdir(wd)
+
+	command("../../peg", "", "", "-switch", "-inline", "long.peg")
+
+	return false
+}
+
+func test() bool {
+	if done("", peg, grammars_c, grammars_calculator, grammars_fexl, grammars_java, grammars_long_test) {
+		return true
+	}
+
+	command("go", "", "", "test", "-short", "-tags", "grammars", "./...")
 
 	return false
 }

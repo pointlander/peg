@@ -2,21 +2,26 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// +build grammars
+
 package main
 
 import (
-	"fmt"
-	"log"
+	"testing"
 )
 
-func main() {
+func TestLong(t *testing.T) {
+	length := 100000
+	if testing.Short() {
+		length = 100
+	}
+
 	expression := ""
 	long := &Long{Buffer: "\"" + expression + "\""}
 	long.Init()
-	for c := 0; c < 100000; c++ {
+	for c := 0; c < length; c++ {
 		if err := long.Parse(); err != nil {
-			fmt.Printf("%v\n", c)
-			log.Fatal(err)
+			t.Fatal(err)
 		}
 		long.Reset()
 		expression = expression + "X"
