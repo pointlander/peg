@@ -35,6 +35,12 @@ func main() {
 		test()
 	case "bench":
 		bench()
+	case "help":
+		fmt.Println("go run build.go [target]")
+		fmt.Println(" peg - build peg from scratch")
+		fmt.Println(" clean - clean up")
+		fmt.Println(" test - run full test")
+		fmt.Println(" bench - run benchmark")
 	}
 }
 
