@@ -2,24 +2,25 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// +build grammars
+
 package main
 
 import (
 	"io/ioutil"
-	"log"
+	"testing"
 )
 
-func main() {
+func TestFexl(t *testing.T) {
 	buffer, err := ioutil.ReadFile("doc/try.fxl")
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	fexl := &Fexl{Buffer: string(buffer)}
 	fexl.Init()
 
 	if err := fexl.Parse(); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	fexl.PrintSyntaxTree()
 }

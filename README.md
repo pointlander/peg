@@ -13,6 +13,19 @@ This Go implementation is based on:
 * http://piumarta.com/software/peg/
 
 
+# Development
+
+To rebuild from scratch:
+```
+go run build.go
+```
+
+For full test:
+```
+go run build.go test
+```
+
+
 # Usage
 
 ```
@@ -131,19 +144,8 @@ Will print out "capture". The captured string is stored in `buffer[begin:end]`.
 # Files
 
 * bootstrap/main.go: bootstrap syntax tree of peg
-* peg.go: syntax tree and code generator
-* main.go: bootstrap main
+* tree/peg.go: syntax tree and code generator
 * peg.peg: peg in its own language
-
-
-# Testing
-
-There should be no differences between the bootstrap and self compiled:
-
-```
-./peg -inline -switch peg.peg
-diff bootstrap.peg.go peg.peg.go
-```
 
 
 # Author

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// +build grammars
+
 package main
 
 import (
@@ -10,12 +12,28 @@ import (
 	"log"
 	"os"
 	"strings"
+	"testing"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Printf("%v FILE\n", os.Args[0])
-		os.Exit(1)
+var example1 = `public class HelloWorld {
+	public static void main(String[] args) {
+		System.out.println("Hello, World");
+	}
+}
+`
+
+func TestBasic(t *testing.T) {
+	java := &Java{Buffer: example1}
+	java.Init()
+
+	if err := java.Parse(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestJava(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping java parsing long test")
 	}
 
 	var walk func(name string)
@@ -68,5 +86,5 @@ func main() {
 			}
 		}
 	}
-	walk(os.Args[1])
+	walk("java/")
 }
