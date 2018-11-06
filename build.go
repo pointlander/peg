@@ -71,14 +71,15 @@ func done(file string, deps ...interface{}) bool {
 			}
 		case func() bool:
 			name := runtime.FuncForPC(reflect.ValueOf(dep).Pointer()).Name()
-			if processed[name] {
+			if result, ok := processed[name]; ok {
+				fini = fini && result
 				fmt.Printf("%s is done\n", name)
 				break
 			}
 			result := dep()
 			fini = fini && result
 			fmt.Printf("%s\n", name)
-			processed[name] = true
+			processed[name] = result
 		}
 	}
 
@@ -299,7 +300,7 @@ func clean() bool {
 }
 
 func grammars_c() bool {
-	if done("grammars/c/c.peg.go", "grammars/c/c.peg") {
+	if done("grammars/c/c.peg.go", peg, "grammars/c/c.peg") {
 		return true
 	}
 
@@ -312,7 +313,7 @@ func grammars_c() bool {
 }
 
 func grammars_calculator() bool {
-	if done("grammars/calculator/calculator.peg.go", "grammars/calculator/calculator.peg") {
+	if done("grammars/calculator/calculator.peg.go", peg, "grammars/calculator/calculator.peg") {
 		return true
 	}
 
@@ -325,7 +326,7 @@ func grammars_calculator() bool {
 }
 
 func grammars_fexl() bool {
-	if done("grammars/fexl/fexl.peg.go", "grammars/fexl/fexl.peg") {
+	if done("grammars/fexl/fexl.peg.go", peg, "grammars/fexl/fexl.peg") {
 		return true
 	}
 
@@ -338,7 +339,7 @@ func grammars_fexl() bool {
 }
 
 func grammars_java() bool {
-	if done("grammars/java/java_1_7.peg.go", "grammars/java/java_1_7.peg") {
+	if done("grammars/java/java_1_7.peg.go", peg, "grammars/java/java_1_7.peg") {
 		return true
 	}
 
@@ -351,7 +352,7 @@ func grammars_java() bool {
 }
 
 func grammars_long_test() bool {
-	if done("grammars/long_test/long.peg.go", "grammars/long_test/long.peg") {
+	if done("grammars/long_test/long.peg.go", peg, "grammars/long_test/long.peg") {
 		return true
 	}
 
@@ -364,7 +365,7 @@ func grammars_long_test() bool {
 }
 
 func test() bool {
-	if done("", peg, grammars_c, grammars_calculator, grammars_fexl, grammars_java, grammars_long_test) {
+	if done("", grammars_c, grammars_calculator, grammars_fexl, grammars_java, grammars_long_test) {
 		return true
 	}
 
