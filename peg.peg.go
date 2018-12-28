@@ -4,12 +4,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/pointlander/peg/tree"
 	"io"
 	"math"
 	"os"
 	"sort"
 	"strconv"
+
+	"github.com/pointlander/peg/tree"
 )
 
 const endSymbol rune = 1114112
@@ -226,7 +227,7 @@ func (node *node32) print(w io.Writer, pretty bool, buffer string) {
 	print = func(node *node32, depth int) {
 		for node != nil {
 			for c := 0; c < depth; c++ {
-				fmt.Printf(" ")
+				fmt.Fprintf(w, " ")
 			}
 			rule := rul3s[node.pegRule]
 			quote := strconv.Quote(string(([]rune(buffer)[node.begin:node.end])))
