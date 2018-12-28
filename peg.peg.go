@@ -4,13 +4,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/pointlander/peg/tree"
 	"io"
 	"math"
 	"os"
 	"sort"
 	"strconv"
-
-	"github.com/pointlander/peg/tree"
 )
 
 const endSymbol rune = 1114112
