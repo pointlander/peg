@@ -211,7 +211,7 @@ type parseError struct {
 }
 
 func (e *parseError) Error() string {
-	tokens, error := []token32{e.max}, "\n"
+	tokens, err := []token32{e.max}, "\n"
 	positions, p := make([]int, 2 * len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p + 1
@@ -224,14 +224,14 @@ func (e *parseError) Error() string {
 	}
 	for _, token := range tokens {
 		begin, end := int(token.begin), int(token.end)
-		error += fmt.Sprintf(format,
+		err += fmt.Sprintf(format,
                          rul3s[token.pegRule],
                          translations[begin].line, translations[begin].symbol,
                          translations[end].line, translations[end].symbol,
                          strconv.Quote(string(e.p.buffer[begin:end])))
 	}
 
-	return error
+	return err
 }
 
 {{if .Ast}}
@@ -1103,17 +1103,17 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			return
 		}
 		fileSet := token.NewFileSet()
-		code, error := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
-		if error != nil {
+		code, err := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
+		if err != nil {
 			buffer.WriteTo(out)
-			err = fmt.Errorf("%v: %v", file, error)
+			err = fmt.Errorf("%v: %v", file, err)
 			return
 		}
 		formatter := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}
-		error = formatter.Fprint(out, fileSet, code)
-		if error != nil {
+		err = formatter.Fprint(out, fileSet, code)
+		if err != nil {
 			buffer.WriteTo(out)
-			err = fmt.Errorf("%v: %v", file, error)
+			err = fmt.Errorf("%v: %v", file, err)
 			return
 		}
 
