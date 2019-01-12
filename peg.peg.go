@@ -377,7 +377,7 @@ type parseError struct {
 }
 
 func (e *parseError) Error() string {
-	tokens, error := []token32{e.max}, "\n"
+	tokens, err := []token32{e.max}, "\n"
 	positions, p := make([]int, 2*len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p+1
@@ -390,14 +390,14 @@ func (e *parseError) Error() string {
 	}
 	for _, token := range tokens {
 		begin, end := int(token.begin), int(token.end)
-		error += fmt.Sprintf(format,
+		err += fmt.Sprintf(format,
 			rul3s[token.pegRule],
 			translations[begin].line, translations[begin].symbol,
 			translations[end].line, translations[end].symbol,
 			strconv.Quote(string(e.p.buffer[begin:end])))
 	}
 
-	return error
+	return err
 }
 
 func (p *Peg) PrintSyntaxTree() {
