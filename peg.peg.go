@@ -304,16 +304,22 @@ func (t *tokens32) PrettyPrintSyntaxTree(buffer string) {
 }
 
 func (t *tokens32) Add(rule pegRule, begin, end, index uint32) {
-	if tree := t.tree; int(index) >= len(tree) {
-		expanded := make([]token32, 2*len(tree))
+	tree, i := t.tree, int(index)
+	if capacity := cap(tree); i >= capacity {
+		expanded := make([]token32, capacity, capacity<<1)
 		copy(expanded, tree)
-		t.tree = expanded
+		t.tree, tree = expanded, expanded
 	}
-	t.tree[index] = token32{
+	tok := token32{
 		pegRule: rule,
 		begin:   begin,
 		end:     end,
 	}
+	if i >= len(tree) {
+		t.tree = append(tree, tok)
+		return
+	}
+	tree[i] = tok
 }
 
 func (t *tokens32) Tokens() []token32 {
@@ -549,7 +555,7 @@ func (p *Peg) Init() {
 	p.reset()
 
 	_rules := p.rules
-	tree := tokens32{tree: make([]token32, math.MaxInt16)}
+	tree := tokens32{tree: make([]token32, 0, math.MaxInt16)}
 	p.parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
