@@ -1,0 +1,8 @@
+github.com/pointlander/compress v1.1.0 h1:5fUcQV2qEHvk0OpILH6eltwluN5VnwiYrkc1wjGUHnU=
+github.com/pointlander/compress v1.1.0/go.mod h1:q5NXNGzqj5uPnVuhGkZfmgHqNUhf15VLi6L9kW0VEc0=
+github.com/pointlander/compress v1.1.1-0.20190518213731-ff44bd196cc3 h1:hUmXhbljNFtrH5hzV9kiRoddZ5nfPTq3K0Sb2hYYiqE=
+github.com/pointlander/compress v1.1.1-0.20190518213731-ff44bd196cc3/go.mod h1:q5NXNGzqj5uPnVuhGkZfmgHqNUhf15VLi6L9kW0VEc0=
+github.com/pointlander/jetset v1.0.0 h1:bNlaNAX7cDPID9SlcogmXlDWq0KcRJSpKwHXaAM3bGQ=
+github.com/pointlander/jetset v1.0.0/go.mod h1:zY6+WHRPB10uzTajloHtybSicLW1bf6Rz0eSaU9Deng=
+github.com/pointlander/jetset v1.0.1-0.20190518214125-eee7eff80bd4 h1:RHHRCZeaNyBXdYPMjZNH8/XHDBH38TZzw8izrW7dmBE=
+github.com/pointlander/jetset v1.0.1-0.20190518214125-eee7eff80bd4/go.mod h1:RdR1j20Aj5pB6+fw6Y9Ur7lMHpegTEjY1vc19hEZL40=
