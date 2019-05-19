@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/pointlander/peg/tree"
 	"io"
-	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -545,7 +544,7 @@ func (p *Peg) Init() {
 	p.reset()
 
 	_rules := p.rules
-	tree := tokens32{tree: make([]token32, 0, math.MaxInt16)}
+	tree := tokens32{tree: make([]token32, 0, 1<<14)}
 	p.parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {

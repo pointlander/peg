@@ -290,7 +290,7 @@ func (p *{{.StructName}}) Init() {
 
 	_rules := p.rules
 {{if .Ast -}}
-	tree := tokens32{tree: make([]token32, 0, math.MaxInt16)}
+	tree := tokens32{tree: make([]token32, 0, 1<<14)}
 {{end -}}
 	p.parse = func(rule ...int) error {
 		r := 1
@@ -720,9 +720,6 @@ func escape(c string) string {
 func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	t.AddImport("fmt")
 	t.AddImport("io")
-	if t.Ast {
-		t.AddImport("math")
-	}
 	t.AddImport("os")
 	t.AddImport("sort")
 	t.AddImport("strconv")
