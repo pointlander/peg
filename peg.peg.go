@@ -306,11 +306,6 @@ func (t *tokens32) PrettyPrintSyntaxTree(buffer string) {
 func (t *tokens32) Add(rule pegRule, begin, end, index uint32) {
 	tree, i := t.tree, int(index)
 	if i >= len(tree) {
-		if capacity := cap(tree); i >= capacity {
-			expanded := make([]token32, capacity, capacity<<1)
-			copy(expanded, tree)
-			t.tree, tree = expanded, expanded
-		}
 		t.tree = append(tree, token32{pegRule: rule, begin: begin, end: end})
 		return
 	}

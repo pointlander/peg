@@ -155,7 +155,7 @@ func BenchmarkInitOnly(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, peg := range pegs {
-			p := &Peg{Tree: tree.New(true, true, false), Buffer: string(peg)}
+			p := &Peg{Tree: tree.New(true, true, false), Buffer: peg}
 			p.Init()
 		}
 	}
@@ -224,7 +224,7 @@ func BenchmarkInitAndParse(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
-			peg := &Peg{Tree: tree.New(true, true, false), Buffer: string(str)}
+			peg := &Peg{Tree: tree.New(true, true, false), Buffer: str}
 			peg.Init()
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
@@ -246,7 +246,7 @@ func BenchmarkInitResetAndParse(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
-			peg := &Peg{Tree: tree.New(true, true, false), Buffer: string(str)}
+			peg := &Peg{Tree: tree.New(true, true, false), Buffer: str}
 			peg.Init()
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
