@@ -525,12 +525,31 @@ func (p *Peg) Execute() {
 	_, _, _, _, _ = buffer, _buffer, text, begin, end
 }
 
-func (p *Peg) Init() {
+func Pretty(pretty bool) func(*Peg) error {
+	return func(p *Peg) error {
+		p.Pretty = pretty
+		return nil
+	}
+}
+
+func Size(size int) func(*Peg) error {
+	return func(p *Peg) error {
+		p.tokens32 = tokens32{tree: make([]token32, 0, size)}
+		return nil
+	}
+}
+func (p *Peg) Init(options ...func(*Peg) error) error {
 	var (
 		max                  token32
 		position, tokenIndex uint32
 		buffer               []rune
 	)
+	for _, option := range options {
+		err := option(p)
+		if err != nil {
+			return err
+		}
+	}
 	p.reset = func() {
 		max = token32{}
 		position, tokenIndex = 0, 0
@@ -544,7 +563,7 @@ func (p *Peg) Init() {
 	p.reset()
 
 	_rules := p.rules
-	tree := tokens32{tree: make([]token32, 0, 1<<14)}
+	tree := p.tokens32
 	p.parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
@@ -2773,4 +2792,5 @@ func (p *Peg) Init() {
 		nil,
 	}
 	p.rules = _rules
+	return nil
 }

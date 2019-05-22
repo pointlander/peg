@@ -20,6 +20,13 @@ Grammar <- !.
 	if err != nil {
 		t.Error(err)
 	}
+
+	p = &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
+	p.Init(Size(1<<15))
+	err = p.Parse()
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestNoSpacePackage(t *testing.T) {
@@ -28,7 +35,7 @@ type T Peg {}
 Grammar <- !.
 `
 	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init()
+	p.Init(Size(1<<15))
 	err := p.Parse()
 	if err == nil {
 		t.Error("packagenospace was parsed without error")
@@ -42,7 +49,7 @@ typenospace Peg {}
 Grammar <- !.
 `
 	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init()
+	p.Init(Size(1<<15))
 	err := p.Parse()
 	if err == nil {
 		t.Error("typenospace was parsed without error")
@@ -56,7 +63,7 @@ func TestSame(t *testing.T) {
 	}
 
 	p := &Peg{Tree: tree.New(true, true, false), Buffer: string(buffer)}
-	p.Init()
+	p.Init(Size(1<<15))
 	if err = p.Parse(); err != nil {
 		t.Error(err)
 	}
@@ -108,7 +115,7 @@ Begin <- Begin 'x'
 
 	for i, buffer := range tt {
 		p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-		p.Init()
+		p.Init(Size(1<<15))
 		if err := p.Parse(); err != nil {
 			t.Fatal(err)
 		}
@@ -156,7 +163,7 @@ func BenchmarkInitOnly(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, peg := range pegs {
 			p := &Peg{Tree: tree.New(true, true, false), Buffer: peg}
-			p.Init()
+			p.Init(Size(1<<15))
 		}
 	}
 }
@@ -170,7 +177,7 @@ func BenchmarkParse(b *testing.B) {
 		}
 
 		p := &Peg{Tree: tree.New(true, true, false), Buffer: string(input)}
-		p.Init()
+		p.Init(Size(1<<15))
 		pegs[i] = p
 	}
 
@@ -196,7 +203,7 @@ func BenchmarkResetAndParse(b *testing.B) {
 		}
 
 		p := &Peg{Tree: tree.New(true, true, false), Buffer: string(input)}
-		p.Init()
+		p.Init(Size(1<<15))
 		pegs[i] = p
 	}
 
@@ -225,7 +232,7 @@ func BenchmarkInitAndParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
 			peg := &Peg{Tree: tree.New(true, true, false), Buffer: str}
-			peg.Init()
+			peg.Init(Size(1<<15))
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
 			}
@@ -247,7 +254,7 @@ func BenchmarkInitResetAndParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
 			peg := &Peg{Tree: tree.New(true, true, false), Buffer: str}
-			peg.Init()
+			peg.Init(Size(1<<15))
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
 			}

@@ -265,7 +265,23 @@ func (p *{{.StructName}}) Execute() {
 {{end}}
 {{end}}
 
-func (p *{{.StructName}}) Init() {
+func Pretty(pretty bool) func(*{{.StructName}}) error {
+	return func(p *{{.StructName}}) error {
+		p.Pretty = pretty
+		return nil
+	}
+}
+
+{{if .Ast -}}
+func Size(size int) func(*{{.StructName}}) error {
+	return func(p *{{.StructName}}) error {
+		p.tokens32 = tokens32{tree: make([]token32, 0, size)}
+		return nil
+	}
+}
+{{end -}}
+
+func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 	var (
 		max token32
 		position, tokenIndex uint32
@@ -276,6 +292,12 @@ func (p *{{.StructName}}) Init() {
 {{end -}}
 {{end -}}
 	)
+	for _, option := range options {
+		err := option(p)
+		if err != nil {
+			return err
+		}
+	}
 	p.reset = func() {
 		max = token32{}
 		position, tokenIndex = 0, 0
@@ -290,7 +312,7 @@ func (p *{{.StructName}}) Init() {
 
 	_rules := p.rules
 {{if .Ast -}}
-	tree := tokens32{tree: make([]token32, 0, 1<<14)}
+	tree := p.tokens32
 {{end -}}
 	p.parse = func(rule ...int) error {
 		r := 1
@@ -1488,6 +1510,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		_print("\n  },")
 	}
 	_print("\n }\n p.rules = _rules")
+	_print("\n return nil")
 	_print("\n}\n")
 	return nil
 }
