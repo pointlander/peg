@@ -142,10 +142,10 @@ func command(name, inputFile, outputFile string, arg ...string) {
 		}
 	} else {
 		output, err := cmd.CombinedOutput()
+		fmt.Printf("\n%s", string(output))
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("\n%s", string(output))
 	}
 }
 

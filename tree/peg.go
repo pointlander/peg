@@ -146,16 +146,12 @@ func (t *tokens32) PrettyPrintSyntaxTree(buffer string) {
 }
 
 func (t *tokens32) Add(rule pegRule, begin, end, index uint32) {
-	if tree := t.tree; int(index) >= len(tree) {
-		expanded := make([]token32, 2 * len(tree))
-		copy(expanded, tree)
-		t.tree = expanded
+	tree, i := t.tree, int(index)
+	if i >= len(tree) {
+		t.tree = append(tree, token32{pegRule: rule, begin: begin, end: end})
+		return
 	}
-	t.tree[index] = token32{
-		pegRule: rule,
-		begin: begin,
-		end: end,
-	}
+	tree[i] = token32{pegRule: rule, begin: begin, end: end}
 }
 
 func (t *tokens32) Tokens() []token32 {
@@ -269,7 +265,23 @@ func (p *{{.StructName}}) Execute() {
 {{end}}
 {{end}}
 
-func (p *{{.StructName}}) Init() {
+func Pretty(pretty bool) func(*{{.StructName}}) error {
+	return func(p *{{.StructName}}) error {
+		p.Pretty = pretty
+		return nil
+	}
+}
+
+{{if .Ast -}}
+func Size(size int) func(*{{.StructName}}) error {
+	return func(p *{{.StructName}}) error {
+		p.tokens32 = tokens32{tree: make([]token32, 0, size)}
+		return nil
+	}
+}
+{{end -}}
+
+func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 	var (
 		max token32
 		position, tokenIndex uint32
@@ -280,6 +292,12 @@ func (p *{{.StructName}}) Init() {
 {{end -}}
 {{end -}}
 	)
+	for _, option := range options {
+		err := option(p)
+		if err != nil {
+			return err
+		}
+	}
 	p.reset = func() {
 		max = token32{}
 		position, tokenIndex = 0, 0
@@ -294,7 +312,7 @@ func (p *{{.StructName}}) Init() {
 
 	_rules := p.rules
 {{if .Ast -}}
-	tree := tokens32{tree: make([]token32, math.MaxInt16)}
+	tree := p.tokens32
 {{end -}}
 	p.parse = func(rule ...int) error {
 		r := 1
@@ -600,11 +618,13 @@ type Tree struct {
 }
 
 func New(inline, _switch, noast bool) *Tree {
-	return &Tree{Rules: make(map[string]Node),
+	return &Tree{
+		Rules:      make(map[string]Node),
 		rulesCount: make(map[string]uint),
 		inline:     inline,
 		_switch:    _switch,
-		Ast:        !noast}
+		Ast:        !noast,
+	}
 }
 
 func (t *Tree) AddRule(name string) {
@@ -722,9 +742,6 @@ func escape(c string) string {
 func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	t.AddImport("fmt")
 	t.AddImport("io")
-	if t.Ast {
-		t.AddImport("math")
-	}
 	t.AddImport("os")
 	t.AddImport("sort")
 	t.AddImport("strconv")
@@ -1493,6 +1510,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		_print("\n  },")
 	}
 	_print("\n }\n p.rules = _rules")
+	_print("\n return nil")
 	_print("\n}\n")
 	return nil
 }
