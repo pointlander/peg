@@ -1361,11 +1361,9 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				}
 				_print(":")
 				compile(sequence, done)
-				_print("\nbreak")
 			}
 			_print("\n   default:")
 			compile(last, done)
-			_print("\nbreak")
 			_print("\n   }")
 			printEnd()
 			printLabel(ok)
