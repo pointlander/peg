@@ -1153,16 +1153,18 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	t.HasRange = counts[TypeRange] > 0
 
 	var printRule func(n Node)
-	var compile func(expression Node, ko uint)
+	var compile func(expression Node, ko uint) (labelLast bool)
 	var label uint
 	labels := make(map[uint]bool)
 	printBegin := func() { _print("\n   {") }
 	printEnd := func() { _print("\n   }") }
-	printLabel := func(n uint) {
+	printLabel := func(n uint) bool {
 		_print("\n")
 		if labels[n] {
 			_print("   l%d:\t", n)
+			return true
 		}
+		return false
 	}
 	printJump := func(n uint) {
 		_print("\n   goto l%d", n)
@@ -1247,7 +1249,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
 	}
-	compile = func(n Node, ko uint) {
+	compile = func(n Node, ko uint) (labelLast bool) {
 		switch n.GetType() {
 		case TypeRule:
 			warn(fmt.Errorf("internal error #1 (%v)", n))
@@ -1337,7 +1339,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			}
 			compile(elements[len(elements)-1], ko)
 			printEnd()
-			printLabel(ok)
+			labelLast = printLabel(ok)
 		case TypeUnorderedAlternate:
 			done, ok := ko, label
 			label++
@@ -1360,16 +1362,20 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					_print(" '%s'", escape(character.String()))
 				}
 				_print(":")
-				compile(sequence, done)
+				if compile(sequence, done) {
+					_print("\nbreak")
+				}
 			}
 			_print("\n   default:")
-			compile(last, done)
+			if compile(last, done) {
+				_print("\nbreak")
+			}
 			_print("\n   }")
 			printEnd()
-			printLabel(ok)
+			labelLast = printLabel(ok)
 		case TypeSequence:
 			for _, element := range n.Slice() {
-				compile(element, ko)
+				labelLast = compile(element, ko)
 			}
 		case TypePeekFor:
 			ok := label
@@ -1401,7 +1407,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printLabel(qko)
 			printRestore(qko)
 			printEnd()
-			printLabel(qok)
+			labelLast = printLabel(qok)
 		case TypeStar:
 			again := label
 			label++
@@ -1433,6 +1439,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		default:
 			warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
+		return labelLast
 	}
 
 	/* lets figure out which jump labels are going to be used with this dry compile */

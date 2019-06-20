@@ -702,37 +702,31 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 										goto l4
 									}
 									position++
-									break
 								case '.':
 									if buffer[position] != rune('.') {
 										goto l4
 									}
 									position++
-									break
 								case '/':
 									if buffer[position] != rune('/') {
 										goto l4
 									}
 									position++
-									break
 								case '_':
 									if buffer[position] != rune('_') {
 										goto l4
 									}
 									position++
-									break
 								case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
 									if c := buffer[position]; c < rune('A') || c > rune('Z') {
 										goto l4
 									}
 									position++
-									break
 								default:
 									if c := buffer[position]; c < rune('a') || c > rune('z') {
 										goto l4
 									}
 									position++
-									break
 								}
 							}
 
@@ -746,37 +740,31 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 											goto l8
 										}
 										position++
-										break
 									case '.':
 										if buffer[position] != rune('.') {
 											goto l8
 										}
 										position++
-										break
 									case '/':
 										if buffer[position] != rune('/') {
 											goto l8
 										}
 										position++
-										break
 									case '_':
 										if buffer[position] != rune('_') {
 											goto l8
 										}
 										position++
-										break
 									case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
 										if c := buffer[position]; c < rune('A') || c > rune('Z') {
 											goto l8
 										}
 										position++
-										break
 									default:
 										if c := buffer[position]; c < rune('a') || c > rune('z') {
 											goto l8
 										}
 										position++
-										break
 									}
 								}
 
@@ -1090,7 +1078,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction13, position)
 							}
-							break
 						case '&':
 							if !_rules[ruleAnd]() {
 								goto l50
@@ -1101,12 +1088,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction12, position)
 							}
-							break
 						default:
 							if !_rules[ruleSuffix]() {
 								goto l50
 							}
-							break
 						}
 					}
 
@@ -1157,7 +1142,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction20, position)
 							}
-							break
 						case '{':
 							if !_rules[ruleAction]() {
 								goto l60
@@ -1165,7 +1149,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction19, position)
 							}
-							break
 						case '.':
 							{
 								position68 := position
@@ -1181,7 +1164,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction18, position)
 							}
-							break
 						case '[':
 							{
 								position70 := position
@@ -1275,7 +1257,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 								}
 								add(ruleClass, position70)
 							}
-							break
 						case '"', '\'':
 							{
 								position83 := position
@@ -1396,7 +1377,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							l84:
 								add(ruleLiteral, position83)
 							}
-							break
 						case '(':
 							{
 								position100 := position
@@ -1423,7 +1403,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 								}
 								add(ruleClose, position101)
 							}
-							break
 						default:
 							if !_rules[ruleIdentifier]() {
 								goto l60
@@ -1440,7 +1419,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction17, position)
 							}
-							break
 						}
 					}
 
@@ -1465,7 +1443,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction16, position)
 							}
-							break
 						case '*':
 							{
 								position109 := position
@@ -1481,7 +1458,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction15, position)
 							}
-							break
 						default:
 							{
 								position111 := position
@@ -1497,7 +1473,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								add(ruleAction14, position)
 							}
-							break
 						}
 					}
 
@@ -1574,19 +1549,16 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							goto l122
 						}
 						position++
-						break
 					case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
 						if c := buffer[position]; c < rune('A') || c > rune('Z') {
 							goto l122
 						}
 						position++
-						break
 					default:
 						if c := buffer[position]; c < rune('a') || c > rune('z') {
 							goto l122
 						}
 						position++
-						break
 					}
 				}
 
@@ -2195,19 +2167,16 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 									goto l216
 								}
 								position++
-								break
 							case 'a', 'b', 'c', 'd', 'e', 'f':
 								if c := buffer[position]; c < rune('a') || c > rune('f') {
 									goto l216
 								}
 								position++
-								break
 							default:
 								if c := buffer[position]; c < rune('0') || c > rune('9') {
 									goto l216
 								}
 								position++
-								break
 							}
 						}
 
@@ -2221,19 +2190,16 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 										goto l221
 									}
 									position++
-									break
 								case 'a', 'b', 'c', 'd', 'e', 'f':
 									if c := buffer[position]; c < rune('a') || c > rune('f') {
 										goto l221
 									}
 									position++
-									break
 								default:
 									if c := buffer[position]; c < rune('0') || c > rune('9') {
 										goto l221
 									}
 									position++
-									break
 								}
 							}
 
@@ -2443,18 +2409,15 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 									goto l253
 								}
 								position++
-								break
 							case ' ':
 								if buffer[position] != rune(' ') {
 									goto l253
 								}
 								position++
-								break
 							default:
 								if !_rules[ruleEndOfLine]() {
 									goto l253
 								}
-								break
 							}
 						}
 
