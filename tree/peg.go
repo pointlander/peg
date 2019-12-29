@@ -741,8 +741,10 @@ func escape(c string) string {
 
 func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	t.AddImport("fmt")
-	t.AddImport("io")
-	t.AddImport("os")
+	if t.Ast {
+		t.AddImport("io")
+		t.AddImport("os")
+	}
 	t.AddImport("sort")
 	t.AddImport("strconv")
 	t.EndSymbol = 0x110000
