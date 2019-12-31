@@ -16,12 +16,13 @@ import (
 )
 
 var (
-	inline  = flag.Bool("inline", false, "parse rule inlining")
-	_switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
-	print   = flag.Bool("print", false, "directly dump the syntax tree")
-	syntax  = flag.Bool("syntax", false, "print out the syntax tree")
-	noast   = flag.Bool("noast", false, "disable AST")
-	strict  = flag.Bool("strict", false, "treat compiler warnings as errors")
+	inline   = flag.Bool("inline", false, "parse rule inlining")
+	_switch  = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
+	print    = flag.Bool("print", false, "directly dump the syntax tree")
+	syntax   = flag.Bool("syntax", false, "print out the syntax tree")
+	noast    = flag.Bool("noast", false, "disable AST")
+	strict   = flag.Bool("strict", false, "treat compiler warnings as errors")
+	filename = flag.String("output", "", "specify name of output file")
 )
 
 func main() {
@@ -54,16 +55,18 @@ func main() {
 		p.PrintSyntaxTree()
 	}
 
-	filename := file + ".go"
-	out, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if *filename == "" {
+		*filename = file + ".go"
+	}
+	out, err := os.OpenFile(*filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		fmt.Printf("%v: %v\n", filename, err)
+		fmt.Printf("%v: %v\n", *filename, err)
 		return
 	}
 	defer out.Close()
 
 	p.Strict = *strict
-	if err = p.Compile(filename, os.Args, out); err != nil {
+	if err = p.Compile(*filename, os.Args, out); err != nil {
 		log.Fatal(err)
 	}
 }
