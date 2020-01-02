@@ -5,3 +5,5 @@
 peg
 calculator/calculator
 bootstrap/bootstrap
+cmd/peg-bootstrap/peg-bootstrap
+cmd/peg-bootstrap/peg*

@@ -112,7 +112,7 @@ Dot		<- '.' Spacing
 SpaceComment	<- (Space / Comment)
 Spacing		<- SpaceComment*
 MustSpacing	<- SpaceComment+
-Comment		<- '#' (!EndOfLine .)* EndOfLine
+Comment		<- ('#' / '//') (!EndOfLine .)* EndOfLine
 Space		<- ' ' / '\t' / EndOfLine
 EndOfLine	<- '\r\n' / '\n' / '\r'
 EndOfFile	<- !.
