@@ -120,6 +120,10 @@ func (t *tokens32) AST() *node32 {
 			continue
 		}
 		node := &node32{token32: token}
+		ruleName := []rune(rul3s[node.pegRule])
+		if len(ruleName) == 0 || !unicode.IsLetter(ruleName[0]) || !unicode.IsUpper(ruleName[0]) {
+			continue
+		}
 		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
 			stack.node.next = node.up
 			node.up = stack.node
@@ -744,6 +748,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	if t.Ast {
 		t.AddImport("io")
 		t.AddImport("os")
+		t.AddImport("unicode")
 	}
 	t.AddImport("sort")
 	t.AddImport("strconv")
