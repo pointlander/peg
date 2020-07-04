@@ -325,6 +325,19 @@ func grammars_calculator() bool {
 	return false
 }
 
+func grammars_calculator_ast() bool {
+	if done("grammars/calculator_ast/calculator.peg.go", peg, "grammars/calculator_ast/calculator.peg") {
+		return true
+	}
+
+	wd := chdir("grammars/calculator_ast/")
+	defer chdir(wd)
+
+	command("../../peg", "", "", "-switch", "-inline", "calculator.peg")
+
+	return false
+}
+
 func grammars_fexl() bool {
 	if done("grammars/fexl/fexl.peg.go", peg, "grammars/fexl/fexl.peg") {
 		return true
@@ -365,7 +378,8 @@ func grammars_long_test() bool {
 }
 
 func test() bool {
-	if done("", grammars_c, grammars_calculator, grammars_fexl, grammars_java, grammars_long_test) {
+	if done("", grammars_c, grammars_calculator, grammars_calculator_ast,
+		grammars_fexl, grammars_java, grammars_long_test) {
 		return true
 	}
 
