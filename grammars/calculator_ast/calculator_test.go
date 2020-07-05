@@ -18,7 +18,7 @@ func TestCalculator(t *testing.T) {
 	if err := calc.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	if Eval(calc.buffer, calc.AST()).Cmp(big.NewInt(2)) != 0 {
+	if calc.Eval().Cmp(big.NewInt(2)) != 0 {
 		t.Fatal("got incorrect result")
 	}
 }
