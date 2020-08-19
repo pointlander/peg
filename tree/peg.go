@@ -246,7 +246,7 @@ func (p *{{.StructName}}) WriteSyntaxTree(w io.Writer) {
 
 func (p *{{.StructName}}) SprintSyntaxTree() string {
 	var bldr strings.Builder
-	p.WriteSyntaxTree(bldr)
+	p.WriteSyntaxTree(&bldr)
 	return bldr.String()
 }
 
