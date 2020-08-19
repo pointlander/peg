@@ -15,8 +15,6 @@ import (
 	"github.com/pointlander/peg/tree"
 )
 
-const VERSION string = "v1.1.0"
-
 var (
 	inline   = flag.Bool("inline", false, "parse rule inlining")
 	_switch  = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
@@ -28,12 +26,21 @@ var (
 	showVersion = flag.Bool("version", false, "print the version and exit")
 )
 
+// whether running with -version should
+// show the last time `build.go buildinfo` was ran 
+const Show_BUILDTIME = false
+
 func main() {
 	runtime.GOMAXPROCS(2)
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println("version:",VERSION)
+		if IS_TAGGED {
+			fmt.Println("version:",VERSION)
+		} else {
+			fmt.Printf("version: %s-%s\n",VERSION,COMMIT)
+		}
+		if Show_BUILDTIME {fmt.Println("time:",BUILDTIME)}
 		return
 	}
 	
