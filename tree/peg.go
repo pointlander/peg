@@ -749,6 +749,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	if t.Ast {
 		t.AddImport("io")
 		t.AddImport("os")
+		t.AddImport("strings")
 	}
 	t.AddImport("sort")
 	t.AddImport("strconv")
