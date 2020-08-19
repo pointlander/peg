@@ -244,6 +244,11 @@ func (p *{{.StructName}}) WriteSyntaxTree(w io.Writer) {
 	p.tokens32.WriteSyntaxTree(w, p.Buffer)
 }
 
+func (p *{{.StructName}}) SprintSyntaxTree() string {
+	var bldr strings.Builder
+	p.WriteSyntaxTree(bldr)
+	return bldr.String()
+}
 
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
