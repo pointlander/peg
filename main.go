@@ -15,6 +15,8 @@ import (
 	"github.com/pointlander/peg/tree"
 )
 
+const VERSION string = "v1.1.0"
+
 var (
 	inline   = flag.Bool("inline", false, "parse rule inlining")
 	_switch  = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
@@ -23,12 +25,18 @@ var (
 	noast    = flag.Bool("noast", false, "disable AST")
 	strict   = flag.Bool("strict", false, "treat compiler warnings as errors")
 	filename = flag.String("output", "", "specify name of output file")
+	showVersion = flag.Bool("version", false, "print the version and exit")
 )
 
 func main() {
 	runtime.GOMAXPROCS(2)
 	flag.Parse()
 
+	if *showVersion {
+		fmt.Println("version:",VERSION)
+		return
+	}
+	
 	if flag.NArg() != 1 {
 		flag.Usage()
 		log.Fatalf("FILE: the peg file to compile")
