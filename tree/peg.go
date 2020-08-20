@@ -244,6 +244,11 @@ func (p *{{.StructName}}) WriteSyntaxTree(w io.Writer) {
 	p.tokens32.WriteSyntaxTree(w, p.Buffer)
 }
 
+func (p *{{.StructName}}) SprintSyntaxTree() string {
+	var bldr strings.Builder
+	p.WriteSyntaxTree(&bldr)
+	return bldr.String()
+}
 
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
@@ -744,6 +749,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	if t.Ast {
 		t.AddImport("io")
 		t.AddImport("os")
+		t.AddImport("strings")
 	}
 	t.AddImport("sort")
 	t.AddImport("strconv")
