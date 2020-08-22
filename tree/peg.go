@@ -350,6 +350,7 @@ func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 		}
 		return false
 	}
+	_ = matchDot
 	{{end}}
 
 	{{if .HasCharacter}}
