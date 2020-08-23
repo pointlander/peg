@@ -14,21 +14,22 @@ A [Parsing Expression Grammar](http://en.wikipedia.org/wiki/Parsing_expression_g
 
 ## Installing
 
-```sh
-go get -u github.com/pointlander/peg
-```
+`go get -u github.com/pointlander/peg`
 
 ## Building
 
-```sh
-go run build.go
-```
+### Using Pre-Generated Files
+
+`go install`
+
+### Generating Files Yourself
+You should only need to do this if you are contributing to the library, or if something gets messed up.
+
+`go run build.go` or `go generate`
 
 With tests:
 
-```sh
-go run build.go test
-```
+`go run build.go test`
 
 ## Usage
 
@@ -50,7 +51,11 @@ Usage of peg:
       replace if-else if-else like blocks with switch blocks
   -syntax
       print out the syntax tree
+  -version
+      print the version and exit
+	  
 ```
+
 
 ## Sample Makefile
 
@@ -203,7 +208,7 @@ gocode <- { fmt.Println("hello world") }
 For string captures, use less than and greater than:
 
 ```
-capture <- <'capture'> { fmt.Println(buffer[begin:end]) }
+capture <- <'capture'> { fmt.Println(text) }
 ```
 
 Will print out `"capture"`. The captured string is stored in `buffer[begin:end]`.
