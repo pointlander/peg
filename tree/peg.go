@@ -244,6 +244,11 @@ func (p *{{.StructName}}) WriteSyntaxTree(w io.Writer) {
 	p.tokens32.WriteSyntaxTree(w, p.Buffer)
 }
 
+func (p *{{.StructName}}) SprintSyntaxTree() string {
+	var bldr strings.Builder
+	p.WriteSyntaxTree(&bldr)
+	return bldr.String()
+}
 
 {{if .HasActions}}
 func (p *{{.StructName}}) Execute() {
@@ -654,11 +659,11 @@ func (t *Tree) AddDoubleCharacter(text string) {
 }
 func (t *Tree) AddHexaCharacter(text string) {
 	hexa, _ := strconv.ParseInt(text, 16, 32)
-	t.PushFront(&node{Type: TypeCharacter, string: string(hexa)})
+	t.PushFront(&node{Type: TypeCharacter, string: string(rune(hexa))})
 }
 func (t *Tree) AddOctalCharacter(text string) {
 	octal, _ := strconv.ParseInt(text, 8, 8)
-	t.PushFront(&node{Type: TypeCharacter, string: string(octal)})
+	t.PushFront(&node{Type: TypeCharacter, string: string(rune(octal))})
 }
 func (t *Tree) AddPredicate(text string)   { t.PushFront(&node{Type: TypePredicate, string: text}) }
 func (t *Tree) AddStateChange(text string) { t.PushFront(&node{Type: TypeStateChange, string: text}) }
@@ -744,6 +749,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	if t.Ast {
 		t.AddImport("io")
 		t.AddImport("os")
+		t.AddImport("strings")
 	}
 	t.AddImport("sort")
 	t.AddImport("strconv")
@@ -1022,7 +1028,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 						class := &node{Type: TypeUnorderedAlternate}
 						for d := 0; d < 256; d++ {
 							if properties[c].s.Has(uint64(d)) {
-								class.PushBack(&node{Type: TypeCharacter, string: string(d)})
+								class.PushBack(&node{Type: TypeCharacter, string: string(rune(d))})
 							}
 						}
 

@@ -25,7 +25,11 @@ Grammar		<- Spacing 'package' MustSpacing Identifier      { p.AddPackage(text) }
                            'Peg' Spacing Action              { p.AddState(text) }
                            Definition+ EndOfFile
 
-Import		<- 'import' Spacing ["] < [a-zA-Z_/.\-]+ > ["] Spacing { p.AddImport(text) }
+Import		<- 'import' Spacing (MultiImport / SingleImport) Spacing
+SingleImport	<- ImportName 
+MultiImport	<- '(' Spacing (ImportName '\n' Spacing)* Spacing ')' 
+
+ImportName	<- ["] < [a-zA-Z_/.\-]+ > ["]	{ p.AddImport(text) }
 
 Definition	<- Identifier 			{ p.AddRule(text) }
 		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.)

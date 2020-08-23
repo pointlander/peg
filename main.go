@@ -15,6 +15,10 @@ import (
 	"github.com/pointlander/peg/tree"
 )
 
+//go:generate -command build go run build.go
+//go:generate build buildinfo
+//go:generate build peg
+
 var (
 	inline   = flag.Bool("inline", false, "parse rule inlining")
 	_switch  = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
