@@ -824,8 +824,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 					t.Rules[name] = emptyRule
 					t.RuleNames = append(t.RuleNames, emptyRule)
-					countsForRule = &[TypeLast]uint{}
-					countsByRule = append(countsByRule, countsForRule)
+					countsByRule = append(countsByRule, &[TypeLast]uint{})
 				}
 				n.PushBack(copy)
 				fallthrough
