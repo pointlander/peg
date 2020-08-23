@@ -768,13 +768,15 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	}
 
 	counts := [TypeLast]uint{}
+	countsByRule := make([]*[TypeLast]uint, t.RulesCount)
 	{
 		var rule *node
-		var link func(node Node)
-		link = func(n Node) {
+		var link func(countsForRule *[TypeLast]uint, node Node)
+		link = func(countsForRule *[TypeLast]uint, n Node) {
 			nodeType := n.GetType()
 			id := counts[nodeType]
 			counts[nodeType]++
+			countsForRule[nodeType]++
 			switch nodeType {
 			case TypeAction:
 				n.SetId(int(id))
@@ -795,6 +797,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 				t.Rules[name] = emptyRule
 				t.RuleNames = append(t.RuleNames, emptyRule)
+				countsByRule = append(countsByRule, &[TypeLast]uint{})
 			case TypeName:
 				name := n.String()
 				if _, ok := t.Rules[name]; !ok {
@@ -808,6 +811,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 					t.Rules[name] = emptyRule
 					t.RuleNames = append(t.RuleNames, emptyRule)
+					countsByRule = append(countsByRule, &[TypeLast]uint{})
 				}
 			case TypePush:
 				copy, name := rule.Copy(), "PegText"
@@ -820,15 +824,16 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 					t.Rules[name] = emptyRule
 					t.RuleNames = append(t.RuleNames, emptyRule)
+					countsByRule = append(countsByRule, &[TypeLast]uint{})
 				}
 				n.PushBack(copy)
 				fallthrough
 			case TypeImplicitPush:
-				link(n.Front())
+				link(countsForRule, n.Front())
 			case TypeRule, TypeAlternate, TypeUnorderedAlternate, TypeSequence,
 				TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
 				for _, node := range n.Slice() {
-					link(node)
+					link(countsForRule, node)
 				}
 			}
 		}
@@ -863,11 +868,14 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		for _, node := range t.Slice() {
 			if node.GetType() == TypeRule {
 				rule = node
-				link(node)
+				counts := [TypeLast]uint{}
+				countsByRule[node.GetId()] = &counts
+				link(&counts, node)
 			}
 		}
 	}
 
+	usage := [TypeLast]uint{}
 	join([]func(){
 		func() {
 			var countRules func(node Node)
@@ -901,6 +909,13 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				if node.GetType() == TypeRule {
 					countRules(node)
 					break
+				}
+			}
+			for id, reached := range ruleReached {
+				if reached {
+					for i, count := range countsByRule[id] {
+						usage[i] += count
+					}
 				}
 			}
 		},
@@ -1152,13 +1167,13 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		return template.Must(template.New("peg").Parse(s)).Execute(&buffer, t)
 	}
 
-	t.HasActions = counts[TypeAction] > 0
-	t.HasPush = counts[TypePush] > 0
-	t.HasCommit = counts[TypeCommit] > 0
-	t.HasDot = counts[TypeDot] > 0
-	t.HasCharacter = counts[TypeCharacter] > 0
-	t.HasString = counts[TypeString] > 0
-	t.HasRange = counts[TypeRange] > 0
+	t.HasActions = usage[TypeAction] > 0
+	t.HasPush = usage[TypePush] > 0
+	t.HasCommit = usage[TypeCommit] > 0
+	t.HasDot = usage[TypeDot] > 0
+	t.HasCharacter = usage[TypeCharacter] > 0
+	t.HasString = usage[TypeString] > 0
+	t.HasRange = usage[TypeRange] > 0
 
 	var printRule func(n Node)
 	var compile func(expression Node, ko uint) (labelLast bool)
