@@ -29,7 +29,7 @@ Import		<- 'import' Spacing (MultiImport / SingleImport) Spacing
 SingleImport	<- ImportName 
 MultiImport	<- '(' Spacing (ImportName '\n' Spacing)* Spacing ')' 
 
-ImportName	<- ["] < [a-zA-Z_/.\-]+ > ["]	{ p.AddImport(text) }
+ImportName	<- ["] < [0-9a-zA-Z_/.\-]+ > ["]	{ p.AddImport(text) }
 
 Definition	<- Identifier 			{ p.AddRule(text) }
 		     LeftArrow Expression 	{ p.AddExpression() } &(Identifier LeftArrow / !.)
