@@ -202,3 +202,7 @@ func TestCParsing_Long(t *testing.T) {
 	}
 	walk("c/")
 }
+
+func TestCParsing_WideString(t *testing.T) {
+	parseC_4t(t, `wchar_t *msg = L"Hello";`);
+}

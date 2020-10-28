@@ -313,9 +313,9 @@ JumpStatement
 #-------------------------------------------------------------------------
 
 PrimaryExpression
-   <- Identifier
+   <- StringLiteral
     / Constant
-    / StringLiteral
+    / Identifier
     / LPAR Expression RPAR
 
 PostfixExpression
