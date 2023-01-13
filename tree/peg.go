@@ -246,9 +246,9 @@ func (p *{{.StructName}}) WriteSyntaxTree(w io.Writer) {
 }
 
 func (p *{{.StructName}}) SprintSyntaxTree() string {
-	var bldr strings.Builder
-	p.WriteSyntaxTree(&bldr)
-	return bldr.String()
+	var b bytes.Buffer
+	p.WriteSyntaxTree(&b)
+	return b.String()
 }
 
 {{if .HasActions}}
@@ -803,7 +803,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	if t.Ast {
 		t.AddImport("io")
 		t.AddImport("os")
-		t.AddImport("strings")
+		t.AddImport("bytes")
 	}
 	t.AddImport("sort")
 	t.AddImport("strconv")
