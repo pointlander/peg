@@ -325,12 +325,13 @@ func (t *tokens32) Tokens() []token32 {
 type Peg struct {
 	*tree.Tree
 
-	Buffer string
-	buffer []rune
-	rules  [95]func() bool
-	parse  func(rule ...int) error
-	reset  func()
-	Pretty bool
+	Buffer         string
+	buffer         []rune
+	rules          [95]func() bool
+	parse          func(rule ...int) error
+	reset          func()
+	Pretty         bool
+	disableMemoize bool
 	tokens32
 }
 
@@ -551,11 +552,30 @@ func Size(size int) func(*Peg) error {
 		return nil
 	}
 }
+
+func DisableMemoize() func(*Peg) error {
+	return func(p *Peg) error {
+		p.disableMemoize = true
+		return nil
+	}
+}
+
+type memo struct {
+	Matched bool
+	Partial []token32
+}
+
+type memoKey struct {
+	Rule     uint32
+	Position uint32
+}
+
 func (p *Peg) Init(options ...func(*Peg) error) error {
 	var (
 		max                  token32
 		position, tokenIndex uint32
 		buffer               []rune
+		memoization          map[memoKey]memo
 	)
 	for _, option := range options {
 		err := option(p)
@@ -566,7 +586,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 	p.reset = func() {
 		max = token32{}
 		position, tokenIndex = 0, 0
-
+		memoization = make(map[memoKey]memo)
 		p.buffer = []rune(p.Buffer)
 		if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != endSymbol {
 			p.buffer = append(p.buffer, endSymbol)
@@ -599,6 +619,34 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		}
 	}
 
+	memoize := func(rule uint32, begin uint32, tokenIndexStart uint32, matched bool) {
+		if p.disableMemoize {
+			return
+		}
+		key := memoKey{rule, begin}
+		if !matched {
+			memoization[key] = memo{Matched: false}
+		} else {
+			t := tree.tree[tokenIndexStart:tokenIndex]
+			tokenCopy := make([]token32, len(t))
+			copy(tokenCopy, t)
+			memoization[key] = memo{Matched: true, Partial: tokenCopy}
+		}
+	}
+
+	memoizedResult := func(m memo) bool {
+		if !m.Matched {
+			return false
+		}
+		tree.tree = append(tree.tree[:tokenIndex], m.Partial...)
+		tokenIndex += uint32(len(m.Partial))
+		position = m.Partial[len(m.Partial)-1].end
+		if tree.tree[tokenIndex-1].begin != position && position > max.end {
+			max = tree.tree[tokenIndex-1]
+		}
+		return true
+	}
+
 	matchDot := func() bool {
 		if buffer[position] != endSymbol {
 			position++
@@ -627,6 +675,9 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 0 Grammar <- <(Spacing ('p' 'a' 'c' 'k' 'a' 'g' 'e') MustSpacing Identifier Action0 Import* ('t' 'y' 'p' 'e') MustSpacing Identifier Action1 ('P' 'e' 'g') Spacing Action Action2 Definition+ EndOfFile)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{0, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position0, tokenIndex0 := position, tokenIndex
 			{
 				position1 := position
@@ -918,8 +969,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleGrammar, position1)
 			}
+			memoize(0, position0, tokenIndex0, true)
 			return true
 		l0:
+			memoize(0, position0, tokenIndex0, false)
 			position, tokenIndex = position0, tokenIndex0
 			return false
 		},
@@ -931,6 +984,9 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 4 ImportName <- <('"' <((&('-') '-') | (&('.') '.') | (&('/') '/') | (&('_') '_') | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> '"' Action3)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{4, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position35, tokenIndex35 := position, tokenIndex
 			{
 				position36 := position
@@ -1038,8 +1094,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleImportName, position36)
 			}
+			memoize(4, position35, tokenIndex35, true)
 			return true
 		l35:
+			memoize(4, position35, tokenIndex35, false)
 			position, tokenIndex = position35, tokenIndex35
 			return false
 		},
@@ -1047,6 +1105,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 6 Expression <- <((Sequence (Slash Sequence Action6)* (Slash Action7)?) / Action8)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{6, position}]; ok {
+				return memoizedResult(memoized)
+			}
+			position44, tokenIndex44 := position, tokenIndex
 			{
 				position45 := position
 				{
@@ -1093,10 +1155,14 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l46:
 				add(ruleExpression, position45)
 			}
+			memoize(6, position44, tokenIndex44, true)
 			return true
 		},
 		/* 7 Sequence <- <(Prefix (Prefix Action9)*)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{7, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position55, tokenIndex55 := position, tokenIndex
 			{
 				position56 := position
@@ -1118,13 +1184,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleSequence, position56)
 			}
+			memoize(7, position55, tokenIndex55, true)
 			return true
 		l55:
+			memoize(7, position55, tokenIndex55, false)
 			position, tokenIndex = position55, tokenIndex55
 			return false
 		},
 		/* 8 Prefix <- <((And Action Action10) / (Not Action Action11) / ((&('!') (Not Suffix Action13)) | (&('&') (And Suffix Action12)) | (&('"' | '\'' | '(' | '.' | '<' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '[' | '_' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' | '{') Suffix)))> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{8, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position60, tokenIndex60 := position, tokenIndex
 			{
 				position61 := position
@@ -1187,13 +1258,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l62:
 				add(rulePrefix, position61)
 			}
+			memoize(8, position60, tokenIndex60, true)
 			return true
 		l60:
+			memoize(8, position60, tokenIndex60, false)
 			position, tokenIndex = position60, tokenIndex60
 			return false
 		},
 		/* 9 Suffix <- <(Primary ((&('+') (Plus Action16)) | (&('*') (Star Action15)) | (&('?') (Question Action14)))?)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{9, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position70, tokenIndex70 := position, tokenIndex
 			{
 				position71 := position
@@ -1571,8 +1647,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l115:
 				add(ruleSuffix, position71)
 			}
+			memoize(9, position70, tokenIndex70, true)
 			return true
 		l70:
+			memoize(9, position70, tokenIndex70, false)
 			position, tokenIndex = position70, tokenIndex70
 			return false
 		},
@@ -1580,6 +1658,9 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 11 Identifier <- <(<(IdentStart IdentCont*)> Spacing)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{11, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position124, tokenIndex124 := position, tokenIndex
 			{
 				position125 := position
@@ -1620,13 +1701,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleIdentifier, position125)
 			}
+			memoize(11, position124, tokenIndex124, true)
 			return true
 		l124:
+			memoize(11, position124, tokenIndex124, false)
 			position, tokenIndex = position124, tokenIndex124
 			return false
 		},
 		/* 12 IdentStart <- <((&('_') '_') | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{12, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position132, tokenIndex132 := position, tokenIndex
 			{
 				position133 := position
@@ -1652,8 +1738,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 
 				add(ruleIdentStart, position133)
 			}
+			memoize(12, position132, tokenIndex132, true)
 			return true
 		l132:
+			memoize(12, position132, tokenIndex132, false)
 			position, tokenIndex = position132, tokenIndex132
 			return false
 		},
@@ -1665,6 +1753,9 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 16 Ranges <- <(!']' Range (!']' Range Action25)*)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{16, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position138, tokenIndex138 := position, tokenIndex
 			{
 				position139 := position
@@ -1706,13 +1797,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleRanges, position139)
 			}
+			memoize(16, position138, tokenIndex138, true)
 			return true
 		l138:
+			memoize(16, position138, tokenIndex138, false)
 			position, tokenIndex = position138, tokenIndex138
 			return false
 		},
 		/* 17 DoubleRanges <- <(!(']' ']') DoubleRange (!(']' ']') DoubleRange Action26)*)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{17, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position145, tokenIndex145 := position, tokenIndex
 			{
 				position146 := position
@@ -1762,13 +1858,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleDoubleRanges, position146)
 			}
+			memoize(17, position145, tokenIndex145, true)
 			return true
 		l145:
+			memoize(17, position145, tokenIndex145, false)
 			position, tokenIndex = position145, tokenIndex145
 			return false
 		},
 		/* 18 Range <- <((Char '-' Char Action27) / Char)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{18, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position152, tokenIndex152 := position, tokenIndex
 			{
 				position153 := position
@@ -1797,13 +1898,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l154:
 				add(ruleRange, position153)
 			}
+			memoize(18, position152, tokenIndex152, true)
 			return true
 		l152:
+			memoize(18, position152, tokenIndex152, false)
 			position, tokenIndex = position152, tokenIndex152
 			return false
 		},
 		/* 19 DoubleRange <- <((Char '-' Char Action28) / DoubleChar)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{19, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position157, tokenIndex157 := position, tokenIndex
 			{
 				position158 := position
@@ -1832,13 +1938,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l159:
 				add(ruleDoubleRange, position158)
 			}
+			memoize(19, position157, tokenIndex157, true)
 			return true
 		l157:
+			memoize(19, position157, tokenIndex157, false)
 			position, tokenIndex = position157, tokenIndex157
 			return false
 		},
 		/* 20 Char <- <(Escape / (!'\\' <.> Action29))> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{20, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position162, tokenIndex162 := position, tokenIndex
 			{
 				position163 := position
@@ -1874,13 +1985,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l164:
 				add(ruleChar, position163)
 			}
+			memoize(20, position162, tokenIndex162, true)
 			return true
 		l162:
+			memoize(20, position162, tokenIndex162, false)
 			position, tokenIndex = position162, tokenIndex162
 			return false
 		},
 		/* 21 DoubleChar <- <(Escape / (<([a-z] / [A-Z])> Action30) / (!'\\' <.> Action31))> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{21, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position169, tokenIndex169 := position, tokenIndex
 			{
 				position170 := position
@@ -1941,13 +2057,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l171:
 				add(ruleDoubleChar, position170)
 			}
+			memoize(21, position169, tokenIndex169, true)
 			return true
 		l169:
+			memoize(21, position169, tokenIndex169, false)
 			position, tokenIndex = position169, tokenIndex169
 			return false
 		},
 		/* 22 Escape <- <(('\\' ('a' / 'A') Action32) / ('\\' ('b' / 'B') Action33) / ('\\' ('e' / 'E') Action34) / ('\\' ('f' / 'F') Action35) / ('\\' ('n' / 'N') Action36) / ('\\' ('r' / 'R') Action37) / ('\\' ('t' / 'T') Action38) / ('\\' ('v' / 'V') Action39) / ('\\' '\'' Action40) / ('\\' '"' Action41) / ('\\' '[' Action42) / ('\\' ']' Action43) / ('\\' '-' Action44) / ('\\' ('0' ('x' / 'X')) <((&('A' | 'B' | 'C' | 'D' | 'E' | 'F') [A-F]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f') [a-f]) | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]))+> Action45) / ('\\' <([0-3] [0-7] [0-7])> Action46) / ('\\' <([0-7] [0-7]?)> Action47) / ('\\' '\\' Action48))> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{22, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position181, tokenIndex181 := position, tokenIndex
 			{
 				position182 := position
@@ -2373,13 +2494,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l183:
 				add(ruleEscape, position182)
 			}
+			memoize(22, position181, tokenIndex181, true)
 			return true
 		l181:
+			memoize(22, position181, tokenIndex181, false)
 			position, tokenIndex = position181, tokenIndex181
 			return false
 		},
 		/* 23 LeftArrow <- <((('<' '-') / '←') Spacing)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{23, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position244, tokenIndex244 := position, tokenIndex
 			{
 				position245 := position
@@ -2407,13 +2533,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleLeftArrow, position245)
 			}
+			memoize(23, position244, tokenIndex244, true)
 			return true
 		l244:
+			memoize(23, position244, tokenIndex244, false)
 			position, tokenIndex = position244, tokenIndex244
 			return false
 		},
 		/* 24 Slash <- <('/' Spacing)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{24, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position248, tokenIndex248 := position, tokenIndex
 			{
 				position249 := position
@@ -2426,13 +2557,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleSlash, position249)
 			}
+			memoize(24, position248, tokenIndex248, true)
 			return true
 		l248:
+			memoize(24, position248, tokenIndex248, false)
 			position, tokenIndex = position248, tokenIndex248
 			return false
 		},
 		/* 25 And <- <('&' Spacing)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{25, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position250, tokenIndex250 := position, tokenIndex
 			{
 				position251 := position
@@ -2445,13 +2581,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleAnd, position251)
 			}
+			memoize(25, position250, tokenIndex250, true)
 			return true
 		l250:
+			memoize(25, position250, tokenIndex250, false)
 			position, tokenIndex = position250, tokenIndex250
 			return false
 		},
 		/* 26 Not <- <('!' Spacing)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{26, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position252, tokenIndex252 := position, tokenIndex
 			{
 				position253 := position
@@ -2464,8 +2605,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleNot, position253)
 			}
+			memoize(26, position252, tokenIndex252, true)
 			return true
 		l252:
+			memoize(26, position252, tokenIndex252, false)
 			position, tokenIndex = position252, tokenIndex252
 			return false
 		},
@@ -2483,6 +2626,9 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 33 SpaceComment <- <(Space / Comment)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{33, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position260, tokenIndex260 := position, tokenIndex
 			{
 				position261 := position
@@ -2563,13 +2709,19 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l262:
 				add(ruleSpaceComment, position261)
 			}
+			memoize(33, position260, tokenIndex260, true)
 			return true
 		l260:
+			memoize(33, position260, tokenIndex260, false)
 			position, tokenIndex = position260, tokenIndex260
 			return false
 		},
 		/* 34 Spacing <- <SpaceComment*> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{34, position}]; ok {
+				return memoizedResult(memoized)
+			}
+			position272, tokenIndex272 := position, tokenIndex
 			{
 				position273 := position
 			l274:
@@ -2584,10 +2736,14 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleSpacing, position273)
 			}
+			memoize(34, position272, tokenIndex272, true)
 			return true
 		},
 		/* 35 MustSpacing <- <SpaceComment+> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{35, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position276, tokenIndex276 := position, tokenIndex
 			{
 				position277 := position
@@ -2606,8 +2762,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleMustSpacing, position277)
 			}
+			memoize(35, position276, tokenIndex276, true)
 			return true
 		l276:
+			memoize(35, position276, tokenIndex276, false)
 			position, tokenIndex = position276, tokenIndex276
 			return false
 		},
@@ -2617,6 +2775,9 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 38 EndOfLine <- <(('\r' '\n') / '\n' / '\r')> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{38, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position282, tokenIndex282 := position, tokenIndex
 			{
 				position283 := position
@@ -2648,8 +2809,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l284:
 				add(ruleEndOfLine, position283)
 			}
+			memoize(38, position282, tokenIndex282, true)
 			return true
 		l282:
+			memoize(38, position282, tokenIndex282, false)
 			position, tokenIndex = position282, tokenIndex282
 			return false
 		},
@@ -2657,6 +2820,9 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 40 Action <- <('{' <ActionBody*> '}' Spacing)> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{40, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position288, tokenIndex288 := position, tokenIndex
 			{
 				position289 := position
@@ -2687,13 +2853,18 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				}
 				add(ruleAction, position289)
 			}
+			memoize(40, position288, tokenIndex288, true)
 			return true
 		l288:
+			memoize(40, position288, tokenIndex288, false)
 			position, tokenIndex = position288, tokenIndex288
 			return false
 		},
 		/* 41 ActionBody <- <((!('{' / '}') .) / ('{' ActionBody* '}'))> */
 		func() bool {
+			if memoized, ok := memoization[memoKey{41, position}]; ok {
+				return memoizedResult(memoized)
+			}
 			position293, tokenIndex293 := position, tokenIndex
 			{
 				position294 := position
@@ -2748,8 +2919,10 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 			l295:
 				add(ruleActionBody, position294)
 			}
+			memoize(41, position293, tokenIndex293, true)
 			return true
 		l293:
+			memoize(41, position293, tokenIndex293, false)
 			position, tokenIndex = position293, tokenIndex293
 			return false
 		},

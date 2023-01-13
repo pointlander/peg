@@ -161,13 +161,14 @@ func (t *tokens32) Tokens() []token32 {
 
 type {{.StructName}} struct {
 	{{.StructVariables}}
-	Buffer		string
-	buffer		[]rune
-	rules		[{{.RulesCount}}]func() bool
-	parse		func(rule ...int) error
-	reset		func()
-	Pretty 	bool
+	Buffer          string
+	buffer	        []rune
+	rules	        [{{.RulesCount}}]func() bool
+	parse	        func(rule ...int) error
+	reset	        func()
+	Pretty          bool
 {{if .Ast -}}
+	disableMemoize  bool
 	tokens32
 {{end -}}
 }
@@ -284,6 +285,23 @@ func Size(size int) func(*{{.StructName}}) error {
 		return nil
 	}
 }
+
+func DisableMemoize() func(*{{.StructName}}) error {
+	return func(p *{{.StructName}}) error {
+		p.disableMemoize = true
+		return nil
+	}
+}
+
+type memo struct {
+	Matched       bool
+	Partial       []token32
+}
+
+type memoKey struct {
+	Rule     uint32
+	Position uint32
+}
 {{end -}}
 
 func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
@@ -291,6 +309,9 @@ func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 		max token32
 		position, tokenIndex uint32
 		buffer []rune
+{{if .Ast -}}
+		memoization map[memoKey]memo
+{{end -}}
 {{if not .Ast -}}
 {{if .HasPush -}}
 		text string
@@ -306,6 +327,9 @@ func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 	p.reset = func() {
 		max = token32{}
 		position, tokenIndex = 0, 0
+{{if .Ast -}}
+		memoization = make(map[memoKey]memo)
+{{end -}}
 
 		p.buffer = []rune(p.Buffer)
 		if len(p.buffer) == 0 || p.buffer[len(p.buffer) - 1] != endSymbol {
@@ -346,6 +370,36 @@ func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 			max = token32{rule, begin, position}
 		}
 	}
+
+{{if .Ast -}}
+	memoize := func(rule uint32, begin uint32, tokenIndexStart uint32, matched bool) {
+		if p.disableMemoize {
+			return
+		}
+		key := memoKey{rule, begin}
+		if !matched {
+			memoization[key] = memo{Matched: false}
+		} else {
+			t := tree.tree[tokenIndexStart:tokenIndex]
+			tokenCopy := make([]token32, len(t))
+			copy(tokenCopy, t)
+			memoization[key] = memo{Matched: true, Partial: tokenCopy}
+		}
+	}
+
+	memoizedResult := func(m memo) bool {
+		if !m.Matched {
+			return false
+		}
+		tree.tree = append(tree.tree[:tokenIndex], m.Partial...)
+		tokenIndex += uint32(len(m.Partial))
+		position = m.Partial[len(m.Partial)-1].end
+		if tree.tree[tokenIndex-1].begin != position && position > max.end {
+			max = tree.tree[tokenIndex-1]
+		}
+		return true
+	}
+{{end -}}
 
 	{{if .HasDot}}
 	matchDot := func() bool {
@@ -1163,6 +1217,14 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	_print := func(format string, a ...interface{}) { fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d := position, tokenIndex", n, n) }
 	printRestore := func(n uint) { _print("\n   position, tokenIndex = position%d, tokenIndex%d", n, n) }
+	printMemoSave := func(rule int, n uint, ret bool) {
+		_print("\n   memoize(%d, position%d, tokenIndex%d, %t)", rule, n, n, ret)
+	}
+	printMemoCheck := func(rule int) {
+		_print("\n   if memoized, ok := memoization[memoKey{%d, position}]; ok {", rule)
+		_print("\n       return memoizedResult(memoized)")
+		_print("\n   }")
+	}
 	printTemplate := func(s string) error {
 		return template.Must(template.New("peg").Parse(s)).Execute(&buffer, t)
 	}
@@ -1524,14 +1586,23 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			continue
 		}
 		_print("\n  func() bool {")
-		if labels[ko] {
+		if t.Ast {
+			printMemoCheck(element.GetId())
+		}
+		if t.Ast || labels[ko] {
 			printSave(ko)
 		}
 		compile(expression, ko)
 		//print("\n  fmt.Printf(\"%v\\n\")", element.String())
+		if t.Ast {
+			printMemoSave(element.GetId(), ko, true)
+		}
 		_print("\n   return true")
 		if labels[ko] {
 			printLabel(ko)
+			if t.Ast {
+				printMemoSave(element.GetId(), ko, false)
+			}
 			printRestore(ko)
 			_print("\n   return false")
 		}
