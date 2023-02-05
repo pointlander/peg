@@ -481,6 +481,10 @@ type Node interface {
 	Len() int
 	Copy() *node
 	Slice() []*node
+	ParentDetect() bool
+	SetParentDetect(detect bool)
+	ParentMultipleKey() bool
+	SetParentMultipleKey(detect bool)
 }
 
 type node struct {
@@ -494,6 +498,9 @@ type node struct {
 
 	/* use hash table here instead of Copy? */
 	next *node
+
+	parentDetect      bool
+	parentMultipleKey bool
 }
 
 func (n *node) String() string {
@@ -592,6 +599,22 @@ func (n *node) Slice() []*node {
 		s[i] = element
 	}
 	return s
+}
+
+func (n *node) ParentDetect() bool {
+	return n.parentDetect
+}
+
+func (n *node) SetParentDetect(detect bool) {
+	n.parentDetect = detect
+}
+
+func (n *node) ParentMultipleKey() bool {
+	return n.parentMultipleKey
+}
+
+func (n *node) SetParentMultipleKey(multipleKey bool) {
+	n.parentMultipleKey = multipleKey
 }
 
 /* A tree data structure into which a PEG can be parsed. */
@@ -1272,11 +1295,16 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
 	}
+	var parentDetectFlag bool
+
 	compile = func(n Node, ko uint) (labelLast bool) {
 		switch n.GetType() {
 		case TypeRule:
 			warn(fmt.Errorf("internal error #1 (%v)", n))
 		case TypeDot:
+			if n.ParentDetect() {
+				break
+			}
 			_print("\n   if !matchDot() {")
 			/*print("\n   if buffer[position] == endSymbol {")*/
 			printJump(ko)
@@ -1286,13 +1314,20 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			name := n.String()
 			rule := t.Rules[name]
 			if t.inline && t.rulesCount[name] == 1 {
-				compile(rule.Front(), ko)
+				element := rule.Front()
+				element.SetParentDetect(n.ParentDetect())
+				element.SetParentMultipleKey(n.ParentMultipleKey())
+				compile(element, ko)
 				return
 			}
 			_print("\n   if !_rules[rule%v]() {", name /*rule.GetId()*/)
 			printJump(ko)
 			_print("}")
 		case TypeRange:
+			if n.ParentDetect() {
+				_print("\nposition++")
+				break
+			}
 			element := n.Front()
 			lower := element
 			element = element.Next()
@@ -1302,6 +1337,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printJump(ko)
 			_print("}\nposition++")
 		case TypeCharacter:
+			if n.ParentDetect() && !n.ParentMultipleKey() {
+				_print("\nposition++")
+				break
+			}
 			/*print("\n   if !matchChar('%v') {", escape(n.String()))*/
 			_print("\n   if buffer[position] != rune('%v') {", escape(n.String()))
 			printJump(ko)
@@ -1322,6 +1361,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			fallthrough
 		case TypeImplicitPush:
 			ok, element := label, n.Front()
+			element.SetParentDetect(n.ParentDetect())
+			element.SetParentMultipleKey(n.ParentMultipleKey())
 			label++
 			nodeType, rule := element.GetType(), element.Next()
 			printBegin()
@@ -1351,6 +1392,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			label++
 			printBegin()
 			elements := n.Slice()
+			elements[0].SetParentDetect(n.ParentDetect())
+			elements[0].SetParentMultipleKey(n.ParentMultipleKey())
 			printSave(ok)
 			for _, element := range elements[:len(elements)-1] {
 				next := label
@@ -1385,6 +1428,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					_print(" '%s'", escape(character.String()))
 				}
 				_print(":")
+				sequence.SetParentDetect(parentDetectFlag)
+				if len(class.Slice()) > 1 {
+					sequence.SetParentMultipleKey(true)
+				}
 				if compile(sequence, done) {
 					_print("\nbreak")
 				}
@@ -1397,7 +1444,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printEnd()
 			labelLast = printLabel(ok)
 		case TypeSequence:
-			for _, element := range n.Slice() {
+			elements := n.Slice()
+			elements[0].SetParentDetect(n.ParentDetect())
+			elements[0].SetParentMultipleKey(n.ParentMultipleKey())
+			for _, element := range elements {
 				labelLast = compile(element, ko)
 			}
 		case TypePeekFor:
@@ -1405,7 +1455,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			label++
 			printBegin()
 			printSave(ok)
-			compile(n.Front(), ko)
+			element := n.Front()
+			element.SetParentDetect(n.ParentDetect())
+			element.SetParentMultipleKey(n.ParentMultipleKey())
+			compile(element, ko)
 			printRestore(ok)
 			printEnd()
 		case TypePeekNot:
@@ -1413,7 +1466,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			label++
 			printBegin()
 			printSave(ok)
-			compile(n.Front(), ok)
+			element := n.Front()
+			element.SetParentDetect(n.ParentDetect())
+			element.SetParentMultipleKey(n.ParentMultipleKey())
+			compile(element, ok)
 			printJump(ko)
 			printLabel(ok)
 			printRestore(ok)
@@ -1425,7 +1481,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			label++
 			printBegin()
 			printSave(qko)
-			compile(n.Front(), qko)
+			element := n.Front()
+			element.SetParentDetect(n.ParentDetect())
+			element.SetParentMultipleKey(n.ParentMultipleKey())
+			compile(element, qko)
 			printJump(qok)
 			printLabel(qko)
 			printRestore(qko)
@@ -1439,7 +1498,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printLabel(again)
 			printBegin()
 			printSave(out)
-			compile(n.Front(), out)
+			element := n.Front()
+			element.SetParentDetect(n.ParentDetect())
+			element.SetParentMultipleKey(n.ParentMultipleKey())
+			compile(element, out)
 			printJump(again)
 			printLabel(out)
 			printRestore(out)
@@ -1485,6 +1547,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		compile(expression, ko)
 	}
 	_print, label = printTemp, 0
+
+	parentDetectFlag = true
 
 	/* now for the real compile pass */
 	t.PegRuleType = "uint8"

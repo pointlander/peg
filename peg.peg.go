@@ -943,34 +943,16 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 					{
 						switch buffer[position] {
 						case '-':
-							if buffer[position] != rune('-') {
-								goto l35
-							}
 							position++
 						case '.':
-							if buffer[position] != rune('.') {
-								goto l35
-							}
 							position++
 						case '/':
-							if buffer[position] != rune('/') {
-								goto l35
-							}
 							position++
 						case '_':
-							if buffer[position] != rune('_') {
-								goto l35
-							}
 							position++
 						case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
-							if c := buffer[position]; c < rune('A') || c > rune('Z') {
-								goto l35
-							}
 							position++
 						case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-							if c := buffer[position]; c < rune('0') || c > rune('9') {
-								goto l35
-							}
 							position++
 						default:
 							if c := buffer[position]; c < rune('a') || c > rune('z') {
@@ -986,34 +968,16 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 						{
 							switch buffer[position] {
 							case '-':
-								if buffer[position] != rune('-') {
-									goto l39
-								}
 								position++
 							case '.':
-								if buffer[position] != rune('.') {
-									goto l39
-								}
 								position++
 							case '/':
-								if buffer[position] != rune('/') {
-									goto l39
-								}
 								position++
 							case '_':
-								if buffer[position] != rune('_') {
-									goto l39
-								}
 								position++
 							case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
-								if c := buffer[position]; c < rune('A') || c > rune('Z') {
-									goto l39
-								}
 								position++
 							case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-								if c := buffer[position]; c < rune('0') || c > rune('9') {
-									goto l39
-								}
 								position++
 							default:
 								if c := buffer[position]; c < rune('a') || c > rune('z') {
@@ -1204,9 +1168,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 						case '<':
 							{
 								position74 := position
-								if buffer[position] != rune('<') {
-									goto l70
-								}
 								position++
 								if !_rules[ruleSpacing]() {
 									goto l70
@@ -1240,9 +1201,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 						case '.':
 							{
 								position78 := position
-								if buffer[position] != rune('.') {
-									goto l70
-								}
 								position++
 								if !_rules[ruleSpacing]() {
 									goto l70
@@ -1257,9 +1215,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 								position80 := position
 								{
 									position81, tokenIndex81 := position, tokenIndex
-									if buffer[position] != rune('[') {
-										goto l82
-									}
 									position++
 									if buffer[position] != rune('[') {
 										goto l82
@@ -1468,9 +1423,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 						case '(':
 							{
 								position110 := position
-								if buffer[position] != rune('(') {
-									goto l70
-								}
 								position++
 								if !_rules[ruleSpacing]() {
 									goto l70
@@ -1519,9 +1471,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 						case '+':
 							{
 								position117 := position
-								if buffer[position] != rune('+') {
-									goto l114
-								}
 								position++
 								if !_rules[ruleSpacing]() {
 									goto l114
@@ -1534,9 +1483,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 						case '*':
 							{
 								position119 := position
-								if buffer[position] != rune('*') {
-									goto l114
-								}
 								position++
 								if !_rules[ruleSpacing]() {
 									goto l114
@@ -1633,14 +1579,8 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 				{
 					switch buffer[position] {
 					case '_':
-						if buffer[position] != rune('_') {
-							goto l132
-						}
 						position++
 					case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
-						if c := buffer[position]; c < rune('A') || c > rune('Z') {
-							goto l132
-						}
 						position++
 					default:
 						if c := buffer[position]; c < rune('a') || c > rune('z') {
@@ -2251,14 +2191,8 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 						{
 							switch buffer[position] {
 							case 'A', 'B', 'C', 'D', 'E', 'F':
-								if c := buffer[position]; c < rune('A') || c > rune('F') {
-									goto l226
-								}
 								position++
 							case 'a', 'b', 'c', 'd', 'e', 'f':
-								if c := buffer[position]; c < rune('a') || c > rune('f') {
-									goto l226
-								}
 								position++
 							default:
 								if c := buffer[position]; c < rune('0') || c > rune('9') {
@@ -2274,14 +2208,8 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 							{
 								switch buffer[position] {
 								case 'A', 'B', 'C', 'D', 'E', 'F':
-									if c := buffer[position]; c < rune('A') || c > rune('F') {
-										goto l231
-									}
 									position++
 								case 'a', 'b', 'c', 'd', 'e', 'f':
-									if c := buffer[position]; c < rune('a') || c > rune('f') {
-										goto l231
-									}
 									position++
 								default:
 									if c := buffer[position]; c < rune('0') || c > rune('9') {
@@ -2493,14 +2421,8 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 						{
 							switch buffer[position] {
 							case '\t':
-								if buffer[position] != rune('\t') {
-									goto l263
-								}
 								position++
 							case ' ':
-								if buffer[position] != rune(' ') {
-									goto l263
-								}
 								position++
 							default:
 								if !_rules[ruleEndOfLine]() {
