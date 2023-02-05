@@ -1295,7 +1295,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
 	}
-	var parentDetectFlag bool
+	dryCompile := true
 
 	compile = func(n Node, ko uint) (labelLast bool) {
 		switch n.GetType() {
@@ -1428,9 +1428,11 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					_print(" '%s'", escape(character.String()))
 				}
 				_print(":")
-				sequence.SetParentDetect(parentDetectFlag)
-				if len(class.Slice()) > 1 {
-					sequence.SetParentMultipleKey(true)
+				if !dryCompile {
+					sequence.SetParentDetect(true)
+					if len(class.Slice()) > 1 {
+						sequence.SetParentMultipleKey(true)
+					}
 				}
 				if compile(sequence, done) {
 					_print("\nbreak")
@@ -1548,7 +1550,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	}
 	_print, label = printTemp, 0
 
-	parentDetectFlag = true
+	dryCompile = false
 
 	/* now for the real compile pass */
 	t.PegRuleType = "uint8"
