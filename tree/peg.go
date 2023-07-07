@@ -833,7 +833,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	t.EndSymbol = 0x110000
 	t.RulesCount++
 
-	t.Generator = strings.Join(args, " ")
+	t.Generator = strings.Join(append([]string{"peg"}, args[1:]...), " ")
 
 	var werr error
 	warn := func(e error) {
