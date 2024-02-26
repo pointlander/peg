@@ -7,7 +7,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
@@ -53,7 +52,7 @@ func main() {
 	}
 	file := flag.Arg(0)
 
-	buffer, err := ioutil.ReadFile(file)
+	buffer, err := os.ReadFile(file)
 	if err != nil {
 		log.Fatal(err)
 	}

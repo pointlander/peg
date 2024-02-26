@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -22,7 +21,7 @@ Grammar <- !.
 	}
 
 	p = &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init(Size(1<<15))
+	p.Init(Size(1 << 15))
 	err = p.Parse()
 	if err != nil {
 		t.Error(err)
@@ -35,7 +34,7 @@ type T Peg {}
 Grammar <- !.
 `
 	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init(Size(1<<15))
+	p.Init(Size(1 << 15))
 	err := p.Parse()
 	if err == nil {
 		t.Error("packagenospace was parsed without error")
@@ -49,7 +48,7 @@ typenospace Peg {}
 Grammar <- !.
 `
 	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init(Size(1<<15))
+	p.Init(Size(1 << 15))
 	err := p.Parse()
 	if err == nil {
 		t.Error("typenospace was parsed without error")
@@ -57,13 +56,13 @@ Grammar <- !.
 }
 
 func TestSame(t *testing.T) {
-	buffer, err := ioutil.ReadFile("peg.peg")
+	buffer, err := os.ReadFile("peg.peg")
 	if err != nil {
 		t.Error(err)
 	}
 
 	p := &Peg{Tree: tree.New(true, true, false), Buffer: string(buffer)}
-	p.Init(Size(1<<15))
+	p.Init(Size(1 << 15))
 	if err = p.Parse(); err != nil {
 		t.Error(err)
 	}
@@ -73,7 +72,7 @@ func TestSame(t *testing.T) {
 	out := &bytes.Buffer{}
 	p.Compile("peg.peg.go", []string{"./peg", "-inline", "-switch", "peg.peg"}, out)
 
-	bootstrap, err := ioutil.ReadFile("peg.peg.go")
+	bootstrap, err := os.ReadFile("peg.peg.go")
 	if err != nil {
 		t.Error(err)
 	}
@@ -115,13 +114,13 @@ Begin <- Begin 'x'
 
 	for i, buffer := range tt {
 		p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-		p.Init(Size(1<<15))
+		p.Init(Size(1 << 15))
 		if err := p.Parse(); err != nil {
 			t.Fatal(err)
 		}
 		p.Execute()
 
-		f, err := ioutil.TempFile("", "peg")
+		f, err := os.CreateTemp("", "peg")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -152,7 +151,7 @@ var files = [...]string{
 func BenchmarkInitOnly(b *testing.B) {
 	pegs := []string{}
 	for _, file := range files {
-		input, err := ioutil.ReadFile(file)
+		input, err := os.ReadFile(file)
 		if err != nil {
 			b.Error(err)
 		}
@@ -163,7 +162,7 @@ func BenchmarkInitOnly(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, peg := range pegs {
 			p := &Peg{Tree: tree.New(true, true, false), Buffer: peg}
-			p.Init(Size(1<<15))
+			p.Init(Size(1 << 15))
 		}
 	}
 }
@@ -171,13 +170,13 @@ func BenchmarkInitOnly(b *testing.B) {
 func BenchmarkParse(b *testing.B) {
 	pegs := make([]*Peg, len(files))
 	for i, file := range files {
-		input, err := ioutil.ReadFile(file)
+		input, err := os.ReadFile(file)
 		if err != nil {
 			b.Error(err)
 		}
 
 		p := &Peg{Tree: tree.New(true, true, false), Buffer: string(input)}
-		p.Init(Size(1<<15))
+		p.Init(Size(1 << 15))
 		pegs[i] = p
 	}
 
@@ -197,13 +196,13 @@ func BenchmarkParse(b *testing.B) {
 func BenchmarkResetAndParse(b *testing.B) {
 	pegs := make([]*Peg, len(files))
 	for i, file := range files {
-		input, err := ioutil.ReadFile(file)
+		input, err := os.ReadFile(file)
 		if err != nil {
 			b.Error(err)
 		}
 
 		p := &Peg{Tree: tree.New(true, true, false), Buffer: string(input)}
-		p.Init(Size(1<<15))
+		p.Init(Size(1 << 15))
 		pegs[i] = p
 	}
 
@@ -221,7 +220,7 @@ func BenchmarkResetAndParse(b *testing.B) {
 func BenchmarkInitAndParse(b *testing.B) {
 	strs := []string{}
 	for _, file := range files {
-		input, err := ioutil.ReadFile(file)
+		input, err := os.ReadFile(file)
 		if err != nil {
 			b.Error(err)
 		}
@@ -232,7 +231,7 @@ func BenchmarkInitAndParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
 			peg := &Peg{Tree: tree.New(true, true, false), Buffer: str}
-			peg.Init(Size(1<<15))
+			peg.Init(Size(1 << 15))
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
 			}
@@ -243,7 +242,7 @@ func BenchmarkInitAndParse(b *testing.B) {
 func BenchmarkInitResetAndParse(b *testing.B) {
 	strs := []string{}
 	for _, file := range files {
-		input, err := ioutil.ReadFile(file)
+		input, err := os.ReadFile(file)
 		if err != nil {
 			b.Error(err)
 		}
@@ -254,7 +253,7 @@ func BenchmarkInitResetAndParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
 			peg := &Peg{Tree: tree.New(true, true, false), Buffer: str}
-			peg.Init(Size(1<<15))
+			peg.Init(Size(1 << 15))
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
 			}
