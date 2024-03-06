@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build grammars
 // +build grammars
 
 package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -187,7 +188,7 @@ func TestCParsing_Long(t *testing.T) {
 				log.Fatal(err)
 			}
 
-			buffer, err := ioutil.ReadAll(file)
+			buffer, err := io.ReadAll(file)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -204,5 +205,5 @@ func TestCParsing_Long(t *testing.T) {
 }
 
 func TestCParsing_WideString(t *testing.T) {
-	parseC_4t(t, `wchar_t *msg = L"Hello";`);
+	parseC_4t(t, `wchar_t *msg = L"Hello";`)
 }

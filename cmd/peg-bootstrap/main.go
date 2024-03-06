@@ -8,7 +8,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 
@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	buffer, err := ioutil.ReadAll(os.Stdin)
+	buffer, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
 	}

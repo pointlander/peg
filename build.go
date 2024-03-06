@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build ignore
 // +build ignore
 
 package main
@@ -9,7 +10,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -181,7 +181,7 @@ func command(name, inputFile, outputFile string, arg ...string) {
 
 	if inputFile != "" {
 		fmt.Printf(" < %s", inputFile)
-		input, err := ioutil.ReadFile(inputFile)
+		input, err := os.ReadFile(inputFile)
 		if err != nil {
 			panic(err)
 		}
@@ -204,7 +204,7 @@ func command(name, inputFile, outputFile string, arg ...string) {
 		if err != nil {
 			panic(err)
 		}
-		err = ioutil.WriteFile(outputFile, output, 0600)
+		err = os.WriteFile(outputFile, output, 0600)
 		if err != nil {
 			panic(err)
 		}
@@ -224,7 +224,7 @@ func delete(file string) {
 }
 
 func deleteFilesWithSuffix(suffix string) {
-	files, err := ioutil.ReadDir(".")
+	files, err := os.ReadDir(".")
 	if err != nil {
 		panic(err)
 	}

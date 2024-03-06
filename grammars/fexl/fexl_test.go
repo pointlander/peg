@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build grammars
 // +build grammars
 
 package main
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 )
 
 func TestFexl(t *testing.T) {
-	buffer, err := ioutil.ReadFile("doc/try.fxl")
+	buffer, err := os.ReadFile("doc/try.fxl")
 	if err != nil {
 		t.Fatal(err)
 	}
