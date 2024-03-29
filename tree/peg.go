@@ -829,6 +829,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	}
 	t.AddImport("sort")
 	t.AddImport("strconv")
+	t.AddImport("strings")
 	t.EndSymbol = 0x110000
 	t.RulesCount++
 
