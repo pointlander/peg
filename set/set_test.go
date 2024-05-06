@@ -5,19 +5,14 @@
 package set
 
 import (
-	"math"
 	"testing"
 )
 
 func TestAddBasic(t *testing.T) {
-	s := Set{
-		Head: Node{
-			Begin: math.MaxInt32,
-		},
-	}
-	s.Add('a', 'c')
-	s.Add('c', 'e')
-	if s.Size() != 1 {
+	s := NewSet()
+	s.AddRange('a', 'c')
+	s.AddRange('c', 'e')
+	if s.Len() != 1 {
 		t.Fatal("size should be 1")
 	}
 	if !s.Has('b') {
@@ -27,27 +22,27 @@ func TestAddBasic(t *testing.T) {
 		t.Fatal("set should have d")
 	}
 
-	s.Add('g', 'i')
-	if s.Size() != 2 {
-		t.Log(s.Size())
+	s.AddRange('g', 'i')
+	if s.Len() != 2 {
+		t.Log(s.Len())
 		t.Fatal("size should be 2")
 	}
 	if !s.Has('h') {
 		t.Fatal("set should have h")
 	}
 
-	s.Add('A', 'C')
-	if s.Size() != 3 {
-		t.Log(s.Size())
+	s.AddRange('A', 'C')
+	if s.Len() != 3 {
+		t.Log(s.Len())
 		t.Fatal("size should be 3")
 	}
 	if !s.Has('B') {
 		t.Fatal("set should have B")
 	}
 
-	s.Add('A', 'z')
-	if s.Size() != 1 {
-		t.Log(s.Size())
+	s.AddRange('A', 'z')
+	if s.Len() != 1 {
+		t.Log(s.Len())
 		t.Fatal("size should be 1")
 	}
 	if !s.Has('B') {
