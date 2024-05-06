@@ -43,23 +43,24 @@ func (s Set) String() string {
 		}
 		node = node.Forward
 	}
-	return codes
+	return codes + "]"
 }
 
 // Copy copies a set
 func (s Set) Copy() Set {
 	set := NewSet()
-	a, b := &s.Head, &set.Head
+	a, b := s.Head.Forward, &set.Head
 	for a.Forward != nil {
 		node := Node{
 			Backward: b,
-			Begin:    b.Begin,
-			End:      b.End,
+			Begin:    a.Begin,
+			End:      a.End,
 		}
 		b.Forward = &node
 		a = a.Forward
 		b = b.Forward
 	}
+	b.Forward = &set.Tail
 	set.Tail.Backward = b
 	return set
 }
@@ -144,29 +145,69 @@ func (s Set) Has(begin rune) bool {
 // Complement computes the complement of a set
 func (s Set) Complement() Set {
 	set := NewSet()
-	a, b := &s.Head, &set.Head
-	pre := rune(math.MaxInt32)
-	for a.Forward != nil {
+	if s.Len() == 0 {
+		node := Node{
+			Forward:  &set.Head,
+			Backward: &set.Tail,
+			Begin:    0,
+			End:      rune(math.MaxInt32),
+		}
+		set.Head.Forward = &node
+		set.Tail.Backward = &node
+		return set
+	}
+	if s.Len() == 1 && s.Head.Forward.Begin == 0 && s.Head.Forward.End == rune(math.MaxInt32) {
+		return set
+	}
+	a, b := s.Head.Forward, &set.Head
+	if a.Begin == 0 && s.Tail.Backward.End == rune(math.MaxInt32) {
+		pre := a.End + 1
+		a = a.Forward
+		for a.Forward != nil {
+			node := Node{
+				Backward: b,
+				Begin:    pre,
+				End:      a.Begin - 1,
+			}
+			pre = a.End + 1
+			b.Forward = &node
+			a = a.Forward
+			b = b.Forward
+		}
+		b.Forward = &set.Tail
+		set.Tail.Backward = b
+	} else {
+		pre := rune(0)
+		for a.Forward != nil {
+			node := Node{
+				Backward: b,
+				Begin:    pre,
+				End:      a.Begin - 1,
+			}
+			pre = a.End + 1
+			b.Forward = &node
+			a = a.Forward
+			b = b.Forward
+		}
 		node := Node{
 			Backward: b,
 			Begin:    pre,
-			End:      b.Begin,
+			End:      rune(math.MaxInt32),
 		}
-		pre = b.End
 		b.Forward = &node
-		a = a.Forward
 		b = b.Forward
+		b.Forward = &set.Tail
+		set.Tail.Backward = b
 	}
-	set.Tail.Backward = b
 	return set
 }
 
 // Union is the union of two sets
 func (s Set) Union(a Set) Set {
 	set := s.Copy()
-	node := &s.Head
+	node := a.Head.Forward
 	for node.Forward != nil {
-		set.AddRange(node.Forward.Begin, node.Forward.End)
+		set.AddRange(node.Begin, node.End)
 		node = node.Forward
 	}
 	return set
@@ -188,6 +229,28 @@ func (a Set) Intersects(b Set) bool {
 		x = x.Forward
 	}
 	return false
+}
+
+// Equal returns true if two sets are equal
+func (s Set) Equal(a Set) bool {
+	lens, lena := s.Len(), a.Len()
+	if lens != lena {
+		return false
+	} else if lens == 0 && lena == 0 {
+		return true
+	}
+	x, y := s.Head.Forward, a.Head.Forward
+	for {
+		if x.Begin != y.Begin || x.End != y.End {
+			fmt.Println(x.Begin, x.End, y.Begin, y.End)
+			return false
+		}
+		x, y = x.Forward, y.Forward
+		if x == nil && y == nil {
+			break
+		}
+	}
+	return true
 }
 
 // Len returns the size of the set
