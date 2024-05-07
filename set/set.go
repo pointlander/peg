@@ -24,8 +24,8 @@ type Set struct {
 }
 
 // NewSet returns a new set
-func NewSet() Set {
-	return Set{
+func NewSet() *Set {
+	return &Set{
 		Head: Node{
 			Begin: math.MaxInt32,
 		},
@@ -33,7 +33,7 @@ func NewSet() Set {
 }
 
 // String returns the string of a set
-func (s Set) String() string {
+func (s *Set) String() string {
 	codes, space := "[", ""
 	node := s.Head.Forward
 	for node.Forward != nil {
@@ -47,8 +47,11 @@ func (s Set) String() string {
 }
 
 // Copy copies a set
-func (s Set) Copy() Set {
+func (s *Set) Copy() *Set {
 	set := NewSet()
+	if s.Head.Forward == nil {
+		return set
+	}
 	a, b := s.Head.Forward, &set.Head
 	for a.Forward != nil {
 		node := Node{
@@ -89,7 +92,6 @@ func (s *Set) AddRange(begin, end rune) {
 		endNode.Backward = &node
 		node.Backward = beginNode
 		beginNode.Forward = &node
-		return
 	} else if beginNode.Forward == endNode.Backward {
 		if begin < beginNode.Forward.Begin {
 			beginNode.Forward.Begin = begin
@@ -115,6 +117,24 @@ func (s *Set) AddRange(begin, end rune) {
 		node.Backward = endNode.Backward
 		endNode.Backward.Forward = &node
 		endNode.Backward = &node
+	} else if beginNode.Forward == endNode {
+		node := Node{
+			Begin: begin,
+			End:   end,
+		}
+		node.Backward = beginNode
+		node.Forward = beginNode.Forward
+		beginNode.Forward.Backward = &node
+		beginNode.Forward = &node
+	} else if beginNode == endNode.Backward {
+		node := Node{
+			Begin: begin,
+			End:   end,
+		}
+		node.Forward = endNode
+		node.Backward = endNode.Backward
+		endNode.Backward.Forward = &node
+		endNode.Backward = &node
 	} else {
 		if begin < beginNode.Forward.Begin {
 			beginNode.Forward.Begin = begin
@@ -131,7 +151,7 @@ func (s *Set) AddRange(begin, end rune) {
 }
 
 // Has tests if a set has a rune
-func (s Set) Has(begin rune) bool {
+func (s *Set) Has(begin rune) bool {
 	beginNode := &s.Head
 	for beginNode.Forward != nil && begin > beginNode.Forward.End {
 		beginNode = beginNode.Forward
@@ -143,24 +163,25 @@ func (s Set) Has(begin rune) bool {
 }
 
 // Complement computes the complement of a set
-func (s Set) Complement() Set {
+func (s *Set) Complement(endSymbol rune) *Set {
 	set := NewSet()
 	if s.Len() == 0 {
 		node := Node{
-			Forward:  &set.Head,
-			Backward: &set.Tail,
+			Forward:  &set.Tail,
+			Backward: &set.Head,
 			Begin:    0,
-			End:      rune(math.MaxInt32),
+			End:      endSymbol,
 		}
 		set.Head.Forward = &node
 		set.Tail.Backward = &node
 		return set
 	}
-	if s.Len() == 1 && s.Head.Forward.Begin == 0 && s.Head.Forward.End == rune(math.MaxInt32) {
+	if s.Head.Forward.Begin == 0 && s.Head.Forward.End == endSymbol {
 		return set
 	}
-	a, b := s.Head.Forward, &set.Head
-	if a.Begin == 0 && s.Tail.Backward.End == rune(math.MaxInt32) {
+	a, b := &s.Head, &set.Head
+	if a.Forward.Begin == 0 && s.Tail.Backward.End == endSymbol {
+		a = a.Forward
 		pre := a.End + 1
 		a = a.Forward
 		for a.Forward != nil {
@@ -178,6 +199,7 @@ func (s Set) Complement() Set {
 		set.Tail.Backward = b
 	} else {
 		pre := rune(0)
+		a = a.Forward
 		for a.Forward != nil {
 			node := Node{
 				Backward: b,
@@ -192,7 +214,7 @@ func (s Set) Complement() Set {
 		node := Node{
 			Backward: b,
 			Begin:    pre,
-			End:      rune(math.MaxInt32),
+			End:      endSymbol,
 		}
 		b.Forward = &node
 		b = b.Forward
@@ -203,9 +225,12 @@ func (s Set) Complement() Set {
 }
 
 // Union is the union of two sets
-func (s Set) Union(a Set) Set {
+func (s *Set) Union(a *Set) *Set {
 	set := s.Copy()
 	node := a.Head.Forward
+	if node == nil {
+		return set
+	}
 	for node.Forward != nil {
 		set.AddRange(node.Begin, node.End)
 		node = node.Forward
@@ -214,10 +239,35 @@ func (s Set) Union(a Set) Set {
 }
 
 // Intersects returns true if two sets intersect
-func (a Set) Intersects(b Set) bool {
-	x := &a.Head
+func (a *Set) Intersects(b *Set) bool {
+	x := a.Head.Forward
+	if x == nil {
+		return false
+	}
 	for x.Forward != nil {
-		y := &b.Head
+		y := b.Head.Forward
+		if y == nil {
+			return false
+		}
+		for y.Forward != nil {
+			if y.Begin >= x.Begin && y.Begin <= x.End {
+				return true
+			} else if y.End >= x.Begin && y.End <= x.End {
+				return true
+			}
+			y = y.Forward
+		}
+		x = x.Forward
+	}
+	x = b.Head.Forward
+	if x == nil {
+		return false
+	}
+	for x.Forward != nil {
+		y := a.Head.Forward
+		if y == nil {
+			return false
+		}
 		for y.Forward != nil {
 			if y.Begin >= x.Begin && y.Begin <= x.End {
 				return true
@@ -232,7 +282,7 @@ func (a Set) Intersects(b Set) bool {
 }
 
 // Equal returns true if two sets are equal
-func (s Set) Equal(a Set) bool {
+func (s *Set) Equal(a *Set) bool {
 	lens, lena := s.Len(), a.Len()
 	if lens != lena {
 		return false
@@ -254,12 +304,15 @@ func (s Set) Equal(a Set) bool {
 }
 
 // Len returns the size of the set
-func (s Set) Len() int {
+func (s *Set) Len() int {
 	size := 0
-	beginNode := &s.Head
-	for beginNode.Forward != nil {
-		beginNode = beginNode.Forward
-		size++
+	if s.Head.Forward == nil {
+		return size
 	}
-	return size - 1
+	beginNode := s.Head.Forward
+	for beginNode.Forward != nil {
+		size += int(beginNode.End) - int(beginNode.Begin) + 1
+		beginNode = beginNode.Forward
+	}
+	return size
 }

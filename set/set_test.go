@@ -5,6 +5,7 @@
 package set
 
 import (
+	"math"
 	"testing"
 )
 
@@ -34,20 +35,24 @@ func TestAdd(t *testing.T) {
 	s.Add('a')
 
 	if s.Len() != 1 {
-		t.Fatal("length should be 1")
+		t.Fatal("length should be 1", s.Len())
 	}
 
 	if !s.Has('a') {
 		t.Fatal("set should have a")
 	}
+
+	s.Add('c')
+	s.Add('e')
+	s.Add('A')
 }
 
 func TestAddRange(t *testing.T) {
 	s := NewSet()
 	s.AddRange('a', 'c')
 	s.AddRange('c', 'e')
-	if s.Len() != 1 {
-		t.Fatal("size should be 1")
+	if s.Len() != 5 {
+		t.Fatal("size should be 5")
 	}
 	if !s.Has('b') {
 		t.Fatal("set should have b")
@@ -57,27 +62,27 @@ func TestAddRange(t *testing.T) {
 	}
 
 	s.AddRange('g', 'i')
-	if s.Len() != 2 {
+	if s.Len() != 8 {
 		t.Log(s.Len())
-		t.Fatal("size should be 2")
+		t.Fatal("size should be 7")
 	}
 	if !s.Has('h') {
 		t.Fatal("set should have h")
 	}
 
 	s.AddRange('A', 'C')
-	if s.Len() != 3 {
+	if s.Len() != 11 {
 		t.Log(s.Len())
-		t.Fatal("size should be 3")
+		t.Fatal("size should be 10")
 	}
 	if !s.Has('B') {
 		t.Fatal("set should have B")
 	}
 
 	s.AddRange('A', 'z')
-	if s.Len() != 1 {
+	if s.Len() != 'z'-'A'+1 {
 		t.Log(s.Len())
-		t.Fatal("size should be 1")
+		t.Fatalf("size should be %d", 'z'-'A'+1)
 	}
 	if !s.Has('B') {
 		t.Fatal("set should have B")
@@ -103,8 +108,8 @@ func TestComplement(t *testing.T) {
 	s.AddRange('c', 'e')
 	s.AddRange('g', 'i')
 	s.AddRange('A', 'C')
-	c1 := s.Complement()
-	c2 := c1.Complement()
+	c1 := s.Complement(rune(math.MaxInt32))
+	c2 := c1.Complement(rune(math.MaxInt32))
 	if !s.Equal(c2) {
 		t.Fatal("sets should be equal")
 	}
