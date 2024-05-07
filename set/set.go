@@ -211,13 +211,15 @@ func (s *Set) Complement(endSymbol rune) *Set {
 			a = a.Forward
 			b = b.Forward
 		}
-		node := Node{
-			Backward: b,
-			Begin:    pre,
-			End:      endSymbol,
+		if pre < endSymbol {
+			node := Node{
+				Backward: b,
+				Begin:    pre,
+				End:      endSymbol,
+			}
+			b.Forward = &node
+			b = b.Forward
 		}
-		b.Forward = &node
-		b = b.Forward
 		b.Forward = &set.Tail
 		set.Tail.Backward = b
 	}

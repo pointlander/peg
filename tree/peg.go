@@ -1069,8 +1069,11 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			case TypeDot:
 				consumes = true
 				/* TypeDot set doesn't include the EndSymbol */
-				// s.Add(t.EndSymbol)
+				s.Add(t.EndSymbol)
 				s = s.Complement(t.EndSymbol - 1)
+				fmt.Println(s.Head.Forward)
+				fmt.Println(s.Head.Forward.Forward)
+				fmt.Println(s.Tail)
 			case TypeString, TypeCharacter:
 				consumes = true
 				s.Add([]rune(n.String())[0])
