@@ -180,49 +180,38 @@ func (s *Set) Complement(endSymbol rune) *Set {
 		return set
 	}
 	a, b := &s.Head, &set.Head
-	if a.Forward.Begin == 0 && s.Tail.Backward.End == endSymbol {
+	pre := rune(0)
+	if pre == a.Forward.Begin {
 		a = a.Forward
-		pre := a.End + 1
-		a = a.Forward
-		for a.Forward != nil {
-			node := Node{
-				Backward: b,
-				Begin:    pre,
-				End:      a.Begin - 1,
-			}
-			pre = a.End + 1
-			b.Forward = &node
-			a = a.Forward
-			b = b.Forward
-		}
-		b.Forward = &set.Tail
-		set.Tail.Backward = b
-	} else {
-		pre := rune(0)
-		a = a.Forward
-		for a.Forward != nil {
-			node := Node{
-				Backward: b,
-				Begin:    pre,
-				End:      a.Begin - 1,
-			}
-			pre = a.End + 1
-			b.Forward = &node
-			a = a.Forward
-			b = b.Forward
-		}
-		if pre < endSymbol {
-			node := Node{
-				Backward: b,
-				Begin:    pre,
-				End:      endSymbol,
-			}
-			b.Forward = &node
-			b = b.Forward
-		}
-		b.Forward = &set.Tail
-		set.Tail.Backward = b
+		pre = a.End + 1
 	}
+	a = a.Forward
+	for a.Forward != nil {
+		node := Node{
+			Backward: b,
+			Begin:    pre,
+			End:      a.Begin - 1,
+		}
+		if a.End == endSymbol {
+			pre = endSymbol
+		} else {
+			pre = a.End + 1
+		}
+		b.Forward = &node
+		a = a.Forward
+		b = b.Forward
+	}
+	if pre < endSymbol {
+		node := Node{
+			Backward: b,
+			Begin:    pre,
+			End:      endSymbol,
+		}
+		b.Forward = &node
+		b = b.Forward
+	}
+	b.Forward = &set.Tail
+	set.Tail.Backward = b
 	return set
 }
 
@@ -294,7 +283,6 @@ func (s *Set) Equal(a *Set) bool {
 	x, y := s.Head.Forward, a.Head.Forward
 	for {
 		if x.Begin != y.Begin || x.End != y.End {
-			fmt.Println(x.Begin, x.End, y.Begin, y.End)
 			return false
 		}
 		x, y = x.Forward, y.Forward
