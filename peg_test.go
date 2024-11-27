@@ -120,21 +120,15 @@ Begin <- Begin 'x'
 		}
 		p.Execute()
 
-		f, err := os.CreateTemp("", "peg")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			os.Remove(f.Name())
-			f.Close()
-		}()
+		tempDir := t.TempDir()
+
 		out := &bytes.Buffer{}
 		p.Strict = true
-		if err = p.Compile(f.Name(), []string{"peg"}, out); err == nil {
+		if err := p.Compile(tempDir, []string{"peg"}, out); err == nil {
 			t.Fatalf("#%d: expected warning error", i)
 		}
 		p.Strict = false
-		if err = p.Compile(f.Name(), []string{"peg"}, out); err != nil {
+		if err := p.Compile(tempDir, []string{"peg"}, out); err != nil {
 			t.Fatalf("#%d: unexpected error (%v)", i, err)
 		}
 	}
