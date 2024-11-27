@@ -3,11 +3,11 @@ package main
 
 const (
 	// VERSION is the version of peg
-	VERSION   = "unknown"
+	VERSION   = ""
 	// BUILDTIME is the build time of peg
-	BUILDTIME = "2024-02-26T12:28:35"
+	BUILDTIME = "2024-11-27T19:39:27"
 	// COMMIT is the commit hash of peg
-	COMMIT    = "a4f5c509ba3254cae4204db9c02d36ca2f733d53"
+	COMMIT    = "f02924709a94d2f169ee1dd5f9cee0277aed4edd"
 	// IS_TAGGED is there a version
 	IS_TAGGED = false
 )

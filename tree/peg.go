@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"github.com/pointlander/peg/set"
 )
@@ -1124,7 +1125,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 						ordered.PushBack(element.Copy())
 					} else {
 						class := &node{Type: TypeUnorderedAlternate}
-						for d := 0; d < 256; d++ {
+						for d := 0; d < unicode.MaxRune; d++ {
 							if properties[c].s.Has(rune(d)) {
 								class.PushBack(&node{Type: TypeCharacter, string: string(rune(d))})
 							}
