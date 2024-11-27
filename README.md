@@ -243,5 +243,4 @@ Andrew Snodgrass
 Here are some projects that use `peg` to provide further examples of PEG grammars:
 
 * https://github.com/tj/go-naturaldate - natural date/time parsing
-* https://github.com/robmuh/dtime - easy date/time formats with duration spans
 * https://github.com/gnames/gnparser - scientific names parsing
