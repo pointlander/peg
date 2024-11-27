@@ -13,22 +13,34 @@ A [Parsing Expression Grammar](http://en.wikipedia.org/wiki/Parsing_expression_g
 
 ## Installing
 
-`go get -u github.com/pointlander/peg`
+```
+go get -u github.com/pointlander/peg
+```
 
 ## Building
 
 ### Using Pre-Generated Files
 
-`go install`
+```
+go install
+```
 
 ### Generating Files Yourself
 You should only need to do this if you are contributing to the library, or if something gets messed up.
 
-`go run build.go` or `go generate`
+```
+go run build.go
+```
+or
+```
+go generate
+```
 
 With tests:
 
-`go run build.go test`
+```
+go run build.go test
+```
 
 ## Usage
 
