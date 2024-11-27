@@ -1,6 +1,6 @@
 # PEG, an Implementation of a Packrat Parsing Expression Grammar in Go
 
-[![GoDoc](https://godoc.org/github.com/pointlander/peg?status.svg)](https://godoc.org/github.com/pointlander/peg)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pointlander/peg.svg)](https://pkg.go.dev/github.com/pointlander/peg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pointlander/peg)](https://goreportcard.com/report/github.com/pointlander/peg)
 
 A [Parsing Expression Grammar](https://en.wikipedia.org/wiki/Parsing_expression_grammar) ( hence `peg`) is a way to create grammars similar in principle to [regular expressions](https://en.wikipedia.org/wiki/Regular_expression) but which allow better code integration. Specifically, `peg` is an implementation of the [Packrat](https://en.wikipedia.org/wiki/Parsing_expression_grammar#Implementing_parsers_from_parsing_expression_grammars) parser generator originally implemented as [peg/leg](https://www.piumarta.com/software/peg/) by [Ian Piumarta](https://www.piumarta.com/cv/) in C. A Packrat parser is a "descent recursive parser" capable of backtracking and negative look-ahead assertions which are problematic for regular expression engines . 
