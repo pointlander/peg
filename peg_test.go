@@ -134,6 +134,23 @@ Begin <- Begin 'x'
 	}
 }
 
+func TestCJKCharacter(t *testing.T) {
+	buffer := `
+package main
+
+type DiceExprParser Peg {
+}
+
+Expr <- 'CJK' / '汉字' / 'test'
+`
+	p := &Peg{Tree: tree.New(false, true, false), Buffer: buffer}
+	p.Init(Size(1 << 15))
+	err := p.Parse()
+	if err != nil {
+		t.Fatal("cjk character test failed")
+	}
+}
+
 var files = [...]string{
 	"peg.peg",
 	"grammars/c/c.peg",
