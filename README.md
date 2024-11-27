@@ -1,35 +1,46 @@
 # PEG, an Implementation of a Packrat Parsing Expression Grammar in Go
 
-[![GoDoc](https://godoc.org/github.com/pointlander/peg?status.svg)](https://godoc.org/github.com/pointlander/peg)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pointlander/peg.svg)](https://pkg.go.dev/github.com/pointlander/peg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pointlander/peg)](https://goreportcard.com/report/github.com/pointlander/peg)
-[![Coverage](https://gocover.io/_badge/github.com/pointlander/peg)](https://gocover.io/github.com/pointlander/peg)
 
-A [Parsing Expression Grammar](http://en.wikipedia.org/wiki/Parsing_expression_grammar) ( hence `peg`) is a way to create grammars similar in principle to [regular expressions](https://en.wikipedia.org/wiki/Regular_expression) but which allow better code integration. Specifically, `peg` is an implementation of the [Packrat](https://en.wikipedia.org/wiki/Parsing_expression_grammar#Implementing_parsers_from_parsing_expression_grammars) parser generator originally implemented as [peg/leg](https://www.piumarta.com/software/peg/) by [Ian Piumarta](https://www.piumarta.com/cv/) in C. A Packrat parser is a "descent recursive parser" capable of backtracking and negative look-ahead assertions which are problematic for regular expression engines . 
+A [Parsing Expression Grammar](https://en.wikipedia.org/wiki/Parsing_expression_grammar) ( hence `peg`) is a way to create grammars similar in principle to [regular expressions](https://en.wikipedia.org/wiki/Regular_expression) but which allow better code integration. Specifically, `peg` is an implementation of the [Packrat](https://en.wikipedia.org/wiki/Parsing_expression_grammar#Implementing_parsers_from_parsing_expression_grammars) parser generator originally implemented as [peg/leg](https://www.piumarta.com/software/peg/) by [Ian Piumarta](https://www.piumarta.com/cv/) in C. A Packrat parser is a "descent recursive parser" capable of backtracking and negative look-ahead assertions which are problematic for regular expression engines . 
 
 ## See Also
 
-* <http://en.wikipedia.org/wiki/Parsing_expression_grammar>
-* <http://pdos.csail.mit.edu/~baford/packrat/>
-* <http://piumarta.com/software/peg/>
+* https://en.wikipedia.org/wiki/Parsing_expression_grammar
+* https://bford.info/packrat/
+* https://piumarta.com/software/peg/
 
 ## Installing
 
-`go get -u github.com/pointlander/peg`
+```
+go get -u github.com/pointlander/peg
+```
 
 ## Building
 
 ### Using Pre-Generated Files
 
-`go install`
+```
+go install
+```
 
 ### Generating Files Yourself
 You should only need to do this if you are contributing to the library, or if something gets messed up.
 
-`go run build.go` or `go generate`
+```
+go run build.go
+```
+or
+```
+go generate
+```
 
 With tests:
 
-`go run build.go test`
+```
+go run build.go test
+```
 
 ## Usage
 
@@ -149,7 +160,7 @@ prioritized <- 'a' 'a'* / 'bc'+ / 'de'?
 
 This will match `"aaaa"` or `"bcbc"` or `"de"` or `""`. The matches are attempted in order.
 
-If the characters are case insensitive, use double quotes:
+If the characters are case-insensitive, use double quotes:
 
 ```
 insensitive <- "abc"
@@ -173,7 +184,7 @@ inverse <- [^a-z]
 
 This will match anything but `"a"` or `"b"` or all the way to `"z"`.
 
-If the character class is case insensitive, use double brackets:
+If the character class is case-insensitive, use double brackets:
 
 ```
 insensitive <- [[A-Z]]
@@ -231,6 +242,6 @@ Andrew Snodgrass
 
 Here are some projects that use `peg` to provide further examples of PEG grammars:
 
-* <https://github.com/tj/go-naturaldate> -  natural date/time parsing
-* <https://github.com/robmuh/dtime> - easy date/time formats with duration spans
-* <https://github.com/gnames/gnparser> - scientific names parsing
+* https://github.com/tj/go-naturaldate - natural date/time parsing
+* https://github.com/robmuh/dtime - easy date/time formats with duration spans
+* https://github.com/gnames/gnparser - scientific names parsing
