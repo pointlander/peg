@@ -88,7 +88,7 @@ func buildinfo() {
 		inf.IsTagged = true
 		inf.Version = strings.TrimSuffix(string(vers), "\n")
 	} else {
-		vers, err = exec.Command("git", "tag", "--merged", "--sort=v:refname").Output()
+		vers, err = exec.Command("git", "tag", "--sort=v:refname", "--merged").Output()
 		if err != nil {
 			log.Println("error:", err)
 		} else if len(vers) > 1 {
