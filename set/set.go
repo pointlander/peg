@@ -230,8 +230,8 @@ func (s *Set) Union(a *Set) *Set {
 }
 
 // Intersects returns true if two sets intersect
-func (a *Set) Intersects(b *Set) bool {
-	x := a.Head.Forward
+func (s *Set) Intersects(b *Set) bool {
+	x := s.Head.Forward
 	if x == nil {
 		return false
 	}
@@ -255,7 +255,7 @@ func (a *Set) Intersects(b *Set) bool {
 		return false
 	}
 	for x.Forward != nil {
-		y := a.Head.Forward
+		y := s.Head.Forward
 		if y == nil {
 			return false
 		}
