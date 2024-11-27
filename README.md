@@ -160,7 +160,7 @@ prioritized <- 'a' 'a'* / 'bc'+ / 'de'?
 
 This will match `"aaaa"` or `"bcbc"` or `"de"` or `""`. The matches are attempted in order.
 
-If the characters are case insensitive, use double quotes:
+If the characters are case-insensitive, use double quotes:
 
 ```
 insensitive <- "abc"
@@ -184,7 +184,7 @@ inverse <- [^a-z]
 
 This will match anything but `"a"` or `"b"` or all the way to `"z"`.
 
-If the character class is case insensitive, use double brackets:
+If the character class is case-insensitive, use double brackets:
 
 ```
 insensitive <- [[A-Z]]
