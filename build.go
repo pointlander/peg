@@ -114,7 +114,7 @@ func buildinfo() {
 
 var processed = make(map[string]bool)
 
-func done(file string, deps ...interface{}) bool {
+func done(file string, deps ...any) bool {
 	fini := true
 	file = filepath.FromSlash(file)
 	info, err := os.Stat(file)

@@ -1246,7 +1246,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		}
 	}()
 
-	_print := func(format string, a ...interface{}) { _, _ = fmt.Fprintf(&buffer, format, a...) }
+	_print := func(format string, a ...any) { _, _ = fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d := position, tokenIndex", n, n) }
 	printRestore := func(n uint) { _print("\n   position, tokenIndex = position%d, tokenIndex%d", n, n) }
 	printMemoSave := func(rule int, n uint, ret bool) {
@@ -1601,7 +1601,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	}
 
 	/* lets figure out which jump labels are going to be used with this dry compile */
-	printTemp, _print := _print, func(_ string, _ ...interface{}) {}
+	printTemp, _print := _print, func(_ string, _ ...any) {}
 	for _, element := range t.Slice() {
 		if element.GetType() != TypeRule {
 			continue
