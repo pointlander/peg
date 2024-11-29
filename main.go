@@ -19,9 +19,10 @@ import (
 //go:generate build peg
 
 var (
-	inline        = flag.Bool("inline", false, "parse rule inlining")
-	_switch       = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
-	print         = flag.Bool("print", false, "directly dump the syntax tree")
+	inline  = flag.Bool("inline", false, "parse rule inlining")
+	_switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
+	// Avoid redefinition of built-in function print.
+	printFlag     = flag.Bool("print", false, "directly dump the syntax tree")
 	syntax        = flag.Bool("syntax", false, "print out the syntax tree")
 	noast         = flag.Bool("noast", false, "disable AST")
 	strict        = flag.Bool("strict", false, "treat compiler warnings as errors")
@@ -58,14 +59,14 @@ func main() {
 	}
 
 	p := &Peg{Tree: tree.New(*inline, *_switch, *noast), Buffer: string(buffer)}
-	p.Init(Pretty(true), Size(1<<15))
+	_ = p.Init(Pretty(true), Size(1<<15))
 	if err := p.Parse(); err != nil {
 		log.Fatal(err)
 	}
 
 	p.Execute()
 
-	if *print {
+	if *printFlag {
 		p.Print()
 	}
 	if *syntax {
@@ -75,7 +76,7 @@ func main() {
 	if *filename == "" {
 		*filename = file + ".go"
 	}
-	out, err := os.OpenFile(*filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	out, err := os.OpenFile(*filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		fmt.Printf("%v: %v\n", *filename, err)
 		return

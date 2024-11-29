@@ -9,7 +9,7 @@ import (
 	"math"
 )
 
-// Node is a node
+// Node is a node.
 type Node struct {
 	Forward  *Node
 	Backward *Node
@@ -17,13 +17,13 @@ type Node struct {
 	End      rune
 }
 
-// Set is a set
+// Set is a set.
 type Set struct {
 	Head Node
 	Tail Node
 }
 
-// NewSet returns a new set
+// NewSet returns a new set.
 func NewSet() *Set {
 	return &Set{
 		Head: Node{
@@ -32,7 +32,7 @@ func NewSet() *Set {
 	}
 }
 
-// String returns the string of a set
+// String returns the string of a set.
 func (s *Set) String() string {
 	codes, space := "[", ""
 	node := s.Head.Forward
@@ -46,7 +46,7 @@ func (s *Set) String() string {
 	return codes + "]"
 }
 
-// Copy copies a set
+// Copy copies a set.
 func (s *Set) Copy() *Set {
 	set := NewSet()
 	if s.Head.Forward == nil {
@@ -68,12 +68,12 @@ func (s *Set) Copy() *Set {
 	return set
 }
 
-// Add adds a symbol to the set
+// Add adds a symbol to the set.
 func (s *Set) Add(a rune) {
 	s.AddRange(a, a)
 }
 
-// AddRange adds to a set
+// AddRange adds to a set.
 func (s *Set) AddRange(begin, end rune) {
 	beginNode := &s.Head
 	for beginNode.Forward != nil && begin > beginNode.Forward.End {
@@ -150,7 +150,7 @@ func (s *Set) AddRange(begin, end rune) {
 	}
 }
 
-// Has tests if a set has a rune
+// Has tests if a set has a rune.
 func (s *Set) Has(begin rune) bool {
 	beginNode := &s.Head
 	for beginNode.Forward != nil && begin > beginNode.Forward.End {
@@ -162,7 +162,7 @@ func (s *Set) Has(begin rune) bool {
 	return begin >= beginNode.Forward.Begin
 }
 
-// Complement computes the complement of a set
+// Complement computes the complement of a set.
 func (s *Set) Complement(endSymbol rune) *Set {
 	set := NewSet()
 	if s.Len() == 0 {
@@ -215,7 +215,7 @@ func (s *Set) Complement(endSymbol rune) *Set {
 	return set
 }
 
-// Union is the union of two sets
+// Union is the union of two sets.
 func (s *Set) Union(a *Set) *Set {
 	set := s.Copy()
 	node := a.Head.Forward
@@ -229,7 +229,7 @@ func (s *Set) Union(a *Set) *Set {
 	return set
 }
 
-// Intersects returns true if two sets intersect
+// Intersects returns true if two sets intersect.
 func (s *Set) Intersects(b *Set) bool {
 	x := s.Head.Forward
 	if x == nil {
@@ -272,7 +272,7 @@ func (s *Set) Intersects(b *Set) bool {
 	return false
 }
 
-// Equal returns true if two sets are equal
+// Equal returns true if two sets are equal.
 func (s *Set) Equal(a *Set) bool {
 	lens, lena := s.Len(), a.Len()
 	if lens != lena {
@@ -293,7 +293,7 @@ func (s *Set) Equal(a *Set) bool {
 	return true
 }
 
-// Len returns the size of the set
+// Len returns the size of the set.
 func (s *Set) Len() int {
 	size := 0
 	if s.Head.Forward == nil {

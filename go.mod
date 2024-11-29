@@ -1,3 +1,3 @@
 module github.com/pointlander/peg
 
-go 1.16
+go 1.23
