@@ -91,6 +91,9 @@
 #  Compilation Unit
 #-------------------------------------------------------------------------
 
+#go:build grammars
+# +build grammars
+
 package main
 
 type Java Peg {
