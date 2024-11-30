@@ -530,11 +530,11 @@ func main() {
 	})
 
 	filename := "bootstrap.peg.go"
-	out, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	out, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		fmt.Printf("%v: %v\n", filename, err)
 		return
 	}
 	defer out.Close()
-	t.Compile(filename, os.Args, out)
+	_ = t.Compile(filename, os.Args, out)
 }

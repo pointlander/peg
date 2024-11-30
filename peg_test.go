@@ -14,14 +14,14 @@ type T Peg {}
 Grammar <- !.
 `
 	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init()
+	_ = p.Init()
 	err := p.Parse()
 	if err != nil {
 		t.Error(err)
 	}
 
 	p = &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init(Size(1 << 15))
+	_ = p.Init(Size(1 << 15))
 	err = p.Parse()
 	if err != nil {
 		t.Error(err)
@@ -34,7 +34,7 @@ type T Peg {}
 Grammar <- !.
 `
 	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init(Size(1 << 15))
+	_ = p.Init(Size(1 << 15))
 	err := p.Parse()
 	if err == nil {
 		t.Error("packagenospace was parsed without error")
@@ -48,7 +48,7 @@ typenospace Peg {}
 Grammar <- !.
 `
 	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	p.Init(Size(1 << 15))
+	_ = p.Init(Size(1 << 15))
 	err := p.Parse()
 	if err == nil {
 		t.Error("typenospace was parsed without error")
@@ -62,7 +62,7 @@ func TestSame(t *testing.T) {
 	}
 
 	p := &Peg{Tree: tree.New(true, true, false), Buffer: string(buffer)}
-	p.Init(Size(1 << 15))
+	_ = p.Init(Size(1 << 15))
 	if err = p.Parse(); err != nil {
 		t.Error(err)
 	}
@@ -70,7 +70,7 @@ func TestSame(t *testing.T) {
 	p.Execute()
 
 	out := &bytes.Buffer{}
-	p.Compile("peg.peg.go", []string{"./peg", "-inline", "-switch", "peg.peg"}, out)
+	_ = p.Compile("peg.peg.go", []string{"./peg", "-inline", "-switch", "peg.peg"}, out)
 
 	bootstrap, err := os.ReadFile("peg.peg.go")
 	if err != nil {
@@ -114,7 +114,7 @@ Begin <- Begin 'x'
 
 	for i, buffer := range tt {
 		p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-		p.Init(Size(1 << 15))
+		_ = p.Init(Size(1 << 15))
 		if err := p.Parse(); err != nil {
 			t.Fatal(err)
 		}
@@ -144,7 +144,7 @@ type DiceExprParser Peg {
 Expr <- 'CJK' / '汉字' / 'test'
 `
 	p := &Peg{Tree: tree.New(false, true, false), Buffer: buffer}
-	p.Init(Size(1 << 15))
+	_ = p.Init(Size(1 << 15))
 	err := p.Parse()
 	if err != nil {
 		t.Fatal("cjk character test failed")
@@ -173,7 +173,7 @@ func BenchmarkInitOnly(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, peg := range pegs {
 			p := &Peg{Tree: tree.New(true, true, false), Buffer: peg}
-			p.Init(Size(1 << 15))
+			_ = p.Init(Size(1 << 15))
 		}
 	}
 }
@@ -187,7 +187,7 @@ func BenchmarkParse(b *testing.B) {
 		}
 
 		p := &Peg{Tree: tree.New(true, true, false), Buffer: string(input)}
-		p.Init(Size(1 << 15))
+		_ = p.Init(Size(1 << 15))
 		pegs[i] = p
 	}
 
@@ -213,7 +213,7 @@ func BenchmarkResetAndParse(b *testing.B) {
 		}
 
 		p := &Peg{Tree: tree.New(true, true, false), Buffer: string(input)}
-		p.Init(Size(1 << 15))
+		_ = p.Init(Size(1 << 15))
 		pegs[i] = p
 	}
 
@@ -242,7 +242,7 @@ func BenchmarkInitAndParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
 			peg := &Peg{Tree: tree.New(true, true, false), Buffer: str}
-			peg.Init(Size(1 << 15))
+			_ = peg.Init(Size(1 << 15))
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
 			}
@@ -264,7 +264,7 @@ func BenchmarkInitResetAndParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, str := range strs {
 			peg := &Peg{Tree: tree.New(true, true, false), Buffer: str}
-			peg.Init(Size(1 << 15))
+			_ = peg.Init(Size(1 << 15))
 			if err := peg.Parse(); err != nil {
 				b.Error(err)
 			}
