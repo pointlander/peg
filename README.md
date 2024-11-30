@@ -11,35 +11,10 @@ A [Parsing Expression Grammar](https://en.wikipedia.org/wiki/Parsing_expression_
 * https://bford.info/packrat/
 * https://piumarta.com/software/peg/
 
-## Installing
+## Installation
 
 ```
-go get -u github.com/pointlander/peg
-```
-
-## Building
-
-### Using Pre-Generated Files
-
-```
-go install
-```
-
-### Generating Files Yourself
-You should only need to do this if you are contributing to the library, or if something gets messed up.
-
-```
-go run build.go
-```
-or
-```
-go generate
-```
-
-With tests:
-
-```
-go run build.go test
+go install github.com/pointlander/peg@latest
 ```
 
 ## Usage
@@ -64,7 +39,6 @@ Usage of peg:
       print out the syntax tree
   -version
       print the version and exit
-	  
 ```
 
 
@@ -239,13 +213,29 @@ Testing a grammar usually requires more than the average unit testing with multi
   go install mvdan.cc/gofumpt@latest
   ```
 
-### Lint code
+### Build
+
+```
+go run build.go
+```
+or
+```
+go generate
+```
+
+### Test
+
+```
+go run build.go test
+```
+
+### Lint
 
 ```
 golangci-lint run
 ```
 
-### Format code
+### Format
 
 ```
 gofumpt -l -w .
