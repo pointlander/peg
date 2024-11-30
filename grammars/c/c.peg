@@ -104,6 +104,9 @@
 #  A.2.4  External definitions
 #-------------------------------------------------------------------------
 
+#go:build grammars
+# +build grammars
+
 package main
 
 type C Peg {

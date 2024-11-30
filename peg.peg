@@ -19,7 +19,7 @@ type Peg Peg {
 }
 
 # Hierarchical syntax
-Grammar		<- Spacing 'package' MustSpacing Identifier      { p.AddPackage(text) }
+Grammar		<- Header 'package' MustSpacing Identifier      { p.AddPackage(text) }
 			   Import*
                            'type' MustSpacing Identifier         { p.AddPeg(text) }
                            'Peg' Spacing Action              { p.AddState(text) }
@@ -118,6 +118,9 @@ Spacing		<- SpaceComment*
 MustSpacing	<- SpaceComment+
 Comment		<- ('#' / '//') (!EndOfLine .)* EndOfLine
 Space		<- ' ' / '\t' / EndOfLine
+Header		<- HeaderSpaceComment*
+HeaderSpaceComment <- (HeaderComment / <Space+> { p.AddSpace(text) } )
+HeaderComment <- ('#' / '//') <(!EndOfLine .)*> { p.AddComment(text) } EndOfLine
 EndOfLine	<- '\r\n' / '\n' / '\r'
 EndOfFile	<- !.
 Action		<- '{' < ActionBody* > '}' Spacing
