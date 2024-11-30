@@ -228,7 +228,30 @@ Will print out `"capture"`. The captured string is stored in `buffer[begin:end]`
 
 Testing a grammar usually requires more than the average unit testing with multiple inputs and outputs. Grammars are also usually not for just one language implementation. Consider maintaining a list of inputs with expected outputs in a structured file format such as JSON or YAML and parsing it for testing or using one of the available options for Go such as Rob Muhlestein's [`tinout`](https://github.com/robmuh/tinout) package.
 
-## Files
+## Development
+
+### Requirements
+
+* [Golang](https://golang.org/doc/install), see [go.mod](go.mod) for version
+* [golangci-lint latest version](https://github.com/golangci/golangci-lint#install)
+* gofumpt
+  ```
+  go install mvdan.cc/gofumpt@latest
+  ```
+
+### Lint code
+
+```
+golangci-lint run
+```
+
+### Format code
+
+```
+gofumpt -l -w .
+```
+
+### Files
 
 * `bootstrap/main.go` - bootstrap syntax tree of peg
 * `tree/peg.go` - syntax tree and code generator

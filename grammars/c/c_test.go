@@ -39,8 +39,7 @@ func noParseC_4t(t *testing.T, src string) {
 }
 
 func TestCParsing_Expressions1(t *testing.T) {
-	case1src :=
-		`int a() {
+	case1src := `int a() {
 		(es);
 		1++;
 		1+1;
@@ -82,19 +81,24 @@ return 0+(a);
 func TestCParsing_Expressions4(t *testing.T) {
 	parseC_4t(t, `int a(){1+(a);}`)
 }
+
 func TestCParsing_Expressions5(t *testing.T) {
 	parseC_4t(t, `int a(){return (int)0;}`)
 }
+
 func TestCParsing_Expressions6(t *testing.T) {
 	parseC_4t(t, `int a(){return (in)0;}`)
 }
+
 func TestCParsing_Expressions7(t *testing.T) {
 	parseC_4t(t, `int a()
 { return (0); }`)
 }
+
 func TestCParsing_Cast0(t *testing.T) {
 	parseC_4t(t, `int a(){(cast)0;}`)
 }
+
 func TestCParsing_Cast1(t *testing.T) {
 	parseC_4t(t, `int a(){(m*)(rsp);}`)
 	parseC_4t(t, `int a(){(struct m*)(rsp);}`)
@@ -103,11 +107,13 @@ func TestCParsing_Cast1(t *testing.T) {
 func TestCParsing_Empty(t *testing.T) {
 	parseC_4t(t, `/** empty is valid. */  `)
 }
+
 func TestCParsing_EmptyStruct(t *testing.T) {
 	parseC_4t(t, `struct empty{};`)
 	parseC_4t(t, `struct {} empty;`)
 	parseC_4t(t, `struct empty {} empty;`)
 }
+
 func TestCParsing_EmptyEmbeddedUnion(t *testing.T) {
 	parseC_4t(t, `struct empty{
 	union {
@@ -116,6 +122,7 @@ func TestCParsing_EmptyEmbeddedUnion(t *testing.T) {
 	};
 };`)
 }
+
 func TestCParsing_ExtraSEMI(t *testing.T) {
 	parseC_4t(t, `int func(){}
 ;
@@ -127,6 +134,7 @@ int foo() {};;
 
 	noParseC_4t(t, `struct empty{}`)
 }
+
 func TestCParsing_ExtraSEMI2(t *testing.T) {
 	parseC_4t(t, `
 struct a { int b; ; };

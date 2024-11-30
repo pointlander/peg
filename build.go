@@ -55,11 +55,11 @@ package main
 
 const (
 	// VERSION is the version of peg
-	VERSION   = "{{.Version}}"
+	VERSION = "{{.Version}}"
 	// BUILDTIME is the build time of peg
 	BUILDTIME = "{{.Buildtime}}"
 	// COMMIT is the commit hash of peg
-	COMMIT    = "{{.Commit}}"
+	COMMIT = "{{.Commit}}"
 	// IS_TAGGED is there a version
 	IS_TAGGED = {{.IsTagged}}
 )
@@ -114,7 +114,7 @@ func buildinfo() {
 
 var processed = make(map[string]bool)
 
-func done(file string, deps ...interface{}) bool {
+func done(file string, deps ...any) bool {
 	fini := true
 	file = filepath.FromSlash(file)
 	info, err := os.Stat(file)
@@ -204,7 +204,7 @@ func command(name, inputFile, outputFile string, arg ...string) {
 		if err != nil {
 			panic(err)
 		}
-		err = os.WriteFile(outputFile, output, 0600)
+		err = os.WriteFile(outputFile, output, 0o600)
 		if err != nil {
 			panic(err)
 		}

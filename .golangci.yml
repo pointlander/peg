@@ -1,0 +1,7 @@
+linters:
+  enable:
+    - revive
+    - gofumpt
+    - errorlint
+    - godot
+    - errname
