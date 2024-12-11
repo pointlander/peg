@@ -414,16 +414,6 @@ func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 	}
 	{{end}}
 
-	{{if .HasCharacter}}
-	/*matchChar := func(c byte) bool {
-		if buffer[position] == c {
-			position++
-			return true
-		}
-		return false
-	}*/
-	{{end}}
-
 	{{if .HasString}}
 	matchString := func(s string) bool {
 		i := position
@@ -436,16 +426,6 @@ func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 		position = i
 		return true
 	}
-	{{end}}
-
-	{{if .HasRange}}
-	/*matchRange := func(lower byte, upper byte) bool {
-		if c := buffer[position]; c >= lower && c <= upper {
-			position++
-			return true
-		}
-		return false
-	}*/
 	{{end}}
 
 	_rules = [...]func() bool {

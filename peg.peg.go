@@ -679,22 +679,6 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		return false
 	}
 
-	/*matchChar := func(c byte) bool {
-		if buffer[position] == c {
-			position++
-			return true
-		}
-		return false
-	}*/
-
-	/*matchRange := func(lower byte, upper byte) bool {
-		if c := buffer[position]; c >= lower && c <= upper {
-			position++
-			return true
-		}
-		return false
-	}*/
-
 	_rules = [...]func() bool{
 		nil,
 		/* 0 Grammar <- <(Header ('p' 'a' 'c' 'k' 'a' 'g' 'e') MustSpacing Identifier Action0 Import* ('t' 'y' 'p' 'e') MustSpacing Identifier Action1 ('P' 'e' 'g') Spacing Action Action2 Definition+ EndOfFile)> */
