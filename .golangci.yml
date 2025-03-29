@@ -1,7 +1,14 @@
+version: "2"
 linters:
   enable:
-    - revive
-    - gofumpt
+    - errname
     - errorlint
     - godot
-    - errname
+    - revive
+  exclusions:
+    presets:
+      - comments
+    generated: strict
+formatters:
+  enable:
+    - gofumpt

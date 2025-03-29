@@ -535,6 +535,11 @@ func main() {
 		fmt.Printf("%v: %v\n", filename, err)
 		return
 	}
-	defer out.Close()
+	defer func() {
+		err := out.Close()
+		if err != nil {
+			fmt.Printf("%v: %v\n", filename, err)
+		}
+	}()
 	_ = t.Compile(filename, os.Args, out)
 }
