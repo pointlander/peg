@@ -13,35 +13,28 @@ import (
 	"github.com/pointlander/peg/tree"
 )
 
-//go:generate -command build go run build.go
-//go:generate build buildinfo
-//go:generate build peg
+//go:generate ./bootstrap.bash
+//go:generate ./generate-grammars.bash
 
 var (
+	Version = "dev"
+
 	inline  = flag.Bool("inline", false, "parse rule inlining")
 	_switch = flag.Bool("switch", false, "replace if-else if-else like blocks with switch blocks")
 	// Avoid redefinition of built-in function print.
-	printFlag     = flag.Bool("print", false, "directly dump the syntax tree")
-	syntax        = flag.Bool("syntax", false, "print out the syntax tree")
-	noast         = flag.Bool("noast", false, "disable AST")
-	strict        = flag.Bool("strict", false, "treat compiler warnings as errors")
-	filename      = flag.String("output", "", "specify name of output file")
-	showVersion   = flag.Bool("version", false, "print the version and exit")
-	showBuildTime = flag.Bool("time", false, "show the last time `build.go buildinfo` was ran")
+	printFlag   = flag.Bool("print", false, "directly dump the syntax tree")
+	syntax      = flag.Bool("syntax", false, "print out the syntax tree")
+	noast       = flag.Bool("noast", false, "disable AST")
+	strict      = flag.Bool("strict", false, "treat compiler warnings as errors")
+	filename    = flag.String("output", "", "specify name of output file")
+	showVersion = flag.Bool("version", false, "print the version and exit")
 )
 
 func main() {
 	flag.Parse()
 
 	if *showVersion {
-		if IS_TAGGED {
-			fmt.Println("version:", VERSION)
-		} else {
-			fmt.Printf("version: %s-%s\n", VERSION, COMMIT)
-		}
-		if *showBuildTime {
-			fmt.Println("time:", BUILDTIME)
-		}
+		fmt.Println("version:", Version)
 		return
 	}
 

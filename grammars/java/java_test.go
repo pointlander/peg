@@ -2,17 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build grammars
-// +build grammars
+//go:generate ../../peg -switch -inline java_1_7.peg
 
-package main
+package java
 
 import (
-	"fmt"
-	"io"
-	"log"
+	"io/fs"
 	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 )
 
@@ -25,67 +22,39 @@ var example1 = `public class HelloWorld {
 
 func TestBasic(t *testing.T) {
 	java := &Java{Buffer: example1}
-	java.Init()
+	err := java.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if err := java.Parse(); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestJava(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping java parsing long test")
-	}
-
-	var walk func(name string)
-	walk = func(name string) {
-		fileInfo, err := os.Stat(name)
+func TestJavaFiles(t *testing.T) {
+	err := filepath.Walk(".", func(path string, _ fs.FileInfo, err error) error {
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-
-		if fileInfo.Mode()&(os.ModeNamedPipe|os.ModeSocket|os.ModeDevice) != 0 {
-			/* will lock up if opened */
-		} else if fileInfo.IsDir() {
-			fmt.Printf("directory %v\n", name)
-
-			file, err := os.Open(name)
+		if filepath.Ext(path) == ".java" {
+			b, err := os.ReadFile(path)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 
-			files, err := file.Readdir(-1)
+			java := &Java{Buffer: string(b)}
+			err = java.Init()
 			if err != nil {
-				log.Fatal(err)
+				t.Fatal(err)
 			}
-			file.Close()
-
-			for _, f := range files {
-				if !strings.HasSuffix(name, "/") {
-					name += "/"
-				}
-				walk(name + f.Name())
-			}
-		} else if strings.HasSuffix(name, ".java") {
-			fmt.Printf("parse %v\n", name)
-
-			file, err := os.Open(name)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			buffer, err := io.ReadAll(file)
-			if err != nil {
-				log.Fatal(err)
-			}
-			file.Close()
-
-			java := &Java{Buffer: string(buffer)}
-			java.Init()
 			if err := java.Parse(); err != nil {
-				log.Fatal(err)
+				t.Fatalf("Parse failed: %v", err)
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	walk("java/")
 }
