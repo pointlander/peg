@@ -7,13 +7,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/pointlander/peg/tree"
 )
 
 func main() {
-	runtime.GOMAXPROCS(2)
 	t := tree.New(true, true, false)
 
 	/*package main

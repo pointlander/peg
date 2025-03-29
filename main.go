@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"runtime"
 
 	"github.com/pointlander/peg/tree"
 )
@@ -32,7 +31,6 @@ var (
 )
 
 func main() {
-	runtime.GOMAXPROCS(2)
 	flag.Parse()
 
 	if *showVersion {
