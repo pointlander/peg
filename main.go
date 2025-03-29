@@ -81,7 +81,12 @@ func main() {
 		fmt.Printf("%v: %v\n", *filename, err)
 		return
 	}
-	defer out.Close()
+	defer func() {
+		err := out.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	p.Strict = *strict
 	if err = p.Compile(*filename, os.Args, out); err != nil {
