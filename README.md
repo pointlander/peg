@@ -198,10 +198,6 @@ capture <- <'capture'> { fmt.Println(text) }
 
 Will print out `"capture"`. The captured string is stored in `buffer[begin:end]`.
 
-## Testing Complex Grammars
-
-Testing a grammar usually requires more than the average unit testing with multiple inputs and outputs. Grammars are also usually not for just one language implementation. Consider maintaining a list of inputs with expected outputs in a structured file format such as JSON or YAML and parsing it for testing or using one of the available options for Go such as Rob Muhlestein's [`tinout`](https://github.com/robmuh/tinout) package.
-
 ## Development
 
 ### Requirements
@@ -216,17 +212,26 @@ Testing a grammar usually requires more than the average unit testing with multi
 ### Build
 
 ```
-go run build.go
+go build
 ```
-or
+
+
+### Generate
+Bootstrap and generate grammar *.peg.go
 ```
 go generate
 ```
 
+* `bootstrap/main.go` - bootstrap syntax tree of peg
+* `tree/peg.go` - syntax tree and code generator
+* `peg.peg` - peg in its own language
+
 ### Test
 
+Run [Generate](#Generate) before
+
 ```
-go run build.go test
+go test -short ./...
 ```
 
 ### Lint
@@ -241,11 +246,22 @@ golangci-lint run
 gofumpt -l -w .
 ```
 
-### Files
+### Benchmark
+```
+go test -benchmem -bench .
+```
 
-* `bootstrap/main.go` - bootstrap syntax tree of peg
-* `tree/peg.go` - syntax tree and code generator
-* `peg.peg` - peg in its own language
+### Build with version
+
+Use the version from the tag if the current commit has a tag. If not use the current commit hash.
+```
+go build -ldflags "-X main.Version=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)"
+```
+
+Additionally, since [Go 1.18](https://go.dev/doc/go1.18) the go command embeds version control information. Read the information:
+```
+go version -m peg
+```
 
 ## Author
 

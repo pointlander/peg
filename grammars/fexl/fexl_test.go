@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build grammars
-// +build grammars
+//go:generate ../../peg -switch -inline fexl.peg
 
-package main
+package fexl
 
 import (
 	"os"
@@ -19,7 +18,10 @@ func TestFexl(t *testing.T) {
 	}
 
 	fexl := &Fexl{Buffer: string(buffer)}
-	fexl.Init()
+	err = fexl.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if err := fexl.Parse(); err != nil {
 		t.Fatal(err)

@@ -1,9 +1,6 @@
 # fexl
 
-#go:build grammars
-# +build grammars
-
-package main
+package fexl
 
 type Fexl Peg {
  

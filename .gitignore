@@ -1,9 +1,2 @@
-*.peg.go
-!peg.peg.go
-*.exe
-*.6
 peg
-calculator/calculator
-bootstrap/bootstrap
-cmd/peg-bootstrap/peg-bootstrap
-cmd/peg-bootstrap/peg*
+peg.exe

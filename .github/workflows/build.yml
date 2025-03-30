@@ -1,4 +1,4 @@
-name: Go
+name: Build
 
 on:
   push:
@@ -20,11 +20,16 @@ jobs:
       with:
         go-version-file: 'go.mod'
 
+    - name: Generated files up-to-date
+      run: |
+        go generate
+        git diff --quiet
+
     - name: Lint
       uses: golangci/golangci-lint-action@v7
       with:
         # Require: The version of golangci-lint to use.
         version: latest
 
-    - name: Build and Test
-      run: go run build.go test
+    - name: Test
+      run: go test -short ./...
