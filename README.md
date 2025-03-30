@@ -50,7 +50,7 @@ all: grammar.go
 
 ## PEG File syntax
 
-See [peg-file-syntax.md](docs/peg-file-syntax)
+See [peg-file-syntax.md](docs/peg-file-syntax.md)
 
 
 ## Development
