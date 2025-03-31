@@ -1214,7 +1214,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	_print := func(format string, a ...any) { _, _ = fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d := position, tokenIndex", n, n) }
 	printRestore := func(n uint) { _print("\n   position, tokenIndex = position%d, tokenIndex%d", n, n) }
-	printMemoSave := func(rule int, n uint32, ret bool) {
+	printMemoSave := func(rule int, n uint64, ret bool) {
 		_print("\n   memoize(%d, position%d, tokenIndex%d, %t)", rule, n, n, ret)
 	}
 	printMemoCheck := func(rule int) {
@@ -1641,13 +1641,13 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		compile(expression, ko)
 		// print("\n  fmt.Printf(\"%v\\n\")", element.String())
 		if t.Ast {
-			printMemoSave(element.GetID(), uint32(ko), true)
+			printMemoSave(element.GetID(), uint64(ko), true)
 		}
 		_print("\n   return true")
 		if labels[ko] {
 			printLabel(ko)
 			if t.Ast {
-				printMemoSave(element.GetID(), uint32(ko), false)
+				printMemoSave(element.GetID(), uint64(ko), false)
 			}
 			printRestore(ko)
 			_print("\n   return false")
