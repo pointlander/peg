@@ -255,7 +255,7 @@ func (node *node32) print(w io.Writer, pretty bool, buffer string) {
 				fmt.Fprint(w, " ")
 			}
 			rule := rul3s[node.pegRule]
-			quote := strconv.Quote(string(([]rune(buffer)[node.begin:node.end])))
+			quote := strconv.Quote(string([]rune(buffer)[node.begin:node.end]))
 			if !pretty {
 				fmt.Fprintf(w, "%v %v\n", rule, quote)
 			} else {
