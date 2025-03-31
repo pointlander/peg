@@ -1092,8 +1092,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					} else {
 						class := &node{Type: TypeUnorderedAlternate}
 						for d := range unicode.MaxRune {
-							if properties[c].s.Has(rune(d)) {
-								class.PushBack(&node{Type: TypeCharacter, string: string(rune(d))})
+							if properties[c].s.Has(d) {
+								class.PushBack(&node{Type: TypeCharacter, string: string(d)})
 							}
 						}
 
