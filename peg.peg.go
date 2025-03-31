@@ -251,7 +251,7 @@ func (node *node32) print(w io.Writer, pretty bool, buffer string) {
 	var print func(node *node32, depth int)
 	print = func(node *node32, depth int) {
 		for node != nil {
-			for c := 0; c < depth; c++ {
+			for range depth {
 				fmt.Fprint(w, " ")
 			}
 			rule := rul3s[node.pegRule]
