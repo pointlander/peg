@@ -1564,7 +1564,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		return labelLast
 	}
 
-	/* lets figure out which jump labels are going to be used with this dry compile */
+	/* let's figure out which jump labels are going to be used with this dry compile */
 	printTemp, _print := _print, func(_ string, _ ...any) {}
 	for _, element := range t.Slice() {
 		if element.GetType() == TypeComment {
