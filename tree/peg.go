@@ -501,9 +501,9 @@ var TypeMap = [...]string{
 func (n *node) debug() {
 	if len(n.string) == 1 {
 		fmt.Printf("%v %v '%v' %d\n", n.id, TypeMap[n.Type], n.string, n.string[0])
-	} else {
-		fmt.Printf("%v %v '%v'\n", n.id, TypeMap[n.Type], n.string)
+		return
 	}
+	fmt.Printf("%v %v '%v'\n", n.id, TypeMap[n.Type], n.string)
 }
 */
 
@@ -809,9 +809,9 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	warn := func(e error) {
 		if werr == nil {
 			werr = fmt.Errorf("warning: %w", e)
-		} else {
-			werr = fmt.Errorf("%w\nwarning: %w", werr, e)
+			return
 		}
+		werr = fmt.Errorf("%w\nwarning: %w", werr, e)
 	}
 
 	counts := [TypeLast]uint{}
