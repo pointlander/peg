@@ -22,7 +22,7 @@ func TestLong(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for c := 0; c < length; c++ {
+	for range length {
 		if err := long.Parse(); err != nil {
 			t.Fatal(err)
 		}

@@ -139,11 +139,7 @@ func (s *Set) AddRange(begin, end rune) {
 		if begin < beginNode.Forward.Begin {
 			beginNode.Forward.Begin = begin
 		}
-		if end > endNode.Backward.End {
-			beginNode.Forward.End = end
-		} else {
-			beginNode.Forward.End = endNode.Backward.End
-		}
+		beginNode.Forward.End = max(end, endNode.Backward.End)
 		node := beginNode.Forward
 		node.Forward = endNode
 		endNode.Backward = node
