@@ -14,7 +14,6 @@ import (
 	"math"
 	"os"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -910,7 +909,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			}
 		}
 		/* sort imports to satisfy gofmt */
-		sort.Strings(t.Imports)
+		slices.Sort(t.Imports)
 
 		/* second pass */
 		for _, node := range t.Slice() {
