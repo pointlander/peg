@@ -1366,7 +1366,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			element = element.Next()
 			upper := element
 			/*print("\n   if !matchRange('%v', '%v') {", escape(lower.String()), escape(upper.String()))*/
-			_print("\n   if c := buffer[position]; c < rune('%v') || c > rune('%v') {", escape(lower.String()), escape(upper.String()))
+			_print("\n   if c := buffer[position]; c < '%v' || c > '%v' {", escape(lower.String()), escape(upper.String()))
 			printJump(ko)
 			_print("}\nposition++")
 		case TypeCharacter:
@@ -1375,7 +1375,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				break
 			}
 			/*print("\n   if !matchChar('%v') {", escape(n.String()))*/
-			_print("\n   if buffer[position] != rune('%v') {", escape(n.String()))
+			_print("\n   if buffer[position] != '%v' {", escape(n.String()))
 			printJump(ko)
 			_print("}\nposition++")
 		case TypeString:
