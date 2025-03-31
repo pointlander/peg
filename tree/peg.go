@@ -634,7 +634,7 @@ func (n *node) SetParentMultipleKey(multipleKey bool) {
 	n.parentMultipleKey = multipleKey
 }
 
-/* A tree data structure into which a PEG can be parsed. */
+// Tree is a tree data structure into which a PEG can be parsed.
 type Tree struct {
 	Rules      map[string]*node
 	rulesCount map[string]uint
