@@ -51,24 +51,28 @@ var rul3s = [...]string {
 	{{end}}
 }
 
-type token32 struct {
-	pegRule
-	begin, end uint32
+type Uint interface {
+	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-func (t *token32) String() string {
+type token32[U Uint] struct {
+	pegRule
+	begin, end U
+}
+
+func (t *token32[_]) String() string {
 	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v", rul3s[t.pegRule], t.begin, t.end)
 }
 
 {{if .Ast}}
-type node32 struct {
-	token32
-	up, next *node32
+type node32[U Uint] struct {
+	token32[U]
+	up, next *node32[U]
 }
 
-func (node *node32) print(w io.Writer, pretty bool, buffer string) {
-	var print func(node *node32, depth int)
-	print = func(node *node32, depth int) {
+func (node *node32[U]) print(w io.Writer, pretty bool, buffer string) {
+	var print func(node *node32[U], depth int)
+	print = func(node *node32[U], depth int) {
 		for node != nil {
 			for range depth {
 				fmt.Fprint(w, " ")
@@ -89,31 +93,31 @@ func (node *node32) print(w io.Writer, pretty bool, buffer string) {
 	print(node, 0)
 }
 
-func (node *node32) Print(w io.Writer, buffer string) {
+func (node *node32[_]) Print(w io.Writer, buffer string) {
 	node.print(w, false, buffer)
 }
 
-func (node *node32) PrettyPrint(w io.Writer, buffer string) {
+func (node *node32[_]) PrettyPrint(w io.Writer, buffer string) {
 	node.print(w, true, buffer)
 }
 
-type tokens32 struct {
-	tree		[]token32
+type tokens32[U Uint] struct {
+	tree		[]token32[U]
 }
 
-func (t *tokens32) Trim(length uint32) {
+func (t *tokens32[_]) Trim(length uint32) {
 	t.tree = t.tree[:length]
 }
 
-func (t *tokens32) Print() {
+func (t *tokens32[_]) Print() {
 	for _, token := range t.tree {
 		fmt.Println(token.String())
 	}
 }
 
-func (t *tokens32) AST() *node32 {
+func (t *tokens32[U]) AST() *node32[U] {
 	type element struct {
-		node *node32
+		node *node32[U]
 		down *element
 	}
 	tokens := t.Tokens()
@@ -122,7 +126,7 @@ func (t *tokens32) AST() *node32 {
 		if token.begin == token.end {
 			continue
 		}
-		node := &node32{token32: token}
+		node := &node32[U]{token32: token}
 		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
 			stack.node.next = node.up
 			node.up = stack.node
@@ -136,33 +140,33 @@ func (t *tokens32) AST() *node32 {
 	return nil
 }
 
-func (t *tokens32) PrintSyntaxTree(buffer string) {
+func (t *tokens32[_]) PrintSyntaxTree(buffer string) {
 	t.AST().Print(os.Stdout, buffer)
 }
 
-func (t *tokens32) WriteSyntaxTree(w io.Writer, buffer string) {
+func (t *tokens32[_]) WriteSyntaxTree(w io.Writer, buffer string) {
 	t.AST().Print(w, buffer)
 }
 
-func (t *tokens32) PrettyPrintSyntaxTree(buffer string) {
+func (t *tokens32[_]) PrettyPrintSyntaxTree(buffer string) {
 	t.AST().PrettyPrint(os.Stdout, buffer)
 }
 
-func (t *tokens32) Add(rule pegRule, begin, end, index uint32) {
+func (t *tokens32[U]) Add(rule pegRule, begin, end, index U) {
 	tree, i := t.tree, int(index)
 	if i >= len(tree) {
-		t.tree = append(tree, token32{pegRule: rule, begin: begin, end: end})
+		t.tree = append(tree, token32[U]{pegRule: rule, begin: begin, end: end})
 		return
 	}
-	tree[i] = token32{pegRule: rule, begin: begin, end: end}
+	tree[i] = token32[U]{pegRule: rule, begin: begin, end: end}
 }
 
-func (t *tokens32) Tokens() []token32 {
+func (t *tokens32[U]) Tokens() []token32[U] {
 	return t.tree
 }
 {{end}}
 
-type {{.StructName}} struct {
+type {{.StructName}}[U Uint] struct {
 	{{.StructVariables}}
 	Buffer          string
 	buffer	        []rune
@@ -172,15 +176,15 @@ type {{.StructName}} struct {
 	Pretty          bool
 {{if .Ast -}}
 	disableMemoize  bool
-	tokens32
+	tokens32[U]
 {{end -}}
 }
 
-func (p *{{.StructName}}) Parse(rule ...int) error {
+func (p *{{.StructName}}[_]) Parse(rule ...int) error {
 	return p.parse(rule...)
 }
 
-func (p *{{.StructName}}) Reset() {
+func (p *{{.StructName}}[_]) Reset() {
 	p.reset()
 }
 
@@ -206,13 +210,13 @@ func translatePositions(buffer []rune, positions []int) textPositionMap {
 	return translations
 }
 
-type parseError struct {
-	p *{{.StructName}}
-	max token32
+type parseError[U Uint] struct {
+	p *{{.StructName}}[U]
+	max token32[U]
 }
 
-func (e *parseError) Error() string {
-	tokens, err := []token32{e.max}, "\n"
+func (e *parseError[U]) Error() string {
+	tokens, err := []token32[U]{e.max}, "\n"
 	positions, p := make([]int, 2 * len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p + 1
@@ -236,7 +240,7 @@ func (e *parseError) Error() string {
 }
 
 {{if .Ast}}
-func (p *{{.StructName}}) PrintSyntaxTree() {
+func (p *{{.StructName}}[_]) PrintSyntaxTree() {
 	if p.Pretty {
 		p.tokens32.PrettyPrintSyntaxTree(p.Buffer)
 	} else {
@@ -244,18 +248,18 @@ func (p *{{.StructName}}) PrintSyntaxTree() {
 	}
 }
 
-func (p *{{.StructName}}) WriteSyntaxTree(w io.Writer) {
+func (p *{{.StructName}}[_]) WriteSyntaxTree(w io.Writer) {
 	p.tokens32.WriteSyntaxTree(w, p.Buffer)
 }
 
-func (p *{{.StructName}}) SprintSyntaxTree() string {
+func (p *{{.StructName}}[_]) SprintSyntaxTree() string {
 	var b bytes.Buffer
 	p.WriteSyntaxTree(&b)
 	return b.String()
 }
 
 {{if .HasActions}}
-func (p *{{.StructName}}) Execute() {
+func (p *{{.StructName}}[_]) Execute() {
 	buffer, _buffer, text, begin, end := p.Buffer, p.buffer, "", 0, 0
 	for _, token := range p.Tokens() {
 		switch (token.pegRule) {
@@ -274,46 +278,46 @@ func (p *{{.StructName}}) Execute() {
 {{end}}
 {{end}}
 
-func Pretty(pretty bool) func(*{{.StructName}}) error {
-	return func(p *{{.StructName}}) error {
+func Pretty[U Uint](pretty bool) func(*{{.StructName}}[U]) error {
+	return func(p *{{.StructName}}[U]) error {
 		p.Pretty = pretty
 		return nil
 	}
 }
 
 {{if .Ast -}}
-func Size(size int) func(*{{.StructName}}) error {
-	return func(p *{{.StructName}}) error {
-		p.tokens32 = tokens32{tree: make([]token32, 0, size)}
+func Size[U Uint](size int) func(*{{.StructName}}[U]) error {
+	return func(p *{{.StructName}}[U]) error {
+		p.tokens32 = tokens32[U]{tree: make([]token32[U], 0, size)}
 		return nil
 	}
 }
 
-func DisableMemoize() func(*{{.StructName}}) error {
-	return func(p *{{.StructName}}) error {
+func DisableMemoize[U Uint]() func(*{{.StructName}}[U]) error {
+	return func(p *{{.StructName}}[U]) error {
 		p.disableMemoize = true
 		return nil
 	}
 }
 
-type memo struct {
+type memo[U Uint] struct {
 	Matched       bool
-	Partial       []token32
+	Partial       []token32[U]
 }
 
-type memoKey struct {
-	Rule     uint32
-	Position uint32
+type memoKey[U Uint] struct {
+	Rule     U
+	Position U
 }
 {{end -}}
 
-func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
+func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) error {
 	var (
-		max token32
-		position, tokenIndex uint32
+		max token32[U]
+		position, tokenIndex U
 		buffer []rune
 {{if .Ast -}}
-		memoization map[memoKey]memo
+		memoization map[memoKey[U]]memo[U]
 {{end -}}
 {{if not .Ast -}}
 {{if .HasPush -}}
@@ -328,10 +332,10 @@ func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 		}
 	}
 	p.reset = func() {
-		max = token32{}
+		max = token32[U]{}
 		position, tokenIndex = 0, 0
 {{if .Ast -}}
-		memoization = make(map[memoKey]memo)
+		memoization = make(map[memoKey[U]]memo[U])
 {{end -}}
 
 		p.buffer = []rune(p.Buffer)
@@ -357,45 +361,45 @@ func (p *{{.StructName}}) Init(options ...func(*{{.StructName}}) error) error {
 {{end -}}
 		if matches {
 {{if .Ast -}}
-			p.Trim(tokenIndex)
+			p.Trim(uint32(tokenIndex))
 {{end -}}
 			return nil
 		}
-		return &parseError{p, max}
+		return &parseError[U]{p, max}
 	}
 
-	add := func(rule pegRule, begin uint32) {
+	add := func(rule pegRule, begin U) {
 {{if .Ast -}}
 		tree.Add(rule, begin, position, tokenIndex)
 {{end -}}
 		tokenIndex++
 		if begin != position && position > max.end {
-			max = token32{rule, begin, position}
+			max = token32[U]{rule, begin, position}
 		}
 	}
 
 {{if .Ast -}}
-	memoize := func(rule uint32, begin uint32, tokenIndexStart uint32, matched bool) {
+	memoize := func(rule U, begin U, tokenIndexStart U, matched bool) {
 		if p.disableMemoize {
 			return
 		}
-		key := memoKey{rule, begin}
+		key := memoKey[U]{rule, begin}
 		if !matched {
-			memoization[key] = memo{Matched: false}
+			memoization[key] = memo[U]{Matched: false}
 		} else {
 			t := tree.tree[tokenIndexStart:tokenIndex]
-			tokenCopy := make([]token32, len(t))
+			tokenCopy := make([]token32[U], len(t))
 			copy(tokenCopy, t)
-			memoization[key] = memo{Matched: true, Partial: tokenCopy}
+			memoization[key] = memo[U]{Matched: true, Partial: tokenCopy}
 		}
 	}
 
-	memoizedResult := func(m memo) bool {
+	memoizedResult := func(m memo[U]) bool {
 		if !m.Matched {
 			return false
 		}
 		tree.tree = append(tree.tree[:tokenIndex], m.Partial...)
-		tokenIndex += uint32(len(m.Partial))
+		tokenIndex += U(len(m.Partial))
 		position = m.Partial[len(m.Partial)-1].end
 		if tree.tree[tokenIndex-1].begin != position && position > max.end {
 			max = tree.tree[tokenIndex-1]
@@ -1210,11 +1214,11 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	_print := func(format string, a ...any) { _, _ = fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d := position, tokenIndex", n, n) }
 	printRestore := func(n uint) { _print("\n   position, tokenIndex = position%d, tokenIndex%d", n, n) }
-	printMemoSave := func(rule int, n uint, ret bool) {
+	printMemoSave := func(rule int, n uint32, ret bool) {
 		_print("\n   memoize(%d, position%d, tokenIndex%d, %t)", rule, n, n, ret)
 	}
 	printMemoCheck := func(rule int) {
-		_print("\n   if memoized, ok := memoization[memoKey{%d, position}]; ok {", rule)
+		_print("\n   if memoized, ok := memoization[memoKey[U]{%d, position}]; ok {", rule)
 		_print("\n       return memoizedResult(memoized)")
 		_print("\n   }")
 	}
@@ -1637,13 +1641,13 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		compile(expression, ko)
 		// print("\n  fmt.Printf(\"%v\\n\")", element.String())
 		if t.Ast {
-			printMemoSave(element.GetID(), ko, true)
+			printMemoSave(element.GetID(), uint32(ko), true)
 		}
 		_print("\n   return true")
 		if labels[ko] {
 			printLabel(ko)
 			if t.Ast {
-				printMemoSave(element.GetID(), ko, false)
+				printMemoSave(element.GetID(), uint32(ko), false)
 			}
 			printRestore(ko)
 			_print("\n   return false")

@@ -21,7 +21,7 @@ var example1 = `public class HelloWorld {
 `
 
 func TestBasic(t *testing.T) {
-	java := &Java{Buffer: example1}
+	java := &Java[uint32]{Buffer: example1}
 	err := java.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func TestJavaFiles(t *testing.T) {
 				return err
 			}
 
-			java := &Java{Buffer: string(b)}
+			java := &Java[uint32]{Buffer: string(b)}
 			err = java.Init()
 			if err != nil {
 				t.Fatal(err)
