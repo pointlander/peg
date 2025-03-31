@@ -1189,7 +1189,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		}
 		if !t.Strict && werr != nil {
 			// Display warnings.
-			fmt.Fprintln(os.Stderr, werr)
+			_, _ = fmt.Fprintln(os.Stderr, werr)
 		}
 		if err != nil {
 			return
