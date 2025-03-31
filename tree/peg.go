@@ -1463,7 +1463,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				_print(":")
 				if !dryCompile {
 					sequence.SetParentDetect(true)
-					if len(class.Slice()) > 1 {
+					if class.Len() > 1 {
 						sequence.SetParentMultipleKey(true)
 					}
 				}
