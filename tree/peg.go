@@ -1072,7 +1072,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 				intersections := 2
 			compare:
-				for ai, a := range properties[0 : len(properties)-1] {
+				for ai, a := range properties[:len(properties)-1] {
 					for _, b := range properties[ai+1:] {
 						if a.s.Intersects(b.s) {
 							intersections++
