@@ -283,21 +283,21 @@ func (n *node[_]) PrettyPrint(w io.Writer, buffer string) {
 	n.print(w, true, buffer)
 }
 
-type tokens32[U Uint] struct {
+type tokens[U Uint] struct {
 	tree []token[U]
 }
 
-func (t *tokens32[_]) Trim(length uint32) {
+func (t *tokens[_]) Trim(length uint32) {
 	t.tree = t.tree[:length]
 }
 
-func (t *tokens32[_]) Print() {
+func (t *tokens[_]) Print() {
 	for _, token := range t.tree {
 		fmt.Println(token.String())
 	}
 }
 
-func (t *tokens32[U]) AST() *node[U] {
+func (t *tokens[U]) AST() *node[U] {
 	type element struct {
 		node *node[U]
 		down *element
@@ -322,19 +322,19 @@ func (t *tokens32[U]) AST() *node[U] {
 	return nil
 }
 
-func (t *tokens32[_]) PrintSyntaxTree(buffer string) {
+func (t *tokens[_]) PrintSyntaxTree(buffer string) {
 	t.AST().Print(os.Stdout, buffer)
 }
 
-func (t *tokens32[_]) WriteSyntaxTree(w io.Writer, buffer string) {
+func (t *tokens[_]) WriteSyntaxTree(w io.Writer, buffer string) {
 	t.AST().Print(w, buffer)
 }
 
-func (t *tokens32[_]) PrettyPrintSyntaxTree(buffer string) {
+func (t *tokens[_]) PrettyPrintSyntaxTree(buffer string) {
 	t.AST().PrettyPrint(os.Stdout, buffer)
 }
 
-func (t *tokens32[U]) Add(rule pegRule, begin, end, index U) {
+func (t *tokens[U]) Add(rule pegRule, begin, end, index U) {
 	tree, i := t.tree, int(index)
 	if i >= len(tree) {
 		t.tree = append(tree, token[U]{pegRule: rule, begin: begin, end: end})
@@ -343,7 +343,7 @@ func (t *tokens32[U]) Add(rule pegRule, begin, end, index U) {
 	tree[i] = token[U]{pegRule: rule, begin: begin, end: end}
 }
 
-func (t *tokens32[U]) Tokens() []token[U] {
+func (t *tokens[U]) Tokens() []token[U] {
 	return t.tree
 }
 
@@ -357,7 +357,7 @@ type Peg[U Uint] struct {
 	reset          func()
 	Pretty         bool
 	disableMemoize bool
-	tokens32[U]
+	tokens[U]
 }
 
 func (p *Peg[_]) Parse(rule ...int) error {
@@ -430,14 +430,14 @@ func (e *parseError[U]) Error() string {
 
 func (p *Peg[_]) PrintSyntaxTree() {
 	if p.Pretty {
-		p.tokens32.PrettyPrintSyntaxTree(p.Buffer)
+		p.tokens.PrettyPrintSyntaxTree(p.Buffer)
 	} else {
-		p.tokens32.PrintSyntaxTree(p.Buffer)
+		p.tokens.PrintSyntaxTree(p.Buffer)
 	}
 }
 
 func (p *Peg[_]) WriteSyntaxTree(w io.Writer) {
-	p.tokens32.WriteSyntaxTree(w, p.Buffer)
+	p.tokens.WriteSyntaxTree(w, p.Buffer)
 }
 
 func (p *Peg[_]) SprintSyntaxTree() string {
@@ -577,7 +577,7 @@ func Pretty[U Uint](pretty bool) func(*Peg[U]) error {
 
 func Size[U Uint](size int) func(*Peg[U]) error {
 	return func(p *Peg[U]) error {
-		p.tokens32 = tokens32[U]{tree: make([]token[U], 0, size)}
+		p.tokens = tokens[U]{tree: make([]token[U], 0, size)}
 		return nil
 	}
 }
@@ -625,14 +625,14 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 	p.reset()
 
 	_rules := p.rules
-	tree := p.tokens32
+	tree := p.tokens
 	p.parse = func(rule ...int) error {
 		r := 1
 		if len(rule) > 0 {
 			r = rule[0]
 		}
 		matches := p.rules[r]()
-		p.tokens32 = tree
+		p.tokens = tree
 		if matches {
 			p.Trim(uint32(tokenIndex))
 			return nil
