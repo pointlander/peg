@@ -61,6 +61,8 @@ type token[U Uint] struct {
 }
 
 func (t *token[_]) String() string {
+	// \x1B[34m = blue
+	// \x1B[m   = normal (disable color)
 	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v", rul3s[t.pegRule], t.begin, t.end)
 }
 
