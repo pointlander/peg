@@ -247,14 +247,14 @@ func (t *token[_]) String() string {
 	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v", rul3s[t.pegRule], t.begin, t.end)
 }
 
-type node32[U Uint] struct {
+type node[U Uint] struct {
 	token[U]
-	up, next *node32[U]
+	up, next *node[U]
 }
 
-func (n *node32[U]) print(w io.Writer, pretty bool, buffer string) {
-	var printFunc func(n *node32[U], depth int)
-	printFunc = func(n *node32[U], depth int) {
+func (n *node[U]) print(w io.Writer, pretty bool, buffer string) {
+	var printFunc func(n *node[U], depth int)
+	printFunc = func(n *node[U], depth int) {
 		for n != nil {
 			for range depth {
 				fmt.Fprint(w, " ")
@@ -275,11 +275,11 @@ func (n *node32[U]) print(w io.Writer, pretty bool, buffer string) {
 	printFunc(n, 0)
 }
 
-func (n *node32[_]) Print(w io.Writer, buffer string) {
+func (n *node[_]) Print(w io.Writer, buffer string) {
 	n.print(w, false, buffer)
 }
 
-func (n *node32[_]) PrettyPrint(w io.Writer, buffer string) {
+func (n *node[_]) PrettyPrint(w io.Writer, buffer string) {
 	n.print(w, true, buffer)
 }
 
@@ -297,9 +297,9 @@ func (t *tokens32[_]) Print() {
 	}
 }
 
-func (t *tokens32[U]) AST() *node32[U] {
+func (t *tokens32[U]) AST() *node[U] {
 	type element struct {
-		node *node32[U]
+		node *node[U]
 		down *element
 	}
 	tokens := t.Tokens()
@@ -308,7 +308,7 @@ func (t *tokens32[U]) AST() *node32[U] {
 		if token.begin == token.end {
 			continue
 		}
-		node := &node32[U]{token: token}
+		node := &node[U]{token: token}
 		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
 			stack.node.next = node.up
 			node.up = stack.node
