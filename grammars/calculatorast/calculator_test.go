@@ -13,7 +13,7 @@ import (
 
 func TestCalculator(t *testing.T) {
 	expression := "( 1 - -3 ) / 3 + 2 * ( 3 + -4 ) + 3 % 2^2"
-	calc := &Calculator{Buffer: expression}
+	calc := &Calculator[uint32]{Buffer: expression}
 	err := calc.Init()
 	if err != nil {
 		t.Fatal(err)

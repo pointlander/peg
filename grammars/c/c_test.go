@@ -14,8 +14,8 @@ import (
 	"testing"
 )
 
-func parseCBuffer(buffer string) (*C, error) {
-	clang := &C{Buffer: buffer}
+func parseCBuffer(buffer string) (*C[uint32], error) {
+	clang := &C[uint32]{Buffer: buffer}
 	err := clang.Init()
 	if err != nil {
 		return nil, err
@@ -24,7 +24,7 @@ func parseCBuffer(buffer string) (*C, error) {
 	return clang, err
 }
 
-func parseC4t(t *testing.T, src string) *C {
+func parseC4t(t *testing.T, src string) *C[uint32] {
 	c, err := parseCBuffer(src)
 	if err != nil {
 		t.Fatal(err)
@@ -167,7 +167,7 @@ func TestCFiles(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			clang := &C{Buffer: string(b)}
+			clang := &C[uint32]{Buffer: string(b)}
 			err = clang.Init()
 			if err != nil {
 				t.Fatal(err)

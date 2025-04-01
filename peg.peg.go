@@ -234,23 +234,27 @@ var rul3s = [...]string{
 	"Action50",
 }
 
-type token32 struct {
-	pegRule
-	begin, end uint32
+type Uint interface {
+	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-func (t *token32) String() string {
+type token32[U Uint] struct {
+	pegRule
+	begin, end U
+}
+
+func (t *token32[_]) String() string {
 	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v", rul3s[t.pegRule], t.begin, t.end)
 }
 
-type node32 struct {
-	token32
-	up, next *node32
+type node32[U Uint] struct {
+	token32[U]
+	up, next *node32[U]
 }
 
-func (node *node32) print(w io.Writer, pretty bool, buffer string) {
-	var print func(node *node32, depth int)
-	print = func(node *node32, depth int) {
+func (node *node32[U]) print(w io.Writer, pretty bool, buffer string) {
+	var print func(node *node32[U], depth int)
+	print = func(node *node32[U], depth int) {
 		for node != nil {
 			for range depth {
 				fmt.Fprint(w, " ")
@@ -271,31 +275,31 @@ func (node *node32) print(w io.Writer, pretty bool, buffer string) {
 	print(node, 0)
 }
 
-func (node *node32) Print(w io.Writer, buffer string) {
+func (node *node32[_]) Print(w io.Writer, buffer string) {
 	node.print(w, false, buffer)
 }
 
-func (node *node32) PrettyPrint(w io.Writer, buffer string) {
+func (node *node32[_]) PrettyPrint(w io.Writer, buffer string) {
 	node.print(w, true, buffer)
 }
 
-type tokens32 struct {
-	tree []token32
+type tokens32[U Uint] struct {
+	tree []token32[U]
 }
 
-func (t *tokens32) Trim(length uint32) {
+func (t *tokens32[_]) Trim(length uint32) {
 	t.tree = t.tree[:length]
 }
 
-func (t *tokens32) Print() {
+func (t *tokens32[_]) Print() {
 	for _, token := range t.tree {
 		fmt.Println(token.String())
 	}
 }
 
-func (t *tokens32) AST() *node32 {
+func (t *tokens32[U]) AST() *node32[U] {
 	type element struct {
-		node *node32
+		node *node32[U]
 		down *element
 	}
 	tokens := t.Tokens()
@@ -304,7 +308,7 @@ func (t *tokens32) AST() *node32 {
 		if token.begin == token.end {
 			continue
 		}
-		node := &node32{token32: token}
+		node := &node32[U]{token32: token}
 		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
 			stack.node.next = node.up
 			node.up = stack.node
@@ -318,32 +322,32 @@ func (t *tokens32) AST() *node32 {
 	return nil
 }
 
-func (t *tokens32) PrintSyntaxTree(buffer string) {
+func (t *tokens32[_]) PrintSyntaxTree(buffer string) {
 	t.AST().Print(os.Stdout, buffer)
 }
 
-func (t *tokens32) WriteSyntaxTree(w io.Writer, buffer string) {
+func (t *tokens32[_]) WriteSyntaxTree(w io.Writer, buffer string) {
 	t.AST().Print(w, buffer)
 }
 
-func (t *tokens32) PrettyPrintSyntaxTree(buffer string) {
+func (t *tokens32[_]) PrettyPrintSyntaxTree(buffer string) {
 	t.AST().PrettyPrint(os.Stdout, buffer)
 }
 
-func (t *tokens32) Add(rule pegRule, begin, end, index uint32) {
+func (t *tokens32[U]) Add(rule pegRule, begin, end, index U) {
 	tree, i := t.tree, int(index)
 	if i >= len(tree) {
-		t.tree = append(tree, token32{pegRule: rule, begin: begin, end: end})
+		t.tree = append(tree, token32[U]{pegRule: rule, begin: begin, end: end})
 		return
 	}
-	tree[i] = token32{pegRule: rule, begin: begin, end: end}
+	tree[i] = token32[U]{pegRule: rule, begin: begin, end: end}
 }
 
-func (t *tokens32) Tokens() []token32 {
+func (t *tokens32[U]) Tokens() []token32[U] {
 	return t.tree
 }
 
-type Peg struct {
+type Peg[U Uint] struct {
 	*tree.Tree
 
 	Buffer         string
@@ -353,14 +357,14 @@ type Peg struct {
 	reset          func()
 	Pretty         bool
 	disableMemoize bool
-	tokens32
+	tokens32[U]
 }
 
-func (p *Peg) Parse(rule ...int) error {
+func (p *Peg[_]) Parse(rule ...int) error {
 	return p.parse(rule...)
 }
 
-func (p *Peg) Reset() {
+func (p *Peg[_]) Reset() {
 	p.reset()
 }
 
@@ -395,13 +399,13 @@ search:
 	return translations
 }
 
-type parseError struct {
-	p   *Peg
-	max token32
+type parseError[U Uint] struct {
+	p   *Peg[U]
+	max token32[U]
 }
 
-func (e *parseError) Error() string {
-	tokens, err := []token32{e.max}, "\n"
+func (e *parseError[U]) Error() string {
+	tokens, err := []token32[U]{e.max}, "\n"
 	positions, p := make([]int, 2*len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p+1
@@ -424,7 +428,7 @@ func (e *parseError) Error() string {
 	return err
 }
 
-func (p *Peg) PrintSyntaxTree() {
+func (p *Peg[_]) PrintSyntaxTree() {
 	if p.Pretty {
 		p.tokens32.PrettyPrintSyntaxTree(p.Buffer)
 	} else {
@@ -432,17 +436,17 @@ func (p *Peg) PrintSyntaxTree() {
 	}
 }
 
-func (p *Peg) WriteSyntaxTree(w io.Writer) {
+func (p *Peg[_]) WriteSyntaxTree(w io.Writer) {
 	p.tokens32.WriteSyntaxTree(w, p.Buffer)
 }
 
-func (p *Peg) SprintSyntaxTree() string {
+func (p *Peg[_]) SprintSyntaxTree() string {
 	var b bytes.Buffer
 	p.WriteSyntaxTree(&b)
 	return b.String()
 }
 
-func (p *Peg) Execute() {
+func (p *Peg[_]) Execute() {
 	buffer, _buffer, text, begin, end := p.Buffer, p.buffer, "", 0, 0
 	for _, token := range p.Tokens() {
 		switch token.pegRule {
@@ -564,43 +568,43 @@ func (p *Peg) Execute() {
 	_, _, _, _, _ = buffer, _buffer, text, begin, end
 }
 
-func Pretty(pretty bool) func(*Peg) error {
-	return func(p *Peg) error {
+func Pretty[U Uint](pretty bool) func(*Peg[U]) error {
+	return func(p *Peg[U]) error {
 		p.Pretty = pretty
 		return nil
 	}
 }
 
-func Size(size int) func(*Peg) error {
-	return func(p *Peg) error {
-		p.tokens32 = tokens32{tree: make([]token32, 0, size)}
+func Size[U Uint](size int) func(*Peg[U]) error {
+	return func(p *Peg[U]) error {
+		p.tokens32 = tokens32[U]{tree: make([]token32[U], 0, size)}
 		return nil
 	}
 }
 
-func DisableMemoize() func(*Peg) error {
-	return func(p *Peg) error {
+func DisableMemoize[U Uint]() func(*Peg[U]) error {
+	return func(p *Peg[U]) error {
 		p.disableMemoize = true
 		return nil
 	}
 }
 
-type memo struct {
+type memo[U Uint] struct {
 	Matched bool
-	Partial []token32
+	Partial []token32[U]
 }
 
-type memoKey struct {
-	Rule     uint32
-	Position uint32
+type memoKey[U Uint] struct {
+	Rule     U
+	Position U
 }
 
-func (p *Peg) Init(options ...func(*Peg) error) error {
+func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 	var (
-		max                  token32
-		position, tokenIndex uint32
+		max                  token32[U]
+		position, tokenIndex U
 		buffer               []rune
-		memoization          map[memoKey]memo
+		memoization          map[memoKey[U]]memo[U]
 	)
 	for _, option := range options {
 		err := option(p)
@@ -609,9 +613,9 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		}
 	}
 	p.reset = func() {
-		max = token32{}
+		max = token32[U]{}
 		position, tokenIndex = 0, 0
-		memoization = make(map[memoKey]memo)
+		memoization = make(map[memoKey[U]]memo[U])
 		p.buffer = []rune(p.Buffer)
 		if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != endSymbol {
 			p.buffer = append(p.buffer, endSymbol)
@@ -630,41 +634,41 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		matches := p.rules[r]()
 		p.tokens32 = tree
 		if matches {
-			p.Trim(tokenIndex)
+			p.Trim(uint32(tokenIndex))
 			return nil
 		}
-		return &parseError{p, max}
+		return &parseError[U]{p, max}
 	}
 
-	add := func(rule pegRule, begin uint32) {
+	add := func(rule pegRule, begin U) {
 		tree.Add(rule, begin, position, tokenIndex)
 		tokenIndex++
 		if begin != position && position > max.end {
-			max = token32{rule, begin, position}
+			max = token32[U]{rule, begin, position}
 		}
 	}
 
-	memoize := func(rule uint32, begin uint32, tokenIndexStart uint32, matched bool) {
+	memoize := func(rule U, begin U, tokenIndexStart U, matched bool) {
 		if p.disableMemoize {
 			return
 		}
-		key := memoKey{rule, begin}
+		key := memoKey[U]{rule, begin}
 		if !matched {
-			memoization[key] = memo{Matched: false}
+			memoization[key] = memo[U]{Matched: false}
 		} else {
-			memoization[key] = memo{
+			memoization[key] = memo[U]{
 				Matched: true,
 				Partial: slices.Clone(tree.tree[tokenIndexStart:tokenIndex]),
 			}
 		}
 	}
 
-	memoizedResult := func(m memo) bool {
+	memoizedResult := func(m memo[U]) bool {
 		if !m.Matched {
 			return false
 		}
 		tree.tree = append(tree.tree[:tokenIndex], m.Partial...)
-		tokenIndex += uint32(len(m.Partial))
+		tokenIndex += U(len(m.Partial))
 		position = m.Partial[len(m.Partial)-1].end
 		if tree.tree[tokenIndex-1].begin != position && position > max.end {
 			max = tree.tree[tokenIndex-1]
@@ -684,7 +688,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 0 Grammar <- <(Header ('p' 'a' 'c' 'k' 'a' 'g' 'e') MustSpacing Identifier Action0 Import* ('t' 'y' 'p' 'e') MustSpacing Identifier Action1 ('P' 'e' 'g') Spacing Action Action2 Definition+ EndOfFile)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{0, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{0, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position0, tokenIndex0 := position, tokenIndex
@@ -1084,7 +1088,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 4 ImportName <- <('"' <((&('-') '-') | (&('.') '.') | (&('/') '/') | (&('_') '_') | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> '"' Action3)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{4, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{4, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position53, tokenIndex53 := position, tokenIndex
@@ -1169,7 +1173,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 6 Expression <- <((Sequence (Slash Sequence Action6)* (Slash Action7)?) / Action8)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{6, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{6, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position62, tokenIndex62 := position, tokenIndex
@@ -1224,7 +1228,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 7 Sequence <- <(Prefix (Prefix Action9)*)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{7, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{7, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position73, tokenIndex73 := position, tokenIndex
@@ -1257,7 +1261,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 8 Prefix <- <((And Action Action10) / (Not Action Action11) / ((&('!') (Not Suffix Action13)) | (&('&') (And Suffix Action12)) | (&('"' | '\'' | '(' | '.' | '<' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '[' | '_' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' | '{') Suffix)))> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{8, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{8, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position78, tokenIndex78 := position, tokenIndex
@@ -1331,7 +1335,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 9 Suffix <- <(Primary ((&('+') (Plus Action16)) | (&('*') (Star Action15)) | (&('?') (Question Action14)))?)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{9, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{9, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position88, tokenIndex88 := position, tokenIndex
@@ -1704,7 +1708,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 11 Identifier <- <(<(IdentStart IdentCont*)> Spacing)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{11, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{11, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position142, tokenIndex142 := position, tokenIndex
@@ -1756,7 +1760,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 12 IdentStart <- <((&('_') '_') | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{12, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{12, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position150, tokenIndex150 := position, tokenIndex
@@ -1793,7 +1797,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 16 Ranges <- <(!']' Range (!']' Range Action25)*)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{16, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{16, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position156, tokenIndex156 := position, tokenIndex
@@ -1846,7 +1850,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 17 DoubleRanges <- <(!(']' ']') DoubleRange (!(']' ']') DoubleRange Action26)*)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{17, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{17, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position163, tokenIndex163 := position, tokenIndex
@@ -1907,7 +1911,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 18 Range <- <((Char '-' Char Action27) / Char)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{18, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{18, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position170, tokenIndex170 := position, tokenIndex
@@ -1947,7 +1951,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 19 DoubleRange <- <((Char '-' Char Action28) / DoubleChar)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{19, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{19, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position175, tokenIndex175 := position, tokenIndex
@@ -1987,7 +1991,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 20 Char <- <(Escape / (!'\\' <.> Action29))> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{20, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{20, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position180, tokenIndex180 := position, tokenIndex
@@ -2034,7 +2038,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 21 DoubleChar <- <(Escape / (<([a-z] / [A-Z])> Action30) / (!'\\' <.> Action31))> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{21, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{21, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position187, tokenIndex187 := position, tokenIndex
@@ -2106,7 +2110,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 22 Escape <- <(('\\' ('a' / 'A') Action32) / ('\\' ('b' / 'B') Action33) / ('\\' ('e' / 'E') Action34) / ('\\' ('f' / 'F') Action35) / ('\\' ('n' / 'N') Action36) / ('\\' ('r' / 'R') Action37) / ('\\' ('t' / 'T') Action38) / ('\\' ('v' / 'V') Action39) / ('\\' '\'' Action40) / ('\\' '"' Action41) / ('\\' '[' Action42) / ('\\' ']' Action43) / ('\\' '-' Action44) / ('\\' ('0' ('x' / 'X')) <((&('A' | 'B' | 'C' | 'D' | 'E' | 'F') [A-F]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f') [a-f]) | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]))+> Action45) / ('\\' <([0-3] [0-7] [0-7])> Action46) / ('\\' <([0-7] [0-7]?)> Action47) / ('\\' '\\' Action48))> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{22, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{22, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position199, tokenIndex199 := position, tokenIndex
@@ -2531,7 +2535,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 23 LeftArrow <- <((('<' '-') / '←') Spacing)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{23, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{23, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position262, tokenIndex262 := position, tokenIndex
@@ -2570,7 +2574,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 24 Slash <- <('/' Spacing)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{24, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{24, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position266, tokenIndex266 := position, tokenIndex
@@ -2594,7 +2598,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 25 And <- <('&' Spacing)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{25, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{25, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position268, tokenIndex268 := position, tokenIndex
@@ -2618,7 +2622,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 26 Not <- <('!' Spacing)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{26, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{26, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position270, tokenIndex270 := position, tokenIndex
@@ -2654,7 +2658,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 33 SpaceComment <- <(Space / Comment)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{33, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{33, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position278, tokenIndex278 := position, tokenIndex
@@ -2726,7 +2730,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 34 Spacing <- <SpaceComment*> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{34, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{34, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position288, tokenIndex288 := position, tokenIndex
@@ -2749,7 +2753,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 35 MustSpacing <- <SpaceComment+> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{35, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{35, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position292, tokenIndex292 := position, tokenIndex
@@ -2781,7 +2785,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 37 Space <- <((&('\t') '\t') | (&(' ') ' ') | (&('\n' | '\r') EndOfLine))> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{37, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{37, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position297, tokenIndex297 := position, tokenIndex
@@ -2817,7 +2821,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 41 EndOfLine <- <(('\r' '\n') / '\n' / '\r')> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{41, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{41, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position303, tokenIndex303 := position, tokenIndex
@@ -2862,7 +2866,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		nil,
 		/* 43 Action <- <('{' <ActionBody*> '}' Spacing)> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{43, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{43, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position309, tokenIndex309 := position, tokenIndex
@@ -2904,7 +2908,7 @@ func (p *Peg) Init(options ...func(*Peg) error) error {
 		},
 		/* 44 ActionBody <- <((!('{' / '}') .) / ('{' ActionBody* '}'))> */
 		func() bool {
-			if memoized, ok := memoization[memoKey{44, position}]; ok {
+			if memoized, ok := memoization[memoKey[U]{44, position}]; ok {
 				return memoizedResult(memoized)
 			}
 			position314, tokenIndex314 := position, tokenIndex

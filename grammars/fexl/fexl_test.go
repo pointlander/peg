@@ -17,7 +17,7 @@ func TestFexl(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fexl := &Fexl{Buffer: string(buffer)}
+	fexl := &Fexl[uint32]{Buffer: string(buffer)}
 	err = fexl.Init()
 	if err != nil {
 		t.Fatal(err)

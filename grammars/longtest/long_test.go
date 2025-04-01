@@ -17,7 +17,7 @@ func TestLong(t *testing.T) {
 	}
 
 	expression := ""
-	long := &Long{Buffer: "\"" + expression + "\""}
+	long := &Long[uint32]{Buffer: "\"" + expression + "\""}
 	err := long.Init()
 	if err != nil {
 		t.Fatal(err)
