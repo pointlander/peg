@@ -55,69 +55,71 @@ type Uint interface {
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-type token32[U Uint] struct {
+type token[U Uint] struct {
 	pegRule
 	begin, end U
 }
 
-func (t *token32[_]) String() string {
+func (t *token[_]) String() string {
+	// \x1B[34m = blue
+	// \x1B[m   = normal (disable color)
 	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v", rul3s[t.pegRule], t.begin, t.end)
 }
 
 {{if .Ast}}
-type node32[U Uint] struct {
-	token32[U]
-	up, next *node32[U]
+type node[U Uint] struct {
+	token[U]
+	up, next *node[U]
 }
 
-func (node *node32[U]) print(w io.Writer, pretty bool, buffer string) {
-	var print func(node *node32[U], depth int)
-	print = func(node *node32[U], depth int) {
-		for node != nil {
+func (n *node[U]) print(w io.Writer, pretty bool, buffer string) {
+	var printFunc func(n *node[U], depth int)
+	printFunc = func(n *node[U], depth int) {
+		for n != nil {
 			for range depth {
 				fmt.Fprint(w, " ")
 			}
-			rule := rul3s[node.pegRule]
-			quote := strconv.Quote(string([]rune(buffer)[node.begin:node.end]))
+			rule := rul3s[n.pegRule]
+			quote := strconv.Quote(string([]rune(buffer)[n.begin:n.end]))
 			if !pretty {
 				fmt.Fprintf(w, "%v %v\n", rule, quote)
 			} else {
 				fmt.Fprintf(w, "\x1B[36m%v\x1B[m %v\n", rule, quote)
 			}
-			if node.up != nil {
-				print(node.up, depth + 1)
+			if n.up != nil {
+				print(n.up, depth+1)
 			}
-			node = node.next
+			n = n.next
 		}
 	}
-	print(node, 0)
+	printFunc(n, 0)
 }
 
-func (node *node32[_]) Print(w io.Writer, buffer string) {
-	node.print(w, false, buffer)
+func (n *node[_]) Print(w io.Writer, buffer string) {
+	n.print(w, false, buffer)
 }
 
-func (node *node32[_]) PrettyPrint(w io.Writer, buffer string) {
-	node.print(w, true, buffer)
+func (n *node[_]) PrettyPrint(w io.Writer, buffer string) {
+	n.print(w, true, buffer)
 }
 
-type tokens32[U Uint] struct {
-	tree		[]token32[U]
+type tokens[U Uint] struct {
+	tree []token[U]
 }
 
-func (t *tokens32[_]) Trim(length uint32) {
+func (t *tokens[_]) Trim(length uint32) {
 	t.tree = t.tree[:length]
 }
 
-func (t *tokens32[_]) Print() {
+func (t *tokens[_]) Print() {
 	for _, token := range t.tree {
 		fmt.Println(token.String())
 	}
 }
 
-func (t *tokens32[U]) AST() *node32[U] {
+func (t *tokens[U]) AST() *node[U] {
 	type element struct {
-		node *node32[U]
+		node *node[U]
 		down *element
 	}
 	tokens := t.Tokens()
@@ -126,7 +128,7 @@ func (t *tokens32[U]) AST() *node32[U] {
 		if token.begin == token.end {
 			continue
 		}
-		node := &node32[U]{token32: token}
+		node := &node[U]{token: token}
 		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
 			stack.node.next = node.up
 			node.up = stack.node
@@ -140,28 +142,30 @@ func (t *tokens32[U]) AST() *node32[U] {
 	return nil
 }
 
-func (t *tokens32[_]) PrintSyntaxTree(buffer string) {
+func (t *tokens[_]) PrintSyntaxTree(buffer string) {
 	t.AST().Print(os.Stdout, buffer)
 }
 
-func (t *tokens32[_]) WriteSyntaxTree(w io.Writer, buffer string) {
+func (t *tokens[_]) WriteSyntaxTree(w io.Writer, buffer string) {
 	t.AST().Print(w, buffer)
 }
 
-func (t *tokens32[_]) PrettyPrintSyntaxTree(buffer string) {
+func (t *tokens[_]) PrettyPrintSyntaxTree(buffer string) {
 	t.AST().PrettyPrint(os.Stdout, buffer)
 }
 
-func (t *tokens32[U]) Add(rule pegRule, begin, end, index U) {
+func (t *tokens[U]) Add(rule pegRule, begin, end, index U) {
 	tree, i := t.tree, int(index)
+	newToken := token[U]{pegRule: rule, begin: begin, end: end}
+
 	if i >= len(tree) {
-		t.tree = append(tree, token32[U]{pegRule: rule, begin: begin, end: end})
+		t.tree = append(tree, newToken)
 		return
 	}
-	tree[i] = token32[U]{pegRule: rule, begin: begin, end: end}
+	tree[i] = newToken
 }
 
-func (t *tokens32[U]) Tokens() []token32[U] {
+func (t *tokens[U]) Tokens() []token[U] {
 	return t.tree
 }
 {{end}}
@@ -176,7 +180,7 @@ type {{.StructName}}[U Uint] struct {
 	Pretty          bool
 {{if .Ast -}}
 	disableMemoize  bool
-	tokens32[U]
+	tokens[U]
 {{end -}}
 }
 
@@ -196,7 +200,7 @@ type textPositionMap map[int] textPosition
 
 func translatePositions(buffer []rune, positions []int) textPositionMap {
 	length, translations, j, line, symbol := len(positions), make(textPositionMap, len(positions)), 0, 1, 0
-	sort.Ints(positions)
+	slices.Sort(positions)
 
 	search: for i, c := range buffer {
 		if c == '\n' {line, symbol = line + 1, 0} else {symbol++}
@@ -212,11 +216,11 @@ func translatePositions(buffer []rune, positions []int) textPositionMap {
 
 type parseError[U Uint] struct {
 	p *{{.StructName}}[U]
-	max token32[U]
+	max token[U]
 }
 
 func (e *parseError[U]) Error() string {
-	tokens, err := []token32[U]{e.max}, "\n"
+	tokens, err := []token[U]{e.max}, "\n"
 	positions, p := make([]int, 2 * len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p + 1
@@ -242,14 +246,14 @@ func (e *parseError[U]) Error() string {
 {{if .Ast}}
 func (p *{{.StructName}}[_]) PrintSyntaxTree() {
 	if p.Pretty {
-		p.tokens32.PrettyPrintSyntaxTree(p.Buffer)
+		p.tokens.PrettyPrintSyntaxTree(p.Buffer)
 	} else {
-		p.tokens32.PrintSyntaxTree(p.Buffer)
+		p.tokens.PrintSyntaxTree(p.Buffer)
 	}
 }
 
 func (p *{{.StructName}}[_]) WriteSyntaxTree(w io.Writer) {
-	p.tokens32.WriteSyntaxTree(w, p.Buffer)
+	p.tokens.WriteSyntaxTree(w, p.Buffer)
 }
 
 func (p *{{.StructName}}[_]) SprintSyntaxTree() string {
@@ -288,7 +292,7 @@ func Pretty[U Uint](pretty bool) func(*{{.StructName}}[U]) error {
 {{if .Ast -}}
 func Size[U Uint](size int) func(*{{.StructName}}[U]) error {
 	return func(p *{{.StructName}}[U]) error {
-		p.tokens32 = tokens32[U]{tree: make([]token32[U], 0, size)}
+		p.tokens = tokens[U]{tree: make([]token[U], 0, size)}
 		return nil
 	}
 }
@@ -302,7 +306,7 @@ func DisableMemoize[U Uint]() func(*{{.StructName}}[U]) error {
 
 type memo[U Uint] struct {
 	Matched       bool
-	Partial       []token32[U]
+	Partial       []token[U]
 }
 
 type memoKey[U Uint] struct {
@@ -313,7 +317,7 @@ type memoKey[U Uint] struct {
 
 func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) error {
 	var (
-		max token32[U]
+		max token[U]
 		position, tokenIndex U
 		buffer []rune
 {{if .Ast -}}
@@ -332,7 +336,7 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 		}
 	}
 	p.reset = func() {
-		max = token32[U]{}
+		max = token[U]{}
 		position, tokenIndex = 0, 0
 {{if .Ast -}}
 		memoization = make(map[memoKey[U]]memo[U])
@@ -348,7 +352,7 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 
 	_rules := p.rules
 {{if .Ast -}}
-	tree := p.tokens32
+	tree := p.tokens
 {{end -}}
 	p.parse = func(rule ...int) error {
 		r := 1
@@ -357,7 +361,7 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 		}
 		matches := p.rules[r]()
 {{if .Ast -}}
-		p.tokens32 = tree
+		p.tokens = tree
 {{end -}}
 		if matches {
 {{if .Ast -}}
@@ -374,7 +378,7 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 {{end -}}
 		tokenIndex++
 		if begin != position && position > max.end {
-			max = token32[U]{rule, begin, position}
+			max = token[U]{rule, begin, position}
 		}
 	}
 
@@ -803,7 +807,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		t.AddImport("bytes")
 	}
 	t.AddImport("slices")
-	t.AddImport("sort")
 	t.AddImport("strconv")
 	t.EndSymbol = 0x110000
 	t.RulesCount++
