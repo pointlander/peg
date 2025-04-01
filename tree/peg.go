@@ -387,10 +387,10 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 		if !matched {
 			memoization[key] = memo[U]{Matched: false}
 		} else {
-			t := tree.tree[tokenIndexStart:tokenIndex]
-			tokenCopy := make([]token32[U], len(t))
-			copy(tokenCopy, t)
-			memoization[key] = memo[U]{Matched: true, Partial: tokenCopy}
+			memoization[key] = memo[U]{
+				Matched: true,
+				Partial: slices.Clone(tree.tree[tokenIndexStart:tokenIndex]),
+			}
 		}
 	}
 
@@ -802,6 +802,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		t.AddImport("os")
 		t.AddImport("bytes")
 	}
+	t.AddImport("slices")
 	t.AddImport("sort")
 	t.AddImport("strconv")
 	t.EndSymbol = 0x110000

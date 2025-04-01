@@ -18,6 +18,7 @@ import (
 	"github.com/pointlander/peg/tree"
 	"io"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 )
@@ -655,10 +656,10 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 		if !matched {
 			memoization[key] = memo[U]{Matched: false}
 		} else {
-			t := tree.tree[tokenIndexStart:tokenIndex]
-			tokenCopy := make([]token32[U], len(t))
-			copy(tokenCopy, t)
-			memoization[key] = memo[U]{Matched: true, Partial: tokenCopy}
+			memoization[key] = memo[U]{
+				Matched: true,
+				Partial: slices.Clone(tree.tree[tokenIndexStart:tokenIndex]),
+			}
 		}
 	}
 
