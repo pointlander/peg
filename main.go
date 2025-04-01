@@ -49,8 +49,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	p := &Peg{Tree: tree.New(*inline, *_switch, *noast), Buffer: string(buffer)}
-	_ = p.Init(Pretty(true), Size(1<<15))
+	p := &Peg[uint32]{Tree: tree.New(*inline, *_switch, *noast), Buffer: string(buffer)}
+	_ = p.Init(Pretty[uint32](true), Size[uint32](1<<15))
 	if err := p.Parse(); err != nil {
 		log.Fatal(err)
 	}

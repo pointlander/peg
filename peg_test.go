@@ -13,15 +13,15 @@ func TestCorrect(t *testing.T) {
 type T Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
+	p := &Peg[uint32]{Tree: tree.New(false, false, false), Buffer: buffer}
 	_ = p.Init()
 	err := p.Parse()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	p = &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	_ = p.Init(Size(1 << 15))
+	p = &Peg[uint32]{Tree: tree.New(false, false, false), Buffer: buffer}
+	_ = p.Init(Size[uint32](1 << 15))
 	err = p.Parse()
 	if err != nil {
 		t.Fatal(err)
@@ -33,8 +33,8 @@ func TestNoSpacePackage(t *testing.T) {
 type T Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	_ = p.Init(Size(1 << 15))
+	p := &Peg[uint32]{Tree: tree.New(false, false, false), Buffer: buffer}
+	_ = p.Init(Size[uint32](1 << 15))
 	err := p.Parse()
 	if err == nil {
 		t.Fatal("packagenospace was parsed without error")
@@ -47,8 +47,8 @@ package p
 typenospace Peg {}
 Grammar <- !.
 `
-	p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-	_ = p.Init(Size(1 << 15))
+	p := &Peg[uint32]{Tree: tree.New(false, false, false), Buffer: buffer}
+	_ = p.Init(Size[uint32](1 << 15))
 	err := p.Parse()
 	if err == nil {
 		t.Fatal("typenospace was parsed without error")
@@ -61,8 +61,8 @@ func TestSame(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := &Peg{Tree: tree.New(true, true, false), Buffer: string(buffer)}
-	_ = p.Init(Size(1 << 15))
+	p := &Peg[uint32]{Tree: tree.New(true, true, false), Buffer: string(buffer)}
+	_ = p.Init(Size[uint32](1 << 15))
 	if err = p.Parse(); err != nil {
 		t.Fatal(err)
 	}
@@ -111,8 +111,8 @@ Begin <- Begin 'x'
 	}
 
 	for i, buffer := range tt {
-		p := &Peg{Tree: tree.New(false, false, false), Buffer: buffer}
-		_ = p.Init(Size(1 << 15))
+		p := &Peg[uint32]{Tree: tree.New(false, false, false), Buffer: buffer}
+		_ = p.Init(Size[uint32](1 << 15))
 		if err := p.Parse(); err != nil {
 			t.Fatal(err)
 		}
@@ -141,8 +141,8 @@ type DiceExprParser Peg {
 
 Expr <- 'CJK' / '汉字' / 'test'
 `
-	p := &Peg{Tree: tree.New(false, true, false), Buffer: buffer}
-	_ = p.Init(Size(1 << 15))
+	p := &Peg[uint32]{Tree: tree.New(false, true, false), Buffer: buffer}
+	_ = p.Init(Size[uint32](1 << 15))
 	err := p.Parse()
 	if err != nil {
 		t.Fatal("cjk character test failed")
@@ -170,8 +170,8 @@ var pegFileContents = func(files []string) []string {
 func BenchmarkInitOnly(b *testing.B) {
 	for b.Loop() {
 		for _, peg := range pegFileContents {
-			p := &Peg{Tree: tree.New(true, true, false), Buffer: peg}
-			_ = p.Init(Size(1 << 15))
+			p := &Peg[uint32]{Tree: tree.New(true, true, false), Buffer: peg}
+			_ = p.Init(Size[uint32](1 << 15))
 		}
 	}
 }
@@ -181,10 +181,10 @@ func BenchmarkInitOnly(b *testing.B) {
 // benchmarker.
 // See https://stackoverflow.com/questions/37620251/golang-benchmarking-b-stoptimer-hangs-is-it-me
 func BenchmarkParseAndReset(b *testing.B) {
-	pegs := make([]*Peg, len(pegFileContents))
+	pegs := make([]*Peg[uint32], len(pegFileContents))
 	for i, content := range pegFileContents {
-		p := &Peg{Tree: tree.New(true, true, false), Buffer: content}
-		_ = p.Init(Size(1 << 15))
+		p := &Peg[uint32]{Tree: tree.New(true, true, false), Buffer: content}
+		_ = p.Init(Size[uint32](1 << 15))
 		pegs[i] = p
 	}
 
@@ -201,8 +201,8 @@ func BenchmarkParseAndReset(b *testing.B) {
 func BenchmarkInitAndParse(b *testing.B) {
 	for b.Loop() {
 		for _, peg := range pegFileContents {
-			p := &Peg{Tree: tree.New(true, true, false), Buffer: peg}
-			_ = p.Init(Size(1 << 15))
+			p := &Peg[uint32]{Tree: tree.New(true, true, false), Buffer: peg}
+			_ = p.Init(Size[uint32](1 << 15))
 			if err := p.Parse(); err != nil {
 				b.Fatal(err)
 			}
@@ -213,8 +213,8 @@ func BenchmarkInitAndParse(b *testing.B) {
 func BenchmarkInitParseAndReset(b *testing.B) {
 	for b.Loop() {
 		for _, peg := range pegFileContents {
-			p := &Peg{Tree: tree.New(true, true, false), Buffer: peg}
-			_ = p.Init(Size(1 << 15))
+			p := &Peg[uint32]{Tree: tree.New(true, true, false), Buffer: peg}
+			_ = p.Init(Size[uint32](1 << 15))
 			if err := p.Parse(); err != nil {
 				b.Fatal(err)
 			}

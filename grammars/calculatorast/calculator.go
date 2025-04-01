@@ -8,11 +8,11 @@ import (
 	"math/big"
 )
 
-func (c *Calculator) Eval() *big.Int {
+func (c *Calculator[_]) Eval() *big.Int {
 	return c.Rulee(c.AST())
 }
 
-func (c *Calculator) Rulee(node *node32) *big.Int {
+func (c *Calculator[U]) Rulee(node *node32[U]) *big.Int {
 	node = node.up
 	for node != nil {
 		switch node.pegRule {
@@ -24,7 +24,7 @@ func (c *Calculator) Rulee(node *node32) *big.Int {
 	return nil
 }
 
-func (c *Calculator) Rulee1(node *node32) *big.Int {
+func (c *Calculator[U]) Rulee1(node *node32[U]) *big.Int {
 	node = node.up
 	var a *big.Int
 	for node != nil {
@@ -45,7 +45,7 @@ func (c *Calculator) Rulee1(node *node32) *big.Int {
 	return a
 }
 
-func (c *Calculator) Rulee2(node *node32) *big.Int {
+func (c *Calculator[U]) Rulee2(node *node32[U]) *big.Int {
 	node = node.up
 	var a *big.Int
 	for node != nil {
@@ -70,7 +70,7 @@ func (c *Calculator) Rulee2(node *node32) *big.Int {
 	return a
 }
 
-func (c *Calculator) Rulee3(node *node32) *big.Int {
+func (c *Calculator[U]) Rulee3(node *node32[U]) *big.Int {
 	node = node.up
 	var a *big.Int
 	for node != nil {
@@ -87,7 +87,7 @@ func (c *Calculator) Rulee3(node *node32) *big.Int {
 	return a
 }
 
-func (c *Calculator) Rulee4(node *node32) *big.Int {
+func (c *Calculator[U]) Rulee4(node *node32[U]) *big.Int {
 	node = node.up
 	minus := false
 	for node != nil {
@@ -106,7 +106,7 @@ func (c *Calculator) Rulee4(node *node32) *big.Int {
 	return nil
 }
 
-func (c *Calculator) Rulevalue(node *node32) *big.Int {
+func (c *Calculator[U]) Rulevalue(node *node32[U]) *big.Int {
 	node = node.up
 	for node != nil {
 		switch node.pegRule {
@@ -122,7 +122,7 @@ func (c *Calculator) Rulevalue(node *node32) *big.Int {
 	return nil
 }
 
-func (c *Calculator) Rulesub(node *node32) *big.Int {
+func (c *Calculator[U]) Rulesub(node *node32[U]) *big.Int {
 	node = node.up
 	for node != nil {
 		switch node.pegRule {

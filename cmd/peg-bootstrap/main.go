@@ -20,8 +20,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	p := &Peg{Tree: tree.New(false, false, false), Buffer: string(buffer)}
-	p.Init(Pretty(true), Size(1<<15))
+	p := &Peg[uint32]{Tree: tree.New(false, false, false), Buffer: string(buffer)}
+	p.Init(Pretty[uint32](true), Size[uint32](1<<15))
 	if err := p.Parse(); err != nil {
 		log.Fatal(err)
 	}
