@@ -154,11 +154,13 @@ func (t *tokens[_]) PrettyPrintSyntaxTree(buffer string) {
 
 func (t *tokens[U]) Add(rule pegRule, begin, end, index U) {
 	tree, i := t.tree, int(index)
+	newToken := token[U]{pegRule: rule, begin: begin, end: end}
+
 	if i >= len(tree) {
-		t.tree = append(tree, token[U]{pegRule: rule, begin: begin, end: end})
+		t.tree = append(tree, newToken)
 		return
 	}
-	tree[i] = token[U]{pegRule: rule, begin: begin, end: end}
+	tree[i] = newToken
 }
 
 func (t *tokens[U]) Tokens() []token[U] {
