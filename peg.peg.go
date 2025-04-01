@@ -253,8 +253,8 @@ type node32[U Uint] struct {
 }
 
 func (node *node32[U]) print(w io.Writer, pretty bool, buffer string) {
-	var print func(node *node32[U], depth int)
-	print = func(node *node32[U], depth int) {
+	var printFunc func(node *node32[U], depth int)
+	printFunc = func(node *node32[U], depth int) {
 		for node != nil {
 			for range depth {
 				fmt.Fprint(w, " ")
@@ -272,7 +272,7 @@ func (node *node32[U]) print(w io.Writer, pretty bool, buffer string) {
 			node = node.next
 		}
 	}
-	print(node, 0)
+	printFunc(node, 0)
 }
 
 func (node *node32[_]) Print(w io.Writer, buffer string) {
