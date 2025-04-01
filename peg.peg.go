@@ -238,17 +238,17 @@ type Uint interface {
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-type token32[U Uint] struct {
+type token[U Uint] struct {
 	pegRule
 	begin, end U
 }
 
-func (t *token32[_]) String() string {
+func (t *token[_]) String() string {
 	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v", rul3s[t.pegRule], t.begin, t.end)
 }
 
 type node32[U Uint] struct {
-	token32[U]
+	token[U]
 	up, next *node32[U]
 }
 
@@ -284,7 +284,7 @@ func (node *node32[_]) PrettyPrint(w io.Writer, buffer string) {
 }
 
 type tokens32[U Uint] struct {
-	tree []token32[U]
+	tree []token[U]
 }
 
 func (t *tokens32[_]) Trim(length uint32) {
@@ -308,7 +308,7 @@ func (t *tokens32[U]) AST() *node32[U] {
 		if token.begin == token.end {
 			continue
 		}
-		node := &node32[U]{token32: token}
+		node := &node32[U]{token: token}
 		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
 			stack.node.next = node.up
 			node.up = stack.node
@@ -337,13 +337,13 @@ func (t *tokens32[_]) PrettyPrintSyntaxTree(buffer string) {
 func (t *tokens32[U]) Add(rule pegRule, begin, end, index U) {
 	tree, i := t.tree, int(index)
 	if i >= len(tree) {
-		t.tree = append(tree, token32[U]{pegRule: rule, begin: begin, end: end})
+		t.tree = append(tree, token[U]{pegRule: rule, begin: begin, end: end})
 		return
 	}
-	tree[i] = token32[U]{pegRule: rule, begin: begin, end: end}
+	tree[i] = token[U]{pegRule: rule, begin: begin, end: end}
 }
 
-func (t *tokens32[U]) Tokens() []token32[U] {
+func (t *tokens32[U]) Tokens() []token[U] {
 	return t.tree
 }
 
@@ -401,11 +401,11 @@ search:
 
 type parseError[U Uint] struct {
 	p   *Peg[U]
-	max token32[U]
+	max token[U]
 }
 
 func (e *parseError[U]) Error() string {
-	tokens, err := []token32[U]{e.max}, "\n"
+	tokens, err := []token[U]{e.max}, "\n"
 	positions, p := make([]int, 2*len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p+1
@@ -577,7 +577,7 @@ func Pretty[U Uint](pretty bool) func(*Peg[U]) error {
 
 func Size[U Uint](size int) func(*Peg[U]) error {
 	return func(p *Peg[U]) error {
-		p.tokens32 = tokens32[U]{tree: make([]token32[U], 0, size)}
+		p.tokens32 = tokens32[U]{tree: make([]token[U], 0, size)}
 		return nil
 	}
 }
@@ -591,7 +591,7 @@ func DisableMemoize[U Uint]() func(*Peg[U]) error {
 
 type memo[U Uint] struct {
 	Matched bool
-	Partial []token32[U]
+	Partial []token[U]
 }
 
 type memoKey[U Uint] struct {
@@ -601,7 +601,7 @@ type memoKey[U Uint] struct {
 
 func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 	var (
-		max                  token32[U]
+		max                  token[U]
 		position, tokenIndex U
 		buffer               []rune
 		memoization          map[memoKey[U]]memo[U]
@@ -613,7 +613,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 		}
 	}
 	p.reset = func() {
-		max = token32[U]{}
+		max = token[U]{}
 		position, tokenIndex = 0, 0
 		memoization = make(map[memoKey[U]]memo[U])
 		p.buffer = []rune(p.Buffer)
@@ -644,7 +644,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 		tree.Add(rule, begin, position, tokenIndex)
 		tokenIndex++
 		if begin != position && position > max.end {
-			max = token32[U]{rule, begin, position}
+			max = token[U]{rule, begin, position}
 		}
 	}
 
