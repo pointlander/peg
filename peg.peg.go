@@ -19,7 +19,6 @@ import (
 	"io"
 	"os"
 	"slices"
-	"sort"
 	"strconv"
 )
 
@@ -376,7 +375,7 @@ type textPositionMap map[int]textPosition
 
 func translatePositions(buffer []rune, positions []int) textPositionMap {
 	length, translations, j, line, symbol := len(positions), make(textPositionMap, len(positions)), 0, 1, 0
-	sort.Ints(positions)
+	slices.Sort(positions)
 
 search:
 	for i, c := range buffer {
