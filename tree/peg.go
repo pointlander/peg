@@ -122,9 +122,9 @@ func (t *tokens[U]) AST() *node[U] {
 		node *node[U]
 		down *element
 	}
-	tokens := t.Tokens()
+	tokenSlice := t.Tokens()
 	var stack *element
-	for _, token := range tokens {
+	for _, token := range tokenSlice {
 		if token.begin == token.end {
 			continue
 		}
@@ -216,28 +216,28 @@ func translatePositions(buffer []rune, positions []int) textPositionMap {
 
 type parseError[U Uint] struct {
 	p *{{.StructName}}[U]
-	max token[U]
+	maxToken token[U]
 }
 
 func (e *parseError[U]) Error() string {
-	tokens, err := []token[U]{e.max}, "\n"
-	positions, p := make([]int, 2 * len(tokens)), 0
-	for _, token := range tokens {
-		positions[p], p = int(token.begin), p + 1
-		positions[p], p = int(token.end), p + 1
+	tokenSlice, err := []token[U]{e.maxToken}, "\n"
+	positions, p := make([]int, 2*len(tokenSlice)), 0
+	for _, t := range tokenSlice {
+		positions[p], p = int(t.begin), p+1
+		positions[p], p = int(t.end), p+1
 	}
 	translations := translatePositions(e.p.buffer, positions)
 	format := "parse error near %v (line %v symbol %v - line %v symbol %v):\n%v\n"
 	if e.p.Pretty {
 		format = "parse error near \x1B[34m%v\x1B[m (line %v symbol %v - line %v symbol %v):\n%v\n"
 	}
-	for _, token := range tokens {
-		begin, end := int(token.begin), int(token.end)
+	for _, t := range tokenSlice {
+		begin, end := int(t.begin), int(t.end)
 		err += fmt.Sprintf(format,
-                         rul3s[token.pegRule],
-                         translations[begin].line, translations[begin].symbol,
-                         translations[end].line, translations[end].symbol,
-                         strconv.Quote(string(e.p.buffer[begin:end])))
+			rul3s[t.pegRule],
+			translations[begin].line, translations[begin].symbol,
+			translations[end].line, translations[end].symbol,
+			strconv.Quote(string(e.p.buffer[begin:end])))
 	}
 
 	return err
@@ -265,11 +265,11 @@ func (p *{{.StructName}}[_]) SprintSyntaxTree() string {
 {{if .HasActions}}
 func (p *{{.StructName}}[_]) Execute() {
 	buffer, _buffer, text, begin, end := p.Buffer, p.buffer, "", 0, 0
-	for _, token := range p.Tokens() {
-		switch (token.pegRule) {
+	for _, t := range p.Tokens() {
+		switch t.pegRule {
 		{{if .HasPush}}
 		case rulePegText:
-			begin, end = int(token.begin), int(token.end)
+			begin, end = int(t.begin), int(t.end)
 			text = string(_buffer[begin:end])
 		{{end}}
 		{{range .Actions}}case ruleAction{{.GetID}}:
@@ -317,11 +317,11 @@ type memoKey[U Uint] struct {
 
 func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) error {
 	var (
-		max token[U]
+		maxToken             token[U]
 		position, tokenIndex U
-		buffer []rune
+		buffer               []rune
 {{if .Ast -}}
-		memoization map[memoKey[U]]memo[U]
+		memoization          map[memoKey[U]]memo[U]
 {{end -}}
 {{if not .Ast -}}
 {{if .HasPush -}}
@@ -336,7 +336,7 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 		}
 	}
 	p.reset = func() {
-		max = token[U]{}
+		maxToken = token[U]{}
 		position, tokenIndex = 0, 0
 {{if .Ast -}}
 		memoization = make(map[memoKey[U]]memo[U])
@@ -369,7 +369,7 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 {{end -}}
 			return nil
 		}
-		return &parseError[U]{p, max}
+		return &parseError[U]{p, maxToken}
 	}
 
 	add := func(rule pegRule, begin U) {
@@ -377,8 +377,8 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 		tree.Add(rule, begin, position, tokenIndex)
 {{end -}}
 		tokenIndex++
-		if begin != position && position > max.end {
-			max = token[U]{rule, begin, position}
+		if begin != position && position > maxToken.end {
+			maxToken = token[U]{rule, begin, position}
 		}
 	}
 
@@ -405,8 +405,8 @@ func (p *{{.StructName}}[U]) Init(options ...func(*{{.StructName}}[U]) error) er
 		tree.tree = append(tree.tree[:tokenIndex], m.Partial...)
 		tokenIndex += U(len(m.Partial))
 		position = m.Partial[len(m.Partial)-1].end
-		if tree.tree[tokenIndex-1].begin != position && position > max.end {
-			max = tree.tree[tokenIndex-1]
+		if tree.tree[tokenIndex-1].begin != position && position > maxToken.end {
+			maxToken = tree.tree[tokenIndex-1]
 		}
 		return true
 	}
