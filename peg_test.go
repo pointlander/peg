@@ -176,10 +176,26 @@ func BenchmarkInitOnly(b *testing.B) {
 	}
 }
 
-// Only measuring parse because enclosing peg.Reset() with
-// b.StopTimer() and b.StartTimer() is too fast for the
-// benchmarker.
-// See https://stackoverflow.com/questions/37620251/golang-benchmarking-b-stoptimer-hangs-is-it-me
+func BenchmarkParse(b *testing.B) {
+	pegs := make([]*Peg[uint32], len(pegFileContents))
+	for i, content := range pegFileContents {
+		p := &Peg[uint32]{Tree: tree.New(true, true, false), Buffer: content}
+		_ = p.Init(Size[uint32](1 << 15))
+		pegs[i] = p
+	}
+
+	for b.Loop() {
+		for _, peg := range pegs {
+			if err := peg.Parse(); err != nil {
+				b.Fatal(err)
+			}
+			b.StopTimer()
+			peg.Reset()
+			b.StartTimer()
+		}
+	}
+}
+
 func BenchmarkParseAndReset(b *testing.B) {
 	pegs := make([]*Peg[uint32], len(pegFileContents))
 	for i, content := range pegFileContents {
