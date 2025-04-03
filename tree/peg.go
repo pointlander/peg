@@ -199,17 +199,29 @@ type textPosition struct {
 type textPositionMap map[int] textPosition
 
 func translatePositions(buffer []rune, positions []int) textPositionMap {
-	length, translations, j, line, symbol := len(positions), make(textPositionMap, len(positions)), 0, 1, 0
+	length := len(positions)
+	translations := make(textPositionMap, length)
+	posIdx := 0
+	line := 1
+	symbol := 0
+
 	slices.Sort(positions)
 
-	search: for i, c := range buffer {
-		if c == '\n' {line, symbol = line + 1, 0} else {symbol++}
-		if i == positions[j] {
-			translations[positions[j]] = textPosition{line, symbol}
-			for j++; j < length; j++ {if i != positions[j] {continue search}}
-			break search
+	for i, c := range buffer {
+		if c == '\n' {
+			line, symbol = line+1, 0
+		} else {
+			symbol++
 		}
- 	}
+		if i == positions[posIdx] {
+			translations[positions[posIdx]] = textPosition{line, symbol}
+			for posIdx++; posIdx < length; posIdx++ {
+				if i == positions[posIdx] {
+					return translations
+				}
+			}
+		}
+	}
 
 	return translations
 }
