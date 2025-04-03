@@ -777,31 +777,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	}
 
 	var buffer bytes.Buffer
-	defer func() {
-		if t.Strict && werr != nil && err == nil {
-			// Treat warnings as errors.
-			err = werr
-		}
-		if !t.Strict && werr != nil {
-			// Display warnings.
-			_, _ = fmt.Fprintln(os.Stderr, werr)
-		}
-		if err != nil {
-			return
-		}
-		fileSet := token.NewFileSet()
-		code, err := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
-		if err != nil {
-			_, _ = buffer.WriteTo(out)
-			return
-		}
-		formatter := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}
-		err = formatter.Fprint(out, fileSet, code)
-		if err != nil {
-			_, _ = buffer.WriteTo(out)
-			return
-		}
-	}()
 
 	_print := func(format string, a ...any) { _, _ = fmt.Fprintf(&buffer, format, a...) }
 	printSave := func(n uint) { _print("\n   position%d, tokenIndex%d := position, tokenIndex", n, n) }
@@ -1249,5 +1224,30 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	_print("\n }\n p.rules = _rules")
 	_print("\n return nil")
 	_print("\n}\n")
+
+	if t.Strict && werr != nil {
+		// Treat warnings as errors.
+		err = werr
+	}
+	if !t.Strict && werr != nil {
+		// Display warnings.
+		_, _ = fmt.Fprintln(os.Stderr, werr)
+	}
+	if err != nil {
+		return
+	}
+	fileSet := token.NewFileSet()
+	code, err := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
+	if err != nil {
+		_, _ = buffer.WriteTo(out)
+		return
+	}
+	formatter := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}
+	err = formatter.Fprint(out, fileSet, code)
+	if err != nil {
+		_, _ = buffer.WriteTo(out)
+		return
+	}
+
 	return nil
 }
