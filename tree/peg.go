@@ -422,11 +422,9 @@ func (t *Tree) checkRecursion(n *node, ruleReached []bool) bool {
 		}
 		return true
 	case TypeSequence:
-		if slices.ContainsFunc(n.Slice(), func(n *node) bool {
+		return slices.ContainsFunc(n.Slice(), func(n *node) bool {
 			return t.checkRecursion(n, ruleReached)
-		}) {
-			return true
-		}
+		})
 	case TypeName:
 		return t.checkRecursion(t.Rules[n.String()], ruleReached)
 	case TypePlus, TypePush, TypeImplicitPush:
