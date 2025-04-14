@@ -376,10 +376,10 @@ func escape(c string) string {
 	}
 }
 
-func (t *Tree) countRules(node *node, ruleReached []bool) {
-	switch node.GetType() {
+func (t *Tree) countRules(n *node, ruleReached []bool) {
+	switch n.GetType() {
 	case TypeRule:
-		name, id := node.String(), node.GetID()
+		name, id := n.String(), n.GetID()
 		if count, ok := t.rulesCount[name]; ok {
 			t.rulesCount[name] = count + 1
 		} else {
@@ -389,14 +389,14 @@ func (t *Tree) countRules(node *node, ruleReached []bool) {
 			return
 		}
 		ruleReached[id] = true
-		t.countRules(node.Front(), ruleReached)
+		t.countRules(n.Front(), ruleReached)
 	case TypeName:
-		t.countRules(t.Rules[node.String()], ruleReached)
+		t.countRules(t.Rules[n.String()], ruleReached)
 	case TypeImplicitPush, TypePush:
-		t.countRules(node.Front(), ruleReached)
+		t.countRules(n.Front(), ruleReached)
 	case TypeAlternate, TypeUnorderedAlternate, TypeSequence,
 		TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
-		for _, element := range node.Slice() {
+		for _, element := range n.Slice() {
 			t.countRules(element, ruleReached)
 		}
 	}
@@ -463,7 +463,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	countsByRule := make([]*[TypeLast]uint, t.RulesCount)
 	{
 		var rule *node
-		var link func(countsForRule *[TypeLast]uint, node *node)
+		var link func(countsForRule *[TypeLast]uint, n *node)
 		link = func(countsForRule *[TypeLast]uint, n *node) {
 			nodeType := n.GetType()
 			id := counts[nodeType]
@@ -530,26 +530,26 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			}
 		}
 		/* first pass */
-		for _, node := range t.Slice() {
-			switch node.GetType() {
+		for _, n := range t.Slice() {
+			switch n.GetType() {
 			case TypePackage:
-				t.PackageName = node.String()
+				t.PackageName = n.String()
 			case TypeImport:
-				t.Imports = append(t.Imports, node.String())
+				t.Imports = append(t.Imports, n.String())
 			case TypePeg:
-				t.StructName = node.String()
-				t.StructVariables = node.Front().String()
+				t.StructName = n.String()
+				t.StructVariables = n.Front().String()
 			case TypeRule:
-				if _, ok := t.Rules[node.String()]; !ok {
-					expression := node.Front()
+				if _, ok := t.Rules[n.String()]; !ok {
+					expression := n.Front()
 					cp := expression.Copy()
 					expression.Init()
 					expression.SetType(TypeImplicitPush)
 					expression.PushBack(cp)
-					expression.PushBack(node.Copy())
+					expression.PushBack(n.Copy())
 
-					t.Rules[node.String()] = node
-					t.RuleNames = append(t.RuleNames, node)
+					t.Rules[n.String()] = n
+					t.RuleNames = append(t.RuleNames, n)
 				}
 			}
 		}
@@ -557,12 +557,12 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		slices.Sort(t.Imports)
 
 		/* second pass */
-		for _, node := range t.Slice() {
-			if node.GetType() == TypeRule {
-				rule = node
+		for _, n := range t.Slice() {
+			if n.GetType() == TypeRule {
+				rule = n
 				counts := [TypeLast]uint{}
-				countsByRule[node.GetID()] = &counts
-				link(&counts, node)
+				countsByRule[n.GetID()] = &counts
+				link(&counts, n)
 			}
 		}
 	}
@@ -575,9 +575,9 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	go func() {
 		defer wg.Done()
 		ruleReached := make([]bool, t.RulesCount)
-		for _, node := range t.Slice() {
-			if node.GetType() == TypeRule {
-				t.countRules(node, ruleReached)
+		for _, n := range t.Slice() {
+			if n.GetType() == TypeRule {
+				t.countRules(n, ruleReached)
 				break
 			}
 		}
