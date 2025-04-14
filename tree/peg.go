@@ -236,6 +236,7 @@ type Tree struct {
 	node
 	inline, _switch, Ast bool
 	Strict               bool
+	werr                 error
 
 	Generator       string
 	RuleNames       []*node
@@ -401,6 +402,51 @@ func (t *Tree) countRules(node *node, ruleReached []bool) {
 	}
 }
 
+func (t *Tree) checkRecursion(n *node, ruleReached []bool) bool {
+	switch n.GetType() {
+	case TypeRule:
+		id := n.GetID()
+		if ruleReached[id] {
+			t.warn(fmt.Errorf("possible infinite left recursion in rule '%v'", n))
+			return false
+		}
+		ruleReached[id] = true
+		consumes := t.checkRecursion(n.Front(), ruleReached)
+		ruleReached[id] = false
+		return consumes
+	case TypeAlternate:
+		for _, element := range n.Slice() {
+			if !t.checkRecursion(element, ruleReached) {
+				return false
+			}
+		}
+		return true
+	case TypeSequence:
+		if slices.ContainsFunc(n.Slice(), func(n *node) bool {
+			return t.checkRecursion(n, ruleReached)
+		}) {
+			return true
+		}
+	case TypeName:
+		return t.checkRecursion(t.Rules[n.String()], ruleReached)
+	case TypePlus, TypePush, TypeImplicitPush:
+		return t.checkRecursion(n.Front(), ruleReached)
+	case TypeCharacter, TypeString:
+		return len(n.String()) > 0
+	case TypeDot, TypeRange:
+		return true
+	}
+	return false
+}
+
+func (t *Tree) warn(e error) {
+	if t.werr == nil {
+		t.werr = fmt.Errorf("warning: %w", e)
+		return
+	}
+	t.werr = fmt.Errorf("%w\nwarning: %w", t.werr, e)
+}
+
 func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	t.AddImport("fmt")
 	if t.Ast {
@@ -414,15 +460,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	t.RulesCount++
 
 	t.Generator = strings.Join(slices.Concat([]string{"peg"}, args[1:]), " ")
-
-	var werr error
-	warn := func(e error) {
-		if werr == nil {
-			werr = fmt.Errorf("warning: %w", e)
-			return
-		}
-		werr = fmt.Errorf("%w\nwarning: %w", werr, e)
-	}
 
 	counts := [TypeLast]uint{}
 	countsByRule := make([]*[TypeLast]uint, t.RulesCount)
@@ -557,45 +594,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 	go func() {
 		defer wg.Done()
-		var checkRecursion func(node *node) bool
 		ruleReached := make([]bool, t.RulesCount)
-		checkRecursion = func(node *node) bool {
-			switch node.GetType() {
-			case TypeRule:
-				id := node.GetID()
-				if ruleReached[id] {
-					warn(fmt.Errorf("possible infinite left recursion in rule '%v'", node))
-					return false
-				}
-				ruleReached[id] = true
-				consumes := checkRecursion(node.Front())
-				ruleReached[id] = false
-				return consumes
-			case TypeAlternate:
-				for _, element := range node.Slice() {
-					if !checkRecursion(element) {
-						return false
-					}
-				}
-				return true
-			case TypeSequence:
-				if slices.ContainsFunc(node.Slice(), checkRecursion) {
-					return true
-				}
-			case TypeName:
-				return checkRecursion(t.Rules[node.String()])
-			case TypePlus, TypePush, TypeImplicitPush:
-				return checkRecursion(node.Front())
-			case TypeCharacter, TypeString:
-				return len(node.String()) > 0
-			case TypeDot, TypeRange:
-				return true
-			}
-			return false
-		}
-		for _, node := range t.Slice() {
-			if node.GetType() == TypeRule {
-				checkRecursion(node)
+		for _, n := range t.Slice() {
+			if n.GetType() == TypeRule {
+				t.checkRecursion(n, ruleReached)
 			}
 		}
 	}()
@@ -888,7 +890,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		case TypeComment:
 		case TypeNil:
 		default:
-			warn(fmt.Errorf("illegal node type: %v", n.GetType()))
+			t.warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
 	}
 	dryCompile := true
@@ -896,7 +898,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	compile = func(n *node, ko uint) (labelLast bool) {
 		switch n.GetType() {
 		case TypeRule:
-			warn(fmt.Errorf("internal error #1 (%v)", n))
+			t.warn(fmt.Errorf("internal error #1 (%v)", n))
 		case TypeDot:
 			if n.ParentDetect() {
 				break
@@ -1121,7 +1123,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		case TypeComment:
 		case TypeNil:
 		default:
-			warn(fmt.Errorf("illegal node type: %v", n.GetType()))
+			t.warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
 		return labelLast
 	}
@@ -1175,7 +1177,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		expression := element.Front()
 		if implicit := expression.Front(); expression.GetType() == TypeNil || implicit.GetType() == TypeNil {
 			if element.String() != "PegText" {
-				warn(fmt.Errorf("rule '%v' used but not defined", element))
+				t.warn(fmt.Errorf("rule '%v' used but not defined", element))
 			}
 			_print("\n  nil,")
 			continue
@@ -1186,7 +1188,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		printRule(element)
 		_print(" */")
 		if count, ok := t.rulesCount[element.String()]; !ok {
-			warn(fmt.Errorf("rule '%v' defined but not used", element))
+			t.warn(fmt.Errorf("rule '%v' defined but not used", element))
 			_print("\n  nil,")
 			continue
 		} else if t.inline && count == 1 && ko != 0 {
@@ -1220,13 +1222,13 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	_print("\n return nil")
 	_print("\n}\n")
 
-	if t.Strict && werr != nil {
+	if t.Strict && t.werr != nil {
 		// Treat warnings as errors.
-		err = werr
+		err = t.werr
 	}
-	if !t.Strict && werr != nil {
+	if !t.Strict && t.werr != nil {
 		// Display warnings.
-		_, _ = fmt.Fprintln(os.Stderr, werr)
+		_, _ = fmt.Fprintln(os.Stderr, t.werr)
 	}
 	if err != nil {
 		return
