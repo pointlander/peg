@@ -472,7 +472,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			switch nodeType {
 			case TypeAction:
 				n.SetID(int(id))
-				cp, name := n.Copy(), fmt.Sprintf("Action%v", id)
+				cp := n.Copy()
+				name := fmt.Sprintf("Action%v", id)
 				t.Actions = append(t.Actions, cp)
 				n.Init()
 				n.SetType(TypeName)
@@ -506,7 +507,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					countsByRule = append(countsByRule, &[TypeLast]uint{})
 				}
 			case TypePush:
-				cp, name := rule.Copy(), "PegText"
+				cp := rule.Copy()
+				name := "PegText"
 				cp.SetString(name)
 				if _, ok := t.Rules[name]; !ok {
 					emptyRule := &node{Type: TypeRule, string: name, id: t.RulesCount}
@@ -604,10 +606,13 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 	if t._switch {
 		var optimizeAlternates func(node *node) (consumes bool, s *set.Set)
-		cache, firstPass := make([]struct {
-			reached, consumes bool
-			s                 *set.Set
-		}, t.RulesCount), true
+		cache := make([]struct {
+			reached  bool
+			consumes bool
+			s        *set.Set
+		}, t.RulesCount)
+
+		firstPass := true
 		for i := range cache {
 			cache[i].s = set.NewSet()
 		}
@@ -618,13 +623,15 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			case TypeRule:
 				cache := &cache[n.GetID()]
 				if cache.reached {
-					consumes, s = cache.consumes, cache.s
+					consumes = cache.consumes
+					s = cache.s
 					return
 				}
 
 				cache.reached = true
 				consumes, s = optimizeAlternates(n.Front())
-				cache.consumes, cache.s = consumes, s
+				cache.consumes = consumes
+				cache.s = s
 			case TypeName:
 				consumes, s = optimizeAlternates(t.Rules[n.String()])
 			case TypeDot:
@@ -644,10 +651,11 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				s.AddRange(lower, upper)
 			case TypeAlternate:
 				consumes = true
-				properties, c := make([]struct {
+				properties := make([]struct {
 					intersects bool
 					s          *set.Set
-				}, n.Len()), 0
+				}, n.Len())
+				c := 0
 				for i := range properties {
 					properties[i].s = set.NewSet()
 				}
@@ -720,9 +728,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					n.PushBack(unordered)
 				}
 			case TypeSequence:
-				classes, elements := make([]struct {
+				classes := make([]struct {
 					s *set.Set
-				}, n.Len()), n.Slice()
+				}, n.Len())
+				elements := n.Slice()
 				for i := range classes {
 					classes[i].s = set.NewSet()
 				}
@@ -1003,7 +1012,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printEnd()
 			labelLast = printLabel(ok)
 		case TypeUnorderedAlternate:
-			done, ok := ko, label
+			done := ko
+			ok := label
 			label++
 			printBegin()
 			_print("\n   switch buffer[position] {")
@@ -1150,7 +1160,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		}
 		compile(expression, ko)
 	}
-	_print, label = printTemp, 0
+	_print = printTemp
+	label = 0
 	dryCompile = false
 
 	/* now for the real compile pass */
