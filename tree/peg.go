@@ -363,18 +363,6 @@ func (t *Tree) AddPush()    { t.addFix(TypePush) }
 
 func (t *Tree) AddPeg(text string) { t.PushFront(&node{Type: TypePeg, string: text}) }
 
-func join(tasks []func()) {
-	wg := sync.WaitGroup{}
-	wg.Add(len(tasks))
-	for _, task := range tasks {
-		go func(task func()) {
-			task()
-			wg.Done()
-		}(task)
-	}
-	wg.Wait()
-}
-
 func escape(c string) string {
 	switch c {
 	case "'":
@@ -384,6 +372,32 @@ func escape(c string) string {
 	default:
 		c = strconv.Quote(c)
 		return c[1 : len(c)-1]
+	}
+}
+
+func (t *Tree) countRules(node *node, ruleReached []bool) {
+	switch node.GetType() {
+	case TypeRule:
+		name, id := node.String(), node.GetID()
+		if count, ok := t.rulesCount[name]; ok {
+			t.rulesCount[name] = count + 1
+		} else {
+			t.rulesCount[name] = 1
+		}
+		if ruleReached[id] {
+			return
+		}
+		ruleReached[id] = true
+		t.countRules(node.Front(), ruleReached)
+	case TypeName:
+		t.countRules(t.Rules[node.String()], ruleReached)
+	case TypeImplicitPush, TypePush:
+		t.countRules(node.Front(), ruleReached)
+	case TypeAlternate, TypeUnorderedAlternate, TypeSequence,
+		TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
+		for _, element := range node.Slice() {
+			t.countRules(element, ruleReached)
+		}
 	}
 }
 
@@ -519,93 +533,74 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	}
 
 	usage := [TypeLast]uint{}
-	join([]func(){
-		func() {
-			var countRules func(node *node)
-			ruleReached := make([]bool, t.RulesCount)
-			countRules = func(node *node) {
-				switch node.GetType() {
-				case TypeRule:
-					name, id := node.String(), node.GetID()
-					if count, ok := t.rulesCount[name]; ok {
-						t.rulesCount[name] = count + 1
-					} else {
-						t.rulesCount[name] = 1
-					}
-					if ruleReached[id] {
-						return
-					}
-					ruleReached[id] = true
-					countRules(node.Front())
-				case TypeName:
-					countRules(t.Rules[node.String()])
-				case TypeImplicitPush, TypePush:
-					countRules(node.Front())
-				case TypeAlternate, TypeUnorderedAlternate, TypeSequence,
-					TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
-					for _, element := range node.Slice() {
-						countRules(element)
-					}
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		ruleReached := make([]bool, t.RulesCount)
+		for _, node := range t.Slice() {
+			if node.GetType() == TypeRule {
+				t.countRules(node, ruleReached)
+				break
+			}
+		}
+		for id, reached := range ruleReached {
+			if reached {
+				for i, count := range countsByRule[id] {
+					usage[i] += count
 				}
 			}
-			for _, node := range t.Slice() {
-				if node.GetType() == TypeRule {
-					countRules(node)
-					break
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var checkRecursion func(node *node) bool
+		ruleReached := make([]bool, t.RulesCount)
+		checkRecursion = func(node *node) bool {
+			switch node.GetType() {
+			case TypeRule:
+				id := node.GetID()
+				if ruleReached[id] {
+					warn(fmt.Errorf("possible infinite left recursion in rule '%v'", node))
+					return false
 				}
-			}
-			for id, reached := range ruleReached {
-				if reached {
-					for i, count := range countsByRule[id] {
-						usage[i] += count
-					}
-				}
-			}
-		},
-		func() {
-			var checkRecursion func(node *node) bool
-			ruleReached := make([]bool, t.RulesCount)
-			checkRecursion = func(node *node) bool {
-				switch node.GetType() {
-				case TypeRule:
-					id := node.GetID()
-					if ruleReached[id] {
-						warn(fmt.Errorf("possible infinite left recursion in rule '%v'", node))
+				ruleReached[id] = true
+				consumes := checkRecursion(node.Front())
+				ruleReached[id] = false
+				return consumes
+			case TypeAlternate:
+				for _, element := range node.Slice() {
+					if !checkRecursion(element) {
 						return false
 					}
-					ruleReached[id] = true
-					consumes := checkRecursion(node.Front())
-					ruleReached[id] = false
-					return consumes
-				case TypeAlternate:
-					for _, element := range node.Slice() {
-						if !checkRecursion(element) {
-							return false
-						}
-					}
-					return true
-				case TypeSequence:
-					if slices.ContainsFunc(node.Slice(), checkRecursion) {
-						return true
-					}
-				case TypeName:
-					return checkRecursion(t.Rules[node.String()])
-				case TypePlus, TypePush, TypeImplicitPush:
-					return checkRecursion(node.Front())
-				case TypeCharacter, TypeString:
-					return len(node.String()) > 0
-				case TypeDot, TypeRange:
+				}
+				return true
+			case TypeSequence:
+				if slices.ContainsFunc(node.Slice(), checkRecursion) {
 					return true
 				}
-				return false
+			case TypeName:
+				return checkRecursion(t.Rules[node.String()])
+			case TypePlus, TypePush, TypeImplicitPush:
+				return checkRecursion(node.Front())
+			case TypeCharacter, TypeString:
+				return len(node.String()) > 0
+			case TypeDot, TypeRange:
+				return true
 			}
-			for _, node := range t.Slice() {
-				if node.GetType() == TypeRule {
-					checkRecursion(node)
-				}
+			return false
+		}
+		for _, node := range t.Slice() {
+			if node.GetType() == TypeRule {
+				checkRecursion(node)
 			}
-		},
-	})
+		}
+	}()
+
+	wg.Wait()
 
 	if t._switch {
 		var optimizeAlternates func(node *node) (consumes bool, s *set.Set)
