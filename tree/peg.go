@@ -655,14 +655,13 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					intersects bool
 					s          *set.Set
 				}, n.Len())
-				c := 0
+
 				for i := range properties {
 					properties[i].s = set.NewSet()
 				}
-				for _, element := range n.Slice() {
-					consumes, properties[c].s = optimizeAlternates(element)
-					s = s.Union(properties[c].s)
-					c++
+				for i, element := range n.Slice() {
+					consumes, properties[i].s = optimizeAlternates(element)
+					s = s.Union(properties[i].s)
 				}
 
 				if firstPass {
@@ -683,22 +682,21 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					break
 				}
 
-				c = 0
 				unordered := &node{Type: TypeUnorderedAlternate}
 				ordered := &node{Type: TypeAlternate}
 				maxVal := 0
-				for _, element := range n.Slice() {
-					if properties[c].intersects {
+				for i, element := range n.Slice() {
+					if properties[i].intersects {
 						ordered.PushBack(element.Copy())
 					} else {
 						class := &node{Type: TypeUnorderedAlternate}
 						for d := range unicode.MaxRune {
-							if properties[c].s.Has(d) {
+							if properties[i].s.Has(d) {
 								class.PushBack(&node{Type: TypeCharacter, string: string(d)})
 							}
 						}
 
-						sequence, predicate, length := &node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[c].s.Len()
+						sequence, predicate, length := &node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[i].s.Len()
 						if length == 0 {
 							class.PushBack(&node{Type: TypeNil, string: "<nil>"})
 						}
@@ -715,7 +713,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 							unordered.PushFront(sequence)
 						}
 					}
-					c++
 				}
 				n.Init()
 				if ordered.Front() == nil {
