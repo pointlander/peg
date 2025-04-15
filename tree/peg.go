@@ -461,29 +461,43 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 	counts := [TypeLast]uint{}
 	countsByRule := make([]*[TypeLast]uint, t.RulesCount)
-	{
-		var rule *node
-		var link func(countsForRule *[TypeLast]uint, n *node)
-		link = func(countsForRule *[TypeLast]uint, n *node) {
-			nodeType := n.GetType()
-			id := counts[nodeType]
-			counts[nodeType]++
-			countsForRule[nodeType]++
-			switch nodeType {
-			case TypeAction:
-				n.SetID(int(id))
-				cp := n.Copy()
-				name := fmt.Sprintf("Action%v", id)
-				t.Actions = append(t.Actions, cp)
-				n.Init()
-				n.SetType(TypeName)
-				n.SetString(name)
-				n.SetID(t.RulesCount)
 
+	var rule *node
+	var link func(countsForRule *[TypeLast]uint, n *node)
+	link = func(countsForRule *[TypeLast]uint, n *node) {
+		nodeType := n.GetType()
+		id := counts[nodeType]
+		counts[nodeType]++
+		countsForRule[nodeType]++
+		switch nodeType {
+		case TypeAction:
+			n.SetID(int(id))
+			cp := n.Copy()
+			name := fmt.Sprintf("Action%v", id)
+			t.Actions = append(t.Actions, cp)
+			n.Init()
+			n.SetType(TypeName)
+			n.SetString(name)
+			n.SetID(t.RulesCount)
+
+			emptyRule := &node{Type: TypeRule, string: name, id: t.RulesCount}
+			implicitPush := &node{Type: TypeImplicitPush}
+			emptyRule.PushBack(implicitPush)
+			implicitPush.PushBack(cp)
+			implicitPush.PushBack(emptyRule.Copy())
+			t.PushBack(emptyRule)
+			t.RulesCount++
+
+			t.Rules[name] = emptyRule
+			t.RuleNames = append(t.RuleNames, emptyRule)
+			countsByRule = append(countsByRule, &[TypeLast]uint{})
+		case TypeName:
+			name := n.String()
+			if _, ok := t.Rules[name]; !ok {
 				emptyRule := &node{Type: TypeRule, string: name, id: t.RulesCount}
 				implicitPush := &node{Type: TypeImplicitPush}
 				emptyRule.PushBack(implicitPush)
-				implicitPush.PushBack(cp)
+				implicitPush.PushBack(&node{Type: TypeNil, string: "<nil>"})
 				implicitPush.PushBack(emptyRule.Copy())
 				t.PushBack(emptyRule)
 				t.RulesCount++
@@ -491,81 +505,66 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				t.Rules[name] = emptyRule
 				t.RuleNames = append(t.RuleNames, emptyRule)
 				countsByRule = append(countsByRule, &[TypeLast]uint{})
-			case TypeName:
-				name := n.String()
-				if _, ok := t.Rules[name]; !ok {
-					emptyRule := &node{Type: TypeRule, string: name, id: t.RulesCount}
-					implicitPush := &node{Type: TypeImplicitPush}
-					emptyRule.PushBack(implicitPush)
-					implicitPush.PushBack(&node{Type: TypeNil, string: "<nil>"})
-					implicitPush.PushBack(emptyRule.Copy())
-					t.PushBack(emptyRule)
-					t.RulesCount++
+			}
+		case TypePush:
+			cp := rule.Copy()
+			name := "PegText"
+			cp.SetString(name)
+			if _, ok := t.Rules[name]; !ok {
+				emptyRule := &node{Type: TypeRule, string: name, id: t.RulesCount}
+				emptyRule.PushBack(&node{Type: TypeNil, string: "<nil>"})
+				t.PushBack(emptyRule)
+				t.RulesCount++
 
-					t.Rules[name] = emptyRule
-					t.RuleNames = append(t.RuleNames, emptyRule)
-					countsByRule = append(countsByRule, &[TypeLast]uint{})
-				}
-			case TypePush:
-				cp := rule.Copy()
-				name := "PegText"
-				cp.SetString(name)
-				if _, ok := t.Rules[name]; !ok {
-					emptyRule := &node{Type: TypeRule, string: name, id: t.RulesCount}
-					emptyRule.PushBack(&node{Type: TypeNil, string: "<nil>"})
-					t.PushBack(emptyRule)
-					t.RulesCount++
-
-					t.Rules[name] = emptyRule
-					t.RuleNames = append(t.RuleNames, emptyRule)
-					countsByRule = append(countsByRule, &[TypeLast]uint{})
-				}
-				n.PushBack(cp)
-				fallthrough
-			case TypeImplicitPush:
-				link(countsForRule, n.Front())
-			case TypeRule, TypeAlternate, TypeUnorderedAlternate, TypeSequence,
-				TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
-				for _, node := range n.Slice() {
-					link(countsForRule, node)
-				}
+				t.Rules[name] = emptyRule
+				t.RuleNames = append(t.RuleNames, emptyRule)
+				countsByRule = append(countsByRule, &[TypeLast]uint{})
+			}
+			n.PushBack(cp)
+			fallthrough
+		case TypeImplicitPush:
+			link(countsForRule, n.Front())
+		case TypeRule, TypeAlternate, TypeUnorderedAlternate, TypeSequence,
+			TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
+			for _, node := range n.Slice() {
+				link(countsForRule, node)
 			}
 		}
-		/* first pass */
-		for _, n := range t.Slice() {
-			switch n.GetType() {
-			case TypePackage:
-				t.PackageName = n.String()
-			case TypeImport:
-				t.Imports = append(t.Imports, n.String())
-			case TypePeg:
-				t.StructName = n.String()
-				t.StructVariables = n.Front().String()
-			case TypeRule:
-				if _, ok := t.Rules[n.String()]; !ok {
-					expression := n.Front()
-					cp := expression.Copy()
-					expression.Init()
-					expression.SetType(TypeImplicitPush)
-					expression.PushBack(cp)
-					expression.PushBack(n.Copy())
+	}
+	/* first pass */
+	for _, n := range t.Slice() {
+		switch n.GetType() {
+		case TypePackage:
+			t.PackageName = n.String()
+		case TypeImport:
+			t.Imports = append(t.Imports, n.String())
+		case TypePeg:
+			t.StructName = n.String()
+			t.StructVariables = n.Front().String()
+		case TypeRule:
+			if _, ok := t.Rules[n.String()]; !ok {
+				expression := n.Front()
+				cp := expression.Copy()
+				expression.Init()
+				expression.SetType(TypeImplicitPush)
+				expression.PushBack(cp)
+				expression.PushBack(n.Copy())
 
-					t.Rules[n.String()] = n
-					t.RuleNames = append(t.RuleNames, n)
-				}
+				t.Rules[n.String()] = n
+				t.RuleNames = append(t.RuleNames, n)
 			}
 		}
-		/* sort imports to satisfy gofmt */
-		slices.Sort(t.Imports)
+	}
+	/* sort imports to satisfy gofmt */
+	slices.Sort(t.Imports)
 
-		/* second pass */
-		for _, n := range t.Slice() {
-			if n.GetType() == TypeRule {
-				rule = n
-				counts := [TypeLast]uint{}
-				countsByRule[n.GetID()] = &counts
-				link(&counts, n)
-			}
+	/* second pass */
+	for _, n := range t.Slice() {
+		if n.GetType() == TypeRule {
+			rule = n
+			counts := [TypeLast]uint{}
+			countsByRule[n.GetID()] = &counts
+			link(&counts, n)
 		}
 	}
 
