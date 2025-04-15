@@ -696,7 +696,9 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 							}
 						}
 
-						sequence, predicate, length := &node{Type: TypeSequence}, &node{Type: TypePeekFor}, properties[i].s.Len()
+						sequence := &node{Type: TypeSequence}
+						predicate := &node{Type: TypePeekFor}
+						length := properties[i].s.Len()
 						if length == 0 {
 							class.PushBack(&node{Type: TypeNil, string: "<nil>"})
 						}
