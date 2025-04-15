@@ -684,7 +684,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					break
 				}
 
-				c, unordered, ordered, maxVal := 0, &node{Type: TypeUnorderedAlternate}, &node{Type: TypeAlternate}, 0
+				c = 0
+				unordered := &node{Type: TypeUnorderedAlternate}
+				ordered := &node{Type: TypeAlternate}
+				maxVal := 0
 				for _, element := range n.Slice() {
 					if properties[c].intersects {
 						ordered.PushBack(element.Copy())
