@@ -205,12 +205,16 @@ func (n *node) Copy() *node {
 	return &node{Type: n.Type, string: n.string, id: n.id, front: n.front, back: n.back, length: n.length}
 }
 
-func (n *node) Slice() []*node {
-	s := make([]*node, n.length)
-	for element, i := n.Front(), 0; element != nil; element, i = element.Next(), i+1 {
-		s[i] = element
+func (n *node) Iterator() func(yield func(*node) bool) {
+	element := n.Front()
+	return func(yield func(*node) bool) {
+		for element != nil {
+			if !yield(element) {
+				return
+			}
+			element = element.Next()
+		}
 	}
-	return s
 }
 
 func (n *node) ParentDetect() bool {
@@ -396,7 +400,7 @@ func (t *Tree) countRules(n *node, ruleReached []bool) {
 		t.countRules(n.Front(), ruleReached)
 	case TypeAlternate, TypeUnorderedAlternate, TypeSequence,
 		TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
-		for _, element := range n.Slice() {
+		for element := range n.Iterator() {
 			t.countRules(element, ruleReached)
 		}
 	}
@@ -415,14 +419,14 @@ func (t *Tree) checkRecursion(n *node, ruleReached []bool) bool {
 		ruleReached[id] = false
 		return consumes
 	case TypeAlternate:
-		for _, element := range n.Slice() {
+		for element := range n.Iterator() {
 			if !t.checkRecursion(element, ruleReached) {
 				return false
 			}
 		}
 		return true
 	case TypeSequence:
-		return slices.ContainsFunc(n.Slice(), func(n *node) bool {
+		return slices.ContainsFunc(slices.Collect(n.Iterator()), func(n *node) bool {
 			return t.checkRecursion(n, ruleReached)
 		})
 	case TypeName:
@@ -507,7 +511,7 @@ func (t *Tree) link(countsForRule *[TypeLast]uint, n *node, counts *[TypeLast]ui
 		t.link(countsForRule, n.Front(), counts, countsByRule, rule)
 	case TypeRule, TypeAlternate, TypeUnorderedAlternate, TypeSequence,
 		TypePeekFor, TypePeekNot, TypeQuery, TypeStar, TypePlus:
-		for _, node := range n.Slice() {
+		for node := range n.Iterator() {
 			t.link(countsForRule, node, counts, countsByRule, rule)
 		}
 	}
@@ -530,10 +534,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	counts := [TypeLast]uint{}
 	countsByRule := make([]*[TypeLast]uint, t.RulesCount)
 
-	var rule *node
-
 	/* first pass */
-	for _, n := range t.Slice() {
+	for n := range t.Iterator() {
 		switch n.GetType() {
 		case TypePackage:
 			t.PackageName = n.String()
@@ -560,12 +562,11 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	slices.Sort(t.Imports)
 
 	/* second pass */
-	for _, n := range t.Slice() {
+	for _, n := range slices.Collect(t.Iterator()) {
 		if n.GetType() == TypeRule {
-			rule = n
 			countsForRule := [TypeLast]uint{}
 			countsByRule[n.GetID()] = &countsForRule
-			t.link(&countsForRule, n, &counts, &countsByRule, rule)
+			t.link(&countsForRule, n, &counts, &countsByRule, n)
 		}
 	}
 
@@ -577,7 +578,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	go func() {
 		defer wg.Done()
 		ruleReached := make([]bool, t.RulesCount)
-		for _, n := range t.Slice() {
+		for n := range t.Iterator() {
 			if n.GetType() == TypeRule {
 				t.countRules(n, ruleReached)
 				break
@@ -595,7 +596,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	go func() {
 		defer wg.Done()
 		ruleReached := make([]bool, t.RulesCount)
-		for _, n := range t.Slice() {
+		for n := range t.Iterator() {
 			if n.GetType() == TypeRule {
 				t.checkRecursion(n, ruleReached)
 			}
@@ -659,9 +660,11 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				for i := range properties {
 					properties[i].s = set.NewSet()
 				}
-				for i, element := range n.Slice() {
+				i := 0
+				for element := range n.Iterator() {
 					consumes, properties[i].s = optimizeAlternates(element)
 					s = s.Union(properties[i].s)
+					i++
 				}
 
 				if firstPass {
@@ -685,7 +688,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				unordered := &node{Type: TypeUnorderedAlternate}
 				ordered := &node{Type: TypeAlternate}
 				maxVal := 0
-				for i, element := range n.Slice() {
+				i = 0
+				for element := range n.Iterator() {
 					if properties[i].intersects {
 						ordered.PushBack(element.Copy())
 					} else {
@@ -715,15 +719,16 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 							unordered.PushFront(sequence)
 						}
 					}
+					i++
 				}
 				n.Init()
 				if ordered.Front() == nil {
 					n.SetType(TypeUnorderedAlternate)
-					for _, element := range unordered.Slice() {
+					for element := range unordered.Iterator() {
 						n.PushBack(element.Copy())
 					}
 				} else {
-					for _, element := range ordered.Slice() {
+					for element := range ordered.Iterator() {
 						n.PushBack(element.Copy())
 					}
 					n.PushBack(unordered)
@@ -732,7 +737,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				classes := make([]struct {
 					s *set.Set
 				}, n.Len())
-				elements := n.Slice()
+				elements := slices.Collect(n.Iterator())
 				for i := range classes {
 					classes[i].s = set.NewSet()
 				}
@@ -762,7 +767,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			}
 			return
 		}
-		for _, element := range t.Slice() {
+		for element := range t.Iterator() {
 			if element.GetType() == TypeRule {
 				optimizeAlternates(element)
 				break
@@ -773,7 +778,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			cache[i].reached = false
 		}
 		firstPass = false
-		for _, element := range t.Slice() {
+		for element := range t.Iterator() {
 			if element.GetType() == TypeRule {
 				optimizeAlternates(element)
 				break
@@ -851,7 +856,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			_print("commit")
 		case TypeAlternate:
 			_print("(")
-			elements := n.Slice()
+			elements := slices.Collect(n.Iterator())
 			printRule(elements[0])
 			for _, element := range elements[1:] {
 				_print(" / ")
@@ -860,7 +865,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			_print(")")
 		case TypeUnorderedAlternate:
 			_print("(")
-			elements := n.Slice()
+			elements := slices.Collect(n.Iterator())
 			printRule(elements[0])
 			for _, element := range elements[1:] {
 				_print(" | ")
@@ -869,7 +874,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			_print(")")
 		case TypeSequence:
 			_print("(")
-			elements := n.Slice()
+			elements := slices.Collect(n.Iterator())
 			printRule(elements[0])
 			for _, element := range elements[1:] {
 				_print(" ")
@@ -997,7 +1002,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			ok := label
 			label++
 			printBegin()
-			elements := n.Slice()
+			elements := slices.Collect(n.Iterator())
 			elements[0].SetParentDetect(n.ParentDetect())
 			elements[0].SetParentMultipleKey(n.ParentMultipleKey())
 			printSave(ok)
@@ -1018,7 +1023,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			label++
 			printBegin()
 			_print("\n   switch buffer[position] {")
-			elements := n.Slice()
+			elements := slices.Collect(n.Iterator())
 			elements, last := elements[:len(elements)-1], elements[len(elements)-1].Front().Next()
 			for _, element := range elements {
 				sequence := element.Front()
@@ -1026,7 +1031,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				sequence = sequence.Next()
 				_print("\n   case")
 				comma := false
-				for _, character := range class.Slice() {
+				for character := range class.Iterator() {
 					if comma {
 						_print(",")
 					} else {
@@ -1053,7 +1058,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printEnd()
 			labelLast = printLabel(ok)
 		case TypeSequence:
-			elements := n.Slice()
+			elements := slices.Collect(n.Iterator())
 			elements[0].SetParentDetect(n.ParentDetect())
 			elements[0].SetParentMultipleKey(n.ParentMultipleKey())
 			for _, element := range elements {
@@ -1139,7 +1144,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 
 	/* let's figure out which jump labels are going to be used with this dry compile */
 	printTemp, _print := _print, func(_ string, _ ...any) {}
-	for _, element := range t.Slice() {
+	for element := range t.Iterator() {
 		if element.GetType() == TypeComment {
 			t.Comments += "//" + element.String() + "\n"
 		} else if element.GetType() == TypeSpace {
@@ -1180,7 +1185,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		return err
 	}
 
-	for _, element := range t.Slice() {
+	for element := range t.Iterator() {
 		if element.GetType() != TypeRule {
 			continue
 		}
