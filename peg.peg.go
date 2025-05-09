@@ -400,6 +400,9 @@ func translatePositions(buffer []rune, positions []int) textPositionMap {
 				}
 			}
 		}
+		if posIdx >= length {
+			break
+		}
 	}
 
 	return translations
@@ -692,6 +695,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 
 	_rules = [...]func() bool{
 		nil,
+
 		/* 0 Grammar <- <(Header ('p' 'a' 'c' 'k' 'a' 'g' 'e') MustSpacing Identifier Action0 Import* ('t' 'y' 'p' 'e') MustSpacing Identifier Action1 ('P' 'e' 'g') Spacing Action Action2 Definition+ EndOfFile)> */
 		func() bool {
 			if memoized, ok := memoization[memoKey[U]{0, position}]; ok {

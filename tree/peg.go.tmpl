@@ -196,6 +196,9 @@ func translatePositions(buffer []rune, positions []int) textPositionMap {
 				}
 			}
 		}
+		if posIdx >= length {
+			break
+		}
 	}
 
 	return translations
