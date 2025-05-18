@@ -760,7 +760,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					}
 				}
 
-				for c := len(classes) - 1; c >= 0; c-- {
+				for c := range slices.Backward(classes) {
 					s = s.Union(classes[c].s)
 				}
 
