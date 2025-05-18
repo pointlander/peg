@@ -12,6 +12,7 @@ import (
 	"go/printer"
 	"go/token"
 	"io"
+	"iter"
 	"math"
 	"os"
 	"slices"
@@ -205,7 +206,7 @@ func (n *node) Copy() *node {
 	return &node{Type: n.Type, string: n.string, id: n.id, front: n.front, back: n.back, length: n.length}
 }
 
-func (n *node) Iterator() func(yield func(*node) bool) {
+func (n *node) Iterator() iter.Seq[*node] {
 	element := n.Front()
 	return func(yield func(*node) bool) {
 		for element != nil {
