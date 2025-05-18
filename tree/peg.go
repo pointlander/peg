@@ -218,6 +218,20 @@ func (n *node) Iterator() iter.Seq[*node] {
 	}
 }
 
+func (n *node) Iterator2() iter.Seq2[int, *node] {
+	element := n.Front()
+	return func(yield func(int, *node) bool) {
+		i := 0
+		for element != nil {
+			if !yield(i, element) {
+				return
+			}
+			i++
+			element = element.Next()
+		}
+	}
+}
+
 func (n *node) ParentDetect() bool {
 	return n.parentDetect
 }
@@ -661,11 +675,9 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				for i := range properties {
 					properties[i].s = set.NewSet()
 				}
-				i := 0
-				for element := range n.Iterator() {
+				for i, element := range n.Iterator2() {
 					consumes, properties[i].s = optimizeAlternates(element)
 					s = s.Union(properties[i].s)
-					i++
 				}
 
 				if firstPass {
@@ -689,8 +701,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				unordered := &node{Type: TypeUnorderedAlternate}
 				ordered := &node{Type: TypeAlternate}
 				maxVal := 0
-				i = 0
-				for element := range n.Iterator() {
+				for i, element := range n.Iterator2() {
 					if properties[i].intersects {
 						ordered.PushBack(element.Copy())
 					} else {
@@ -720,7 +731,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 							unordered.PushFront(sequence)
 						}
 					}
-					i++
 				}
 				n.Init()
 				if ordered.Front() == nil {
@@ -738,10 +748,10 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				classes := make([]struct {
 					s *set.Set
 				}, n.Len())
-				elements := slices.Collect(n.Iterator())
 				for i := range classes {
 					classes[i].s = set.NewSet()
 				}
+				elements := slices.Collect(n.Iterator())
 				for c, element := range elements {
 					consumes, classes[c].s = optimizeAlternates(element)
 					if consumes {
