@@ -267,7 +267,6 @@ type Tree struct {
 	StructName      string
 	StructVariables string
 	RulesCount      int
-	Bits            int
 	HasActions      bool
 	Actions         []*node
 	HasPush         bool
