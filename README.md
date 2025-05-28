@@ -35,20 +35,7 @@ This creates the file `peg.peg.go`:
 ```
 
 
-### Makefile example
-
-This example `Makefile` will convert any file ending with `.peg` into a `.go` file with the same name:
-
-```make
-.SUFFIXES: .peg .go
-
-.peg.go:
-	peg -noast -switch -inline -strict -output $@ $<
-
-all: grammar.go
-```
-
-## PEG File syntax
+## PEG file syntax
 
 See [peg-file-syntax.md](docs/peg-file-syntax.md)
 
@@ -68,12 +55,6 @@ Bootstrap and generate grammar *.peg.go. This commands should initially be execu
 ```
 go generate
 ```
-
-#### Files
-
-* `bootstrap/main.go` - bootstrap syntax tree of peg
-* `tree/peg.go` - syntax tree and code generator
-* `peg.peg` - peg in its own language
 
 
 ### Build
