@@ -1190,7 +1190,12 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		t.PegRuleType = "uint16"
 	}
 
-	err = template.Must(template.New("peg").Parse(pegHeaderTemplate)).Execute(&buffer, t)
+	tmpl, err := template.New("peg").Parse(pegHeaderTemplate)
+	if err != nil {
+		return err
+	}
+
+	err = tmpl.Execute(&buffer, t)
 	if err != nil {
 		return err
 	}
