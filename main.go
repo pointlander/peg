@@ -81,7 +81,10 @@ func getIO() (in io.ReadCloser, out io.WriteCloser, err error) {
 		out, err = os.OpenFile(*outputFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 		if err != nil {
 			if in != nil && in != os.Stdin {
-				in.Close()
+				err := in.Close()
+				if err != nil {
+					panic(err)
+				}
 			}
 			return nil, nil, err
 		}
@@ -98,10 +101,16 @@ func parse(compile func(*Peg[uint32], io.Writer) error) error {
 	}
 	defer func() {
 		if in != nil && in != os.Stdin {
-			in.Close()
+			err := in.Close()
+			if err != nil {
+				panic(err)
+			}
 		}
 		if out != nil && out != os.Stdout {
-			out.Close()
+			err := out.Close()
+			if err != nil {
+				panic(err)
+			}
 		}
 	}()
 
