@@ -166,7 +166,7 @@ type Test Peg {}
 			expectedResult: false,
 		},
 		{
-			name:           "Star expression always succeed (TypeStar)",
+			name:           "Star expression always succeeds (TypeStar)",
 			testRule:       `A <- 'a'*`,
 			expectedResult: true,
 		},
@@ -196,7 +196,7 @@ type Test Peg {}
 			expectedResult: false,
 		},
 		{
-			name:           "Action expression does not always succeed (TypeAction)",
+			name:           "Action expression always succeeds (TypeAction)",
 			testRule:       `A <- { } 'a'*`,
 			expectedResult: true,
 		},
@@ -221,7 +221,7 @@ type Test Peg {}
 			expectedResult: false,
 		},
 		{
-			name:           "Push expression does not always succeed (TypePush)",
+			name:           "Push expression always succeeds (TypePush)",
 			testRule:       `A <- <'a'*>`,
 			expectedResult: true,
 		},
