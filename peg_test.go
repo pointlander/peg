@@ -275,10 +275,10 @@ type Test Peg {}
 			buf := &bytes.Buffer{}
 			_ = p.Compile("", []string{"peg"}, buf)
 
-			if len(p.Tree.RuleNames) == 0 {
+			if len(p.RuleNames) == 0 {
 				t.Fatal("No rules found in the parsed tree")
 			}
-			rule := p.Tree.RuleNames[0]
+			rule := p.RuleNames[0]
 			actualResult := rule.CheckAlwaysSucceeds(p.Tree)
 			if actualResult != tc.expectedResult {
 				t.Errorf("Rule [%s]: expected CheckAlwaysSucceeds() = %v, got %v",
