@@ -248,6 +248,56 @@ func (n *node) SetParentMultipleKey(multipleKey bool) {
 	n.parentMultipleKey = multipleKey
 }
 
+func (n *node) CheckAlwaysSucceeds(t *Tree) bool {
+	visited := make(map[*node]bool)
+	return n.checkAlwaysSucceedsRecursion(t, visited)
+}
+
+func (n *node) checkAlwaysSucceedsRecursion(t *Tree, visited map[*node]bool) bool {
+	switch n.GetType() {
+	case TypeRule:
+		if child := n.Front(); child != nil {
+			return child.checkAlwaysSucceedsRecursion(t, visited)
+		}
+		return false
+	case TypeName:
+		rule := t.Rules[n.String()]
+		if rule == nil {
+			return false
+		}
+		if visited[rule] {
+			return true
+		}
+		visited[rule] = true
+		result := rule.Front().checkAlwaysSucceedsRecursion(t, visited)
+		visited[rule] = false
+		return result
+	case TypeAlternate, TypeUnorderedAlternate:
+		for element := range n.Iterator() {
+			if element.checkAlwaysSucceedsRecursion(t, visited) {
+				return true
+			}
+		}
+		return false
+	case TypeSequence:
+		for element := range n.Iterator() {
+			if !element.checkAlwaysSucceedsRecursion(t, visited) {
+				return false
+			}
+		}
+		return true
+	case TypePush, TypeImplicitPush:
+		if child := n.Front(); child != nil {
+			return child.checkAlwaysSucceedsRecursion(t, visited)
+		}
+		return false
+	case TypeAction, TypeQuery, TypeStar, TypeNil:
+		return true
+	default:
+		return false
+	}
+}
+
 // Tree is a tree data structure into which a PEG can be parsed.
 type Tree struct {
 	Rules      map[string]*node
@@ -941,9 +991,14 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				compile(element, ko)
 				return
 			}
-			_print("\n   if !_rules[rule%v]() {", name /*rule.GetID()*/)
-			printJump(ko)
-			_print("}")
+			// If the rule always succeeds, do not output the if statement
+			if rule.CheckAlwaysSucceeds(t) {
+				_print("\n   _rules[rule%v]()", name /*rule.GetID()*/)
+			} else {
+				_print("\n   if !_rules[rule%v]() {", name /*rule.GetID()*/)
+				printJump(ko)
+				_print("}")
+			}
 		case TypeRange:
 			if n.ParentDetect() {
 				_print("\nposition++")

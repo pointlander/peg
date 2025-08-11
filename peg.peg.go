@@ -864,9 +864,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 							goto l22
 						}
 						position++
-						if !_rules[ruleSpacing]() {
-							goto l22
-						}
+						_rules[ruleSpacing]()
 						{
 							position24, tokenIndex24 := position, tokenIndex
 							{
@@ -875,9 +873,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 									goto l25
 								}
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l25
-								}
+								_rules[ruleSpacing]()
 							l27:
 								{
 									position28, tokenIndex28 := position, tokenIndex
@@ -888,16 +884,12 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 										goto l28
 									}
 									position++
-									if !_rules[ruleSpacing]() {
-										goto l28
-									}
+									_rules[ruleSpacing]()
 									goto l27
 								l28:
 									position, tokenIndex = position28, tokenIndex28
 								}
-								if !_rules[ruleSpacing]() {
-									goto l25
-								}
+								_rules[ruleSpacing]()
 								if buffer[position] != ')' {
 									goto l25
 								}
@@ -916,9 +908,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 							}
 						}
 					l24:
-						if !_rules[ruleSpacing]() {
-							goto l22
-						}
+						_rules[ruleSpacing]()
 						add(ruleImport, position23)
 					}
 					goto l21
@@ -962,9 +952,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 					goto l0
 				}
 				position++
-				if !_rules[ruleSpacing]() {
-					goto l0
-				}
+				_rules[ruleSpacing]()
 				if !_rules[ruleAction]() {
 					goto l0
 				}
@@ -982,9 +970,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 					if !_rules[ruleLeftArrow]() {
 						goto l0
 					}
-					if !_rules[ruleExpression]() {
-						goto l0
-					}
+					_rules[ruleExpression]()
 					{
 						add(ruleAction5, position)
 					}
@@ -1030,9 +1016,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 						if !_rules[ruleLeftArrow]() {
 							goto l33
 						}
-						if !_rules[ruleExpression]() {
-							goto l33
-						}
+						_rules[ruleExpression]()
 						{
 							add(ruleAction5, position)
 						}
@@ -1359,23 +1343,17 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 							{
 								position92 := position
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l88
-								}
+								_rules[ruleSpacing]()
 								add(ruleBegin, position92)
 							}
-							if !_rules[ruleExpression]() {
-								goto l88
-							}
+							_rules[ruleExpression]()
 							{
 								position93 := position
 								if buffer[position] != '>' {
 									goto l88
 								}
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l88
-								}
+								_rules[ruleSpacing]()
 								add(ruleEnd, position93)
 							}
 							{
@@ -1392,9 +1370,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 							{
 								position96 := position
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l88
-								}
+								_rules[ruleSpacing]()
 								add(ruleDot, position96)
 							}
 							{
@@ -1485,9 +1461,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 									position++
 								}
 							l99:
-								if !_rules[ruleSpacing]() {
-									goto l88
-								}
+								_rules[ruleSpacing]()
 								add(ruleClass, position98)
 							}
 						case '"', '\'':
@@ -1546,9 +1520,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 										goto l113
 									}
 									position++
-									if !_rules[ruleSpacing]() {
-										goto l113
-									}
+									_rules[ruleSpacing]()
 									goto l112
 								l113:
 									position, tokenIndex = position112, tokenIndex112
@@ -1603,9 +1575,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 										goto l88
 									}
 									position++
-									if !_rules[ruleSpacing]() {
-										goto l88
-									}
+									_rules[ruleSpacing]()
 								}
 							l112:
 								add(ruleLiteral, position111)
@@ -1614,23 +1584,17 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 							{
 								position128 := position
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l88
-								}
+								_rules[ruleSpacing]()
 								add(ruleOpen, position128)
 							}
-							if !_rules[ruleExpression]() {
-								goto l88
-							}
+							_rules[ruleExpression]()
 							{
 								position129 := position
 								if buffer[position] != ')' {
 									goto l88
 								}
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l88
-								}
+								_rules[ruleSpacing]()
 								add(ruleClose, position129)
 							}
 						default:
@@ -1662,9 +1626,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 							{
 								position135 := position
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l132
-								}
+								_rules[ruleSpacing]()
 								add(rulePlus, position135)
 							}
 							{
@@ -1674,9 +1636,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 							{
 								position137 := position
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l132
-								}
+								_rules[ruleSpacing]()
 								add(ruleStar, position137)
 							}
 							{
@@ -1689,9 +1649,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 									goto l132
 								}
 								position++
-								if !_rules[ruleSpacing]() {
-									goto l132
-								}
+								_rules[ruleSpacing]()
 								add(ruleQuestion, position139)
 							}
 							{
@@ -1756,9 +1714,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 					}
 					add(rulePegText, position144)
 				}
-				if !_rules[ruleSpacing]() {
-					goto l142
-				}
+				_rules[ruleSpacing]()
 				add(ruleIdentifier, position143)
 			}
 			memoize(11, position142, tokenIndex142, true)
@@ -2570,9 +2526,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 					position++
 				}
 			l264:
-				if !_rules[ruleSpacing]() {
-					goto l262
-				}
+				_rules[ruleSpacing]()
 				add(ruleLeftArrow, position263)
 			}
 			memoize(23, position262, tokenIndex262, true)
@@ -2594,9 +2548,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 					goto l266
 				}
 				position++
-				if !_rules[ruleSpacing]() {
-					goto l266
-				}
+				_rules[ruleSpacing]()
 				add(ruleSlash, position267)
 			}
 			memoize(24, position266, tokenIndex266, true)
@@ -2618,9 +2570,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 					goto l268
 				}
 				position++
-				if !_rules[ruleSpacing]() {
-					goto l268
-				}
+				_rules[ruleSpacing]()
 				add(ruleAnd, position269)
 			}
 			memoize(25, position268, tokenIndex268, true)
@@ -2642,9 +2592,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 					goto l270
 				}
 				position++
-				if !_rules[ruleSpacing]() {
-					goto l270
-				}
+				_rules[ruleSpacing]()
 				add(ruleNot, position271)
 			}
 			memoize(26, position270, tokenIndex270, true)
@@ -2904,9 +2852,7 @@ func (p *Peg[U]) Init(options ...func(*Peg[U]) error) error {
 					goto l309
 				}
 				position++
-				if !_rules[ruleSpacing]() {
-					goto l309
-				}
+				_rules[ruleSpacing]()
 				add(ruleAction, position310)
 			}
 			memoize(43, position309, tokenIndex309, true)

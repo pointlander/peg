@@ -149,6 +149,145 @@ Expr <- 'CJK' / '汉字' / 'test'
 	}
 }
 
+func TestCheckAlwaysSucceeds(t *testing.T) {
+	pegHeader := `
+package main
+type Test Peg {}
+`
+
+	testCases := []struct {
+		name           string
+		testRule       string
+		expectedResult bool
+	}{
+		{
+			name:           "Character expression does not always succeed (TypeChar)",
+			testRule:       `A <- 'a'`,
+			expectedResult: false,
+		},
+		{
+			name:           "Star expression always succeed (TypeStar)",
+			testRule:       `A <- 'a'*`,
+			expectedResult: true,
+		},
+		{
+			name:           "Dot expression does not always succeed (TypeDot)",
+			testRule:       `A <- .`,
+			expectedResult: false,
+		},
+		{
+			name:           "Range expression does not always succeed (TypeRange)",
+			testRule:       `A <- [a-z]`,
+			expectedResult: false,
+		},
+		{
+			name:           "String expression does not always succeed (TypeString)",
+			testRule:       `A <- "abc"`,
+			expectedResult: false,
+		},
+		{
+			name:           "Predicate expression does not always succeed (TypePredicate)",
+			testRule:       `A <- &{ true } 'a'*`,
+			expectedResult: false,
+		},
+		{
+			name:           "StateChange expression does not always succeed (TypeStateChange)",
+			testRule:       `A <- !{ false } 'a'*`,
+			expectedResult: false,
+		},
+		{
+			name:           "Action expression does not always succeed (TypeAction)",
+			testRule:       `A <- { } 'a'*`,
+			expectedResult: true,
+		},
+		{
+			name:           "Space expression does not always succeed (TypeSpace)",
+			testRule:       `A <- ' '`,
+			expectedResult: false,
+		},
+		{
+			name:           "PeekFor expression does not always succeed (TypePeekFor)",
+			testRule:       `A <- &'a'`,
+			expectedResult: false,
+		},
+		{
+			name:           "PeekNot expression does not always succeed (TypePeekNot)",
+			testRule:       `A <- !'a'`,
+			expectedResult: false,
+		},
+		{
+			name:           "Plus expression does not always succeed (TypePlus)",
+			testRule:       `A <- 'a'+`,
+			expectedResult: false,
+		},
+		{
+			name:           "Push expression does not always succeed (TypePush)",
+			testRule:       `A <- <'a'*>`,
+			expectedResult: true,
+		},
+		{
+			name:           "Nil expression always succeeds (TypeNil)",
+			testRule:       `A <- `,
+			expectedResult: true,
+		},
+		{
+			name:           "Optional expression always succeeds (TypeQuery)",
+			testRule:       `A <- 'b'?`,
+			expectedResult: true,
+		},
+		{
+			name:           "Nested star expression always succeeds",
+			testRule:       `A <- ('a' / 'b')*`,
+			expectedResult: true,
+		},
+		{
+			name:           "Sequence with star always succeeds",
+			testRule:       `A <- 'a'* 'b'*`,
+			expectedResult: true,
+		},
+		{
+			name:           "Sequence with non-star does not always succeed",
+			testRule:       `A <- 'a'* 'b'`,
+			expectedResult: false,
+		},
+		{
+			name:           "Alternate with star always succeeds",
+			testRule:       `A <- 'a' / 'b'*`,
+			expectedResult: true,
+		},
+		{
+			name:           "Alternate without star does not always succeed",
+			testRule:       `A <- 'a' / 'b'`,
+			expectedResult: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			sourceCode := pegHeader + tc.testRule
+
+			p := &Peg[uint32]{Tree: tree.New(false, true, true), Buffer: sourceCode}
+			_ = p.Init(Size[uint32](1 << 15))
+			if err := p.Parse(); err != nil {
+				t.Fatal(err)
+			}
+			p.Execute()
+			buf := &bytes.Buffer{}
+			_ = p.Compile("", []string{"peg"}, buf)
+
+			if len(p.Tree.RuleNames) == 0 {
+				t.Fatal("No rules found in the parsed tree")
+			}
+			rule := p.Tree.RuleNames[0]
+			actualResult := rule.CheckAlwaysSucceeds(p.Tree)
+			if actualResult != tc.expectedResult {
+				t.Errorf("Rule [%s]: expected CheckAlwaysSucceeds() = %v, got %v",
+					tc.name, tc.expectedResult, actualResult)
+			}
+		})
+	}
+}
+
 var pegFileContents = func(files []string) []string {
 	contents := make([]string, len(files))
 	for i, file := range files {
