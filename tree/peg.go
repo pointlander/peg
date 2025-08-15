@@ -637,10 +637,8 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	usage := [TypeLast]uint{}
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ruleReached := make([]bool, t.RulesCount)
 		for n := range t.Iterator() {
 			if n.GetType() == TypeRule {
@@ -655,17 +653,16 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				}
 			}
 		}
-	}()
+	})
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		ruleReached := make([]bool, t.RulesCount)
 		for n := range t.Iterator() {
 			if n.GetType() == TypeRule {
 				t.checkRecursion(n, ruleReached)
 			}
 		}
-	}()
+	})
 
 	wg.Wait()
 
