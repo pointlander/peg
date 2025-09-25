@@ -687,7 +687,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				if cache.reached {
 					consumes = cache.consumes
 					s = cache.s
-					return
+					return consumes, s
 				}
 				cache.reached = true
 				consumes, s = optimizeAlternates(n.Front())
@@ -821,7 +821,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			case TypeAction, TypeNil:
 				// empty
 			}
-			return
+			return consumes, s
 		}
 		for element := range t.Iterator() {
 			if element.GetType() == TypeRule {
@@ -985,7 +985,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 				element.SetParentDetect(n.ParentDetect())
 				element.SetParentMultipleKey(n.ParentMultipleKey())
 				compile(element, ko)
-				return
+				return labelLast
 			}
 			// If the rule always succeeds, do not output the if statement
 			if rule.CheckAlwaysSucceeds(t) {
@@ -1312,19 +1312,19 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		_, _ = fmt.Fprintln(os.Stderr, t.werr)
 	}
 	if err != nil {
-		return
+		return err
 	}
 	fileSet := token.NewFileSet()
 	code, err := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
 	if err != nil {
 		_, _ = buffer.WriteTo(out)
-		return
+		return err
 	}
 	formatter := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}
 	err = formatter.Fprint(out, fileSet, code)
 	if err != nil {
 		_, _ = buffer.WriteTo(out)
-		return
+		return err
 	}
 
 	return nil
