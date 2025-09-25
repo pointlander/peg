@@ -689,7 +689,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					s = cache.s
 					return
 				}
-
 				cache.reached = true
 				consumes, s = optimizeAlternates(n.Front())
 				cache.consumes = consumes
