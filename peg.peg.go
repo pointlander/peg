@@ -268,7 +268,7 @@ func (n *node[U]) print(w io.Writer, pretty bool, buffer string) {
 				fmt.Fprintf(w, "\x1B[36m%v\x1B[m %v\n", rule, quote)
 			}
 			if n.up != nil {
-				print(n.up, depth+1)
+				printFunc(n.up, depth+1)
 			}
 			n = n.next
 		}
