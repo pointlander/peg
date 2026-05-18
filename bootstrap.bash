@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 
-(cd bootstrap && go build && rm -f bootstrap/bootstrap.peg.go)
+(cd bootstrap && go build && rm -f bootstrap.peg.go)
 
 
 cd cmd/peg-bootstrap
