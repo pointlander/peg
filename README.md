@@ -5,46 +5,44 @@
 
 A [Parsing Expression Grammar](https://en.wikipedia.org/wiki/Parsing_expression_grammar) ( hence `peg`) is a way to create grammars similar in principle to [regular expressions](https://en.wikipedia.org/wiki/Regular_expression) but which allow better code integration. Specifically, `peg` is an implementation of the [Packrat](https://en.wikipedia.org/wiki/Parsing_expression_grammar#Implementing_parsers_from_parsing_expression_grammars) parser generator originally implemented as [peg/leg](https://www.piumarta.com/software/peg/) by [Ian Piumarta](https://www.piumarta.com/cv/) in C. A Packrat parser is a "descent recursive parser" capable of backtracking and negative look-ahead assertions which are problematic for regular expression engines.
 
-## Installation
-
-```
-go install github.com/pointlander/peg@latest
-```
-
-
-## Usage
-
-### Build executable
-
-```
-go generate && go build
-```
-
-### Help
-
-```
-./peg -h
-```
-
-
-### Example
-
-This creates the file `peg.peg.go`:
-```
-./peg -inline -switch peg.peg
-```
-
-
 ## PEG file syntax
 
 See [peg-file-syntax.md](docs/peg-file-syntax.md)
 
 
+## Usage
+
+1. Add `peg` as a [tool](https://go.dev/doc/modules/managing-dependencies#tools) in your Go module:
+```console
+$ go get -tool github.com/pointlander/peg@main
+```
+2. Create your `mygrammar.peg` file (see [doc](docs/peg-file-syntax.md))
+3. Add a `//go:generate` line in a Go source of your package (idiom is `doc.go`):
+```go
+//go:generate go tool peg mygrammar.peg
+```
+3. Run `go generate` to generate `mygrammar.peg.go` from `mygrammar.peg`
+```console
+$ go generate
+```
+
+### Example
+
+This creates the file `peg.peg.go`:
+```
+$ go tool peg -inline -switch peg.peg
+```
+
+### Help
+```
+$ go tool peg -h
+```
+
 ## Development
 
 ### Requirements
 
-* [Golang](https://golang.org/doc/install), see [go.mod](go.mod) for version
+* [Golang](https://go.dev/doc/install), see [go.mod](go.mod) for version
 * [golangci-lint latest version](https://github.com/golangci/golangci-lint#install) (v2 or later)
 * [Bash 3.2.x or higher](https://www.gnu.org/software/bash)
 
