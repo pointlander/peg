@@ -64,55 +64,50 @@ func main() {
 }
 
 // getIO returns input and output streams based on command-line flags.
-func getIO() (in io.ReadCloser, out io.WriteCloser, err error) {
+func getIO() (in io.Reader, out io.Writer, closeAll func(), err error) {
+	var files []*os.File
+	closeAll = func() {
+		for _, f := range files {
+			if err := f.Close(); err != nil {
+				panic(err)
+			}
+		}
+	}
+
 	in, out = os.Stdin, os.Stdout
 
 	if flag.NArg() > 0 && flag.Arg(0) != "-" {
-		in, err = os.Open(flag.Arg(0))
+		f, err := os.Open(flag.Arg(0))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
+		files = append(files, f)
+		in = f
 		if *outputFile == "" {
 			*outputFile = flag.Arg(0) + ".go"
 		}
 	}
 
 	if *outputFile != "" && *outputFile != "-" {
-		out, err = os.OpenFile(*outputFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+		f, err := os.OpenFile(*outputFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 		if err != nil {
-			if in != nil && in != os.Stdin {
-				err := in.Close()
-				if err != nil {
-					panic(err)
-				}
-			}
-			return nil, nil, err
+			closeAll()
+			return nil, nil, nil, err
 		}
+		files = append(files, f)
+		out = f
 	}
 
-	return in, out, nil
+	return in, out, closeAll, nil
 }
 
 // parse reads input, parses, executes, and compiles the PEG grammar.
 func parse(compile func(*Peg[uint32], io.Writer) error) error {
-	in, out, err := getIO()
+	in, out, closeAll, err := getIO()
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if in != nil && in != os.Stdin {
-			err := in.Close()
-			if err != nil {
-				panic(err)
-			}
-		}
-		if out != nil && out != os.Stdout {
-			err := out.Close()
-			if err != nil {
-				panic(err)
-			}
-		}
-	}()
+	defer closeAll()
 
 	buffer, err := io.ReadAll(in)
 	if err != nil {
