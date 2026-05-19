@@ -36,5 +36,4 @@ rm -f peg-bootstrap.peg.go
 # Build peg
 cd ../..
 ./cmd/peg-bootstrap/peg-bootstrap < peg.peg > peg.peg.go
-go build
-./peg -inline -switch peg.peg
+go tool peg -inline -switch peg.peg
