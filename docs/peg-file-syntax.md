@@ -146,12 +146,3 @@ capture <- <'capture'> { fmt.Println(text) }
 ```
 
 Will print out `"capture"`. The captured string is stored in `buffer[begin:end]`.
-
-## Naming convention
-
-Use caution when picking your names to avoid overwriting existing `.go` files. Since only one PEG grammar is allowed per Go package (currently) the use of the name `grammar.peg` is suggested as a convention.
-
-```
-grammar.peg
-grammar.go
-```
