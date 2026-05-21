@@ -7,35 +7,39 @@ A [Parsing Expression Grammar](https://en.wikipedia.org/wiki/Parsing_expression_
 
 ## PEG file syntax
 
-See [peg-file-syntax.md](docs/peg-file-syntax.md)
-
+See [peg-file-syntax.md](docs/peg-file-syntax.md) for creating your own `*.peg` file.
 
 ## Usage
 
-1. Add `peg` as a [tool](https://go.dev/doc/modules/managing-dependencies#tools) in your Go module:
-```console
-$ go get -tool github.com/pointlander/peg@main
-```
-2. Create your `mygrammar.peg` file (see [doc](docs/peg-file-syntax.md))
-3. Add a `//go:generate` line in a Go source of your package (idiom is `doc.go`):
-```go
-//go:generate go tool peg mygrammar.peg
-```
-3. Run `go generate` to generate `mygrammar.peg.go` from `mygrammar.peg`
-```console
-$ go generate
-```
+1. Add `peg` as a [tool dependency](https://go.dev/doc/modules/managing-dependencies#tools)
+   ```
+   go get -tool github.com/pointlander/peg@main
+   ```
+
+2. Create your `mygrammar.peg`
+
+3. Add a `//go:generate` line in a Go source of your package
+   ```go
+   //go:generate go tool peg mygrammar.peg
+   ```
+   ---
+   Widespread community design pattern: Add lines like this in `doc.go`.
+
+4. Generate `mygrammar.peg.go` from `mygrammar.peg`
+   ```
+   go generate
+   ```
 
 ### Example
 
-This creates the file `peg.peg.go`:
+This creates the file `peg.peg.go`
 ```
-$ go tool peg -inline -switch peg.peg
+go tool peg -inline -switch peg.peg
 ```
 
 ### Help
 ```
-$ go tool peg -h
+go tool peg -h
 ```
 
 ## Development
