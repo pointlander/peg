@@ -5,13 +5,15 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/pointlander/peg/tree"
 )
 
 func main() {
+	log.SetFlags(0)
+
 	t := tree.New(true, true, false)
 
 	/*package main
@@ -530,14 +532,17 @@ func main() {
 	filename := "bootstrap.peg.go"
 	out, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
-		fmt.Printf("%v: %v\n", filename, err)
+		log.Fatalf("%v: %v\n", filename, err)
 		return
 	}
 	defer func() {
 		err := out.Close()
 		if err != nil {
-			fmt.Printf("%v: %v\n", filename, err)
+			log.Fatalf("%v: %v\n", filename, err)
 		}
 	}()
-	_ = t.Compile(filename, os.Args, out)
+	err = t.Compile(filename, os.Args, out)
+	if err != nil {
+		log.Fatalf("%s: %v", filename, err)
+	}
 }
