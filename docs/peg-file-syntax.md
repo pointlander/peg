@@ -14,7 +14,8 @@ First declare the package name and any import(s) required.
 ```
 package <package name>
 
-import <import name>
+import "<import path>"
+import <alias> "<import path>"
 ```
 
 ## Parser

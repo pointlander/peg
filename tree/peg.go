@@ -28,6 +28,17 @@ import (
 //go:embed peg.go.tmpl
 var pegHeaderTemplate string
 
+// Functions exposed in peg.go.tmpl.
+var templateFuncs = template.FuncMap{
+	"formatImport": func(imp string) string {
+		imp, alias, withAlias := strings.Cut(imp, "=")
+		if withAlias {
+			return fmt.Sprintf(`%s "%s"`, alias, imp)
+		}
+		return fmt.Sprintf(`"%s"`, imp)
+	},
+}
+
 type Type uint8
 
 const (
@@ -381,6 +392,7 @@ func (t *Tree) AddPackage(text string)     { t.PushBack(&node{Type: TypePackage,
 func (t *Tree) AddSpace(text string)       { t.PushBack(&node{Type: TypeSpace, string: text}) }
 func (t *Tree) AddComment(text string)     { t.PushBack(&node{Type: TypeComment, string: text}) }
 func (t *Tree) AddImport(text string)      { t.PushBack(&node{Type: TypeImport, string: text}) }
+func (t *Tree) AddImportAlias(text string) { t.PushBack(&node{Type: TypeImport, string: "=" + text}) }
 func (t *Tree) AddState(text string) {
 	peg := t.PopFront()
 	peg.PushBack(&node{Type: TypeState, string: text})
@@ -604,7 +616,14 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		case TypePackage:
 			t.PackageName = n.String()
 		case TypeImport:
-			t.Imports = append(t.Imports, n.String())
+			// Handle import alias injected as TypeImport with an '=' prefix
+			lastImport := len(t.Imports) - 1
+			if lastImport >= 0 && t.Imports[lastImport][0] == '=' {
+				// Merge as: import-path=alias
+				t.Imports[lastImport] = n.String() + t.Imports[lastImport]
+			} else {
+				t.Imports = append(t.Imports, n.String())
+			}
 		case TypePeg:
 			t.StructName = n.String()
 			t.StructVariables = n.Front().String()
@@ -1241,7 +1260,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		t.PegRuleType = "uint16"
 	}
 
-	tmpl, err := template.New("peg").Parse(pegHeaderTemplate)
+	tmpl, err := template.New("peg").Funcs(templateFuncs).Parse(pegHeaderTemplate)
 	if err != nil {
 		return err
 	}
