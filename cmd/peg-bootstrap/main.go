@@ -16,15 +16,21 @@ import (
 )
 
 func main() {
+	log.SetFlags(0)
+
 	buffer, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
 	}
 	p := &Peg[uint32]{Tree: tree.New(false, false, false), Buffer: string(buffer)}
-	p.Init(Pretty[uint32](true), Size[uint32](1<<15))
+	if err := p.Init(Pretty[uint32](true), Size[uint32](1<<15)); err != nil {
+		log.Fatal("Init:", err)
+	}
 	if err := p.Parse(); err != nil {
-		log.Fatal(err)
+		log.Fatal("Parse:", err)
 	}
 	p.Execute()
-	p.Compile("boot.peg.go", os.Args, os.Stdout)
+	if err := p.Compile("boot.peg.go", os.Args, os.Stdout); err != nil {
+		log.Fatal("Compile:", err)
+	}
 }
