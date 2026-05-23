@@ -1334,7 +1334,7 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 		return err
 	}
 	fileSet := token.NewFileSet()
-	code, err := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments)
+	code, err := parser.ParseFile(fileSet, file, &buffer, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
 		_, _ = buffer.WriteTo(out)
 		return err
