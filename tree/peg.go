@@ -384,15 +384,43 @@ func (t *Tree) AddOctalCharacter(text string) {
 	octal, _ := strconv.ParseInt(text, 8, 8)
 	t.PushFront(&node{Type: TypeCharacter, string: string(rune(octal))})
 }
-func (t *Tree) AddPredicate(text string)   { t.PushFront(&node{Type: TypePredicate, string: text}) }
-func (t *Tree) AddStateChange(text string) { t.PushFront(&node{Type: TypeStateChange, string: text}) }
-func (t *Tree) AddNil()                    { t.PushFront(&node{Type: TypeNil, string: "<nil>"}) }
-func (t *Tree) AddAction(text string)      { t.PushFront(&node{Type: TypeAction, string: text}) }
-func (t *Tree) AddPackage(text string)     { t.PushBack(&node{Type: TypePackage, string: text}) }
-func (t *Tree) AddSpace(text string)       { t.PushBack(&node{Type: TypeSpace, string: text}) }
-func (t *Tree) AddComment(text string)     { t.PushBack(&node{Type: TypeComment, string: text}) }
-func (t *Tree) AddImport(text string)      { t.PushBack(&node{Type: TypeImport, string: text}) }
-func (t *Tree) AddImportAlias(text string) { t.PushBack(&node{Type: TypeImport, string: "=" + text}) }
+
+func (t *Tree) AddPredicate(text string) {
+	t.PushFront(&node{Type: TypePredicate, string: text})
+}
+
+func (t *Tree) AddStateChange(text string) {
+	t.PushFront(&node{Type: TypeStateChange, string: text})
+}
+
+func (t *Tree) AddNil() {
+	t.PushFront(&node{Type: TypeNil, string: "<nil>"})
+}
+
+func (t *Tree) AddAction(text string) {
+	t.PushFront(&node{Type: TypeAction, string: text})
+}
+
+func (t *Tree) AddPackage(text string) {
+	t.PushBack(&node{Type: TypePackage, string: text})
+}
+
+func (t *Tree) AddSpace(text string) {
+	t.PushBack(&node{Type: TypeSpace, string: text})
+}
+
+func (t *Tree) AddComment(text string) {
+	t.PushBack(&node{Type: TypeComment, string: text})
+}
+
+func (t *Tree) AddImport(text string) {
+	t.PushBack(&node{Type: TypeImport, string: text})
+}
+
+func (t *Tree) AddImportAlias(text string) {
+	t.PushBack(&node{Type: TypeImport, string: "=" + text})
+}
+
 func (t *Tree) AddState(text string) {
 	peg := t.PopFront()
 	peg.PushBack(&node{Type: TypeState, string: text})
