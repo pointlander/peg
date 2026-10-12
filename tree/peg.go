@@ -419,15 +419,20 @@ func (t *Tree) AddDoubleRange() {
 	a := t.PopFront()
 	b := t.PopFront()
 
-	t.AddCharacter(strings.ToLower(b.String()))
-	t.AddCharacter(strings.ToLower(a.String()))
+	lowerB, upperB := strings.ToLower(b.String()), strings.ToUpper(b.String())
+	lowerA, upperA := strings.ToLower(a.String()), strings.ToUpper(a.String())
+
+	t.AddCharacter(lowerB)
+	t.AddCharacter(lowerA)
 	t.addList(TypeRange)
 
-	t.AddCharacter(strings.ToUpper(b.String()))
-	t.AddCharacter(strings.ToUpper(a.String()))
-	t.addList(TypeRange)
+	if lowerB != upperB || lowerA != upperA {
+		t.AddCharacter(upperB)
+		t.AddCharacter(upperA)
+		t.addList(TypeRange)
 
-	t.AddAlternate()
+		t.AddAlternate()
+	}
 }
 
 func (t *Tree) addFix(fixType Type) {
@@ -981,7 +986,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			t.warn(fmt.Errorf("illegal node type: %v", n.GetType()))
 		}
 	}
-	dryCompile := true
 
 	compile = func(n *node, ko uint) (labelLast bool) {
 		switch n.GetType() {
@@ -1120,11 +1124,9 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 					_print(" '%s'", escape(character.String()))
 				}
 				_print(":")
-				if !dryCompile {
-					sequence.SetParentDetect(true)
-					if class.Len() > 1 {
-						sequence.SetParentMultipleKey(true)
-					}
+				sequence.SetParentDetect(true)
+				if class.Len() > 1 {
+					sequence.SetParentMultipleKey(true)
 				}
 				if compile(sequence, done) {
 					_print("\nbreak")
@@ -1150,8 +1152,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printBegin()
 			printSave(ok)
 			element := n.Front()
-			element.SetParentDetect(n.ParentDetect())
-			element.SetParentMultipleKey(n.ParentMultipleKey())
 			compile(element, ko)
 			printRestore(ok)
 			printEnd()
@@ -1161,8 +1161,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printBegin()
 			printSave(ok)
 			element := n.Front()
-			element.SetParentDetect(n.ParentDetect())
-			element.SetParentMultipleKey(n.ParentMultipleKey())
 			compile(element, ok)
 			printJump(ko)
 			printLabel(ok)
@@ -1176,8 +1174,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printBegin()
 			printSave(qko)
 			element := n.Front()
-			element.SetParentDetect(n.ParentDetect())
-			element.SetParentMultipleKey(n.ParentMultipleKey())
 			compile(element, qko)
 			printJump(qok)
 			printLabel(qko)
@@ -1193,8 +1189,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 			printBegin()
 			printSave(out)
 			element := n.Front()
-			element.SetParentDetect(n.ParentDetect())
-			element.SetParentMultipleKey(n.ParentMultipleKey())
 			compile(element, out)
 			printJump(again)
 			printLabel(out)
@@ -1248,7 +1242,6 @@ func (t *Tree) Compile(file string, args []string, out io.Writer) (err error) {
 	}
 	_print = printTemp
 	label = 0
-	dryCompile = false
 
 	/* now for the real compile pass */
 	t.PegRuleType = "uint8"

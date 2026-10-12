@@ -2,7 +2,11 @@ package main
 
 import (
 	"bytes"
+	"go/ast"
+	"go/parser"
+	gotoken "go/token"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/pointlander/peg/tree"
@@ -377,3 +381,94 @@ func BenchmarkInitParseAndReset(b *testing.B) {
 		}
 	}
 }
+
+func TestSwitchRedundantChecks(t *testing.T) {
+	grammar := `package minimal
+
+type Parser Peg {
+}
+
+OtherAttr <- [[A-Z_ 0-9]]+ _ ':' [^\n]*
+
+_ <- [ \t]*
+`
+	p := &Peg[uint32]{Tree: tree.New(false, true, false), Buffer: grammar}
+	_ = p.Init(Size[uint32](1 << 15))
+	if err := p.Parse(); err != nil {
+		t.Fatal(err)
+	}
+	p.Execute()
+
+	out := &bytes.Buffer{}
+	if err := p.Compile("minimal.go", []string{"./peg", "-switch", "minimal.peg"}, out); err != nil {
+		t.Fatal(err)
+	}
+
+	generated := out.String()
+
+	// Verify that case '0', ... '9' directly advances position without redundant checks or dead code
+	case0 := "case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':\n\t\t\t\t\t\tposition++"
+	if !strings.Contains(generated, case0) {
+		t.Errorf("expected clean case '0'...: position++, got:\n%s", generated)
+	}
+	if strings.Contains(generated, "c < '0' || c > '9'") {
+		t.Errorf("generated code contains redundant range check for digits: %s", generated)
+	}
+
+	// Verify that switch cases with character match do not contain redundant if buffer[position] != ...
+	charGrammar := `package testchar
+
+type Parser Peg {
+}
+
+Rule <- ' ' / '\t' / [a-z]
+`
+	pChar := &Peg[uint32]{Tree: tree.New(false, true, false), Buffer: charGrammar}
+	_ = pChar.Init(Size[uint32](1 << 15))
+	if err := pChar.Parse(); err != nil {
+		t.Fatal(err)
+	}
+	pChar.Execute()
+
+	outChar := &bytes.Buffer{}
+	if err := pChar.Compile("testchar.go", []string{"./peg", "-switch", "testchar.peg"}, outChar); err != nil {
+		t.Fatal(err)
+	}
+
+	genChar := outChar.String()
+	if strings.Contains(genChar, "case ' ':\n\t\t\t\t\t\tif buffer[position] != ' '") ||
+		strings.Contains(genChar, "case ' ':\n\t\t\t\t\t\tif buffer[position] != rune(' ')") {
+		t.Errorf("generated code contains redundant character check inside case: %s", genChar)
+	}
+
+	// Verify that the generated code parses cleanly and has no unused labels
+	verifyLabels := func(filename, source string) {
+		fset := gotoken.NewFileSet()
+		file, err := parser.ParseFile(fset, filename, source, parser.AllErrors)
+		if err != nil {
+			t.Fatalf("failed to parse generated code %s: %v", filename, err)
+		}
+		labels := make(map[string]bool)
+		gotos := make(map[string]bool)
+		ast.Inspect(file, func(n ast.Node) bool {
+			switch stmt := n.(type) {
+			case *ast.LabeledStmt:
+				labels[stmt.Label.Name] = true
+			case *ast.BranchStmt:
+				if stmt.Tok == gotoken.GOTO && stmt.Label != nil {
+					gotos[stmt.Label.Name] = true
+				}
+			}
+			return true
+		})
+		for l := range labels {
+			if !gotos[l] {
+				t.Errorf("%s contains unused label %s", filename, l)
+			}
+		}
+	}
+
+	verifyLabels("minimal.go", generated)
+	verifyLabels("testchar.go", genChar)
+}
+
