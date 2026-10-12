@@ -471,4 +471,3 @@ Rule <- ' ' / '\t' / [a-z]
 	verifyLabels("minimal.go", generated)
 	verifyLabels("testchar.go", genChar)
 }
-
